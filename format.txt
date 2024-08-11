@@ -1,0 +1,19 @@
+https://www.reddit.com/r/ProgrammingLanguages/comments/is91ch/tools_to_create_code_formatters/
+https://journal.stuffwithstuff.com/2015/09/08/the-hardest-program-ive-ever-written/#6
+
+关于代码格式化工具实现的一些讨论
+
+The source is tokenized to a doubly-linked list of tokens.
+源被标记化为标记的双链列表。
+
+Comments are tokenized too but are not threaded into the main list. Instead, each token has an optional reference to the preceding comment token. If a non-comment token follows a comment, that will link to the comment.
+评论也被标记化，但不会串入主列表。相反，每个标记都具有对前面的注释标记的可选引用。如果非注释令牌跟随注释，则该标记将链接到注释。
+
+Whitespace is not kept as tokens, but position information is tracked with each token, which is equivalent.
+空格不保留为令牌，但使用每个令牌跟踪位置信息，这是等价的。
+
+Each AST node has references to all of the tokens it uses.
+每个 AST 节点都引用了它使用的所有令牌。
+
+When pretty-printing each AST node, you use the original tokens to print them. And from there, you can find any comment preceding each token and print that too.
+漂亮地打印每个 AST 节点时，可以使用原始令牌来打印它们。从那里，您可以找到每个令牌前面的任何注释并打印出来。

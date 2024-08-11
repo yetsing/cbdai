@@ -1,0 +1,65 @@
+var a = -1;
+var not_a = !a;
+var b = a + 3 * 4 - a / 5;
+if (a > b) {
+    true;
+    false;
+};
+b = a + 4;
+
+# 这是一段注释
+if (a > b) {
+    1; // 行内注释
+} else {
+    2; # 行内注释
+};
+
+// 示例函数
+var foo = fn(s) {
+    return s + s;
+};
+foo(a);
+a == b;
+
+fn goo(s) {
+    return s + s;
+};
+
+var s1 = "abc";
+var s2 = "def";
+var s3 = `
+hello
+world
+`;
+var s = s1 + s2 + s3;
+print(s);
+
+class Foo {
+    var a1;
+    var a2 = 3;
+    var a3 = s1;
+    var a4 = s1 + s2;
+
+    fn get() {
+        self.a1 = 3;
+        var d = self.a2;
+        var game = self;
+    };
+    fn set(a) {
+        super.set(a);
+        s = a;
+    };
+
+    class var c = 4;
+    class fn cget() {};
+    class fn cset(c) {
+        self.c = c;
+        s = c;
+    };
+};
+
+class Goo < Foo {};
+
+var foo = Foo();
+foo.a1;
+foo.a2 = 2;

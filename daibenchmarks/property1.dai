@@ -1,0 +1,37 @@
+class Zoo {
+    var aardvark = 1;
+    var baboon = 1;
+    var cat = 1;
+    var donkey = 1;
+    var elephant = 1;
+    var fox = 1;
+
+    fn ant() {
+        return self.aardvark;
+    };
+    fn banana() {
+        return self.baboon;
+    };
+    fn tuna() {
+        return self.cat;
+    };
+    fn hay() {
+        return self.donkey;
+    };
+    fn grass() {
+        return self.elephant;
+    };
+    fn mouse() {
+        return self.fox;
+    };
+};
+
+var zoo = Zoo();
+var sum = 0;
+sum = sum + zoo.ant()
+        + zoo.banana()
+        + zoo.tuna()
+        + zoo.hay()
+        + zoo.grass()
+        + zoo.mouse();
+print(sum);
