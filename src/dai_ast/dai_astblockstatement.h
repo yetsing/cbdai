@@ -7,14 +7,14 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    size_t size;
-    size_t length;
-    DaiAstStatement **statements;
+    size_t            size;
+    size_t            length;
+    DaiAstStatement** statements;
 } DaiAstBlockStatement;
 
-DaiAstBlockStatement *
+DaiAstBlockStatement*
 DaiAstBlockStatement_New(void);
 void
-DaiAstBlockStatement_append(DaiAstBlockStatement *block, DaiAstStatement *stmt);
+DaiAstBlockStatement_append(DaiAstBlockStatement* block, DaiAstStatement* stmt);
 
 #endif /* B8C8815A_AE82_4D97_878C_C7E54C6A1639 */

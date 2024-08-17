@@ -5,7 +5,8 @@
 #include "dai_utils.h"
 #include "dai_vm.h"
 
-int main(int argc, char** argv) {
+int
+main(int argc, char** argv) {
     for (int i = 0; i < argc; i++) {
         printf("argv[%d] = %s\n", i, argv[i]);
     }
@@ -14,13 +15,13 @@ int main(int argc, char** argv) {
         return 1;
     }
     char* filename = argv[1];
-    char* text = dai_string_from_file(filename);
+    char* text     = dai_string_from_file(filename);
 
     // 时间记录
     TimeRecord start_time, end_time;
     pin_time_record(&start_time);
     {
-        DaiError* err = NULL;
+        DaiError*    err = NULL;
         DaiTokenList tlist;
         DaiTokenList_init(&tlist);
         DaiAstProgram program;
@@ -41,7 +42,7 @@ int main(int argc, char** argv) {
             goto end;
         }
         DaiObjFunction* function = DaiObjFunction_New(&vm, filename);
-        err = dai_compile(&program, function, &vm);
+        err                      = dai_compile(&program, function, &vm);
         if (err != NULL) {
             DaiCompileError_pprint(err, text);
             goto end;

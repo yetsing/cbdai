@@ -7,13 +7,15 @@
 #include "dai_object.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
-void dai_assert_value_equal(DaiValue actual, DaiValue expected);
+void
+dai_assert_value_equal(DaiValue actual, DaiValue expected);
 
-static void compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
+static void
+compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
     DaiError* err;
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
-    err = dai_tokenize_string(input, tlist);
+    err                 = dai_tokenize_string(input, tlist);
     if (err) {
         DaiSyntaxError_setFilename(err, "<stdin>");
         DaiSyntaxError_pprint(err, input);
@@ -40,12 +42,12 @@ static void compile_helper(const char* input, DaiObjFunction* function, DaiVM* v
     munit_assert_null(err);
 }
 
-static DaiCompileError* compile_error_helper(const char* input, DaiObjFunction* function,
-                                             DaiVM* vm) {
+static DaiCompileError*
+compile_error_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
     DaiError* err;
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
-    err = dai_tokenize_string(input, tlist);
+    err                 = dai_tokenize_string(input, tlist);
     if (err) {
         DaiSyntaxError_setFilename(err, "<stdin>");
         DaiSyntaxError_pprint(err, input);
@@ -66,14 +68,15 @@ static DaiCompileError* compile_error_helper(const char* input, DaiObjFunction* 
 
 typedef struct {
     const char* input;
-    int expected_count;
-    uint8_t expected_codes[64];
-    DaiValue expected_constants[32];
+    int         expected_count;
+    uint8_t     expected_codes[64];
+    DaiValue    expected_constants[32];
 
 } DaiCompilerTestCase;
 
 // 将嵌套的常量展开
-static void flat_constants(DaiValueArray* target, DaiValueArray* source) {
+static void
+flat_constants(DaiValueArray* target, DaiValueArray* source) {
     for (int i = 0; i < source->count; i++) {
         if (IS_FUNCTION(source->values[i])) {
             flat_constants(target, &(AS_FUNCTION(source->values[i])->chunk.constants));
@@ -82,7 +85,8 @@ static void flat_constants(DaiValueArray* target, DaiValueArray* source) {
     }
 }
 
-static void run_compiler_tests(DaiCompilerTestCase* tests, size_t count) {
+static void
+run_compiler_tests(DaiCompilerTestCase* tests, size_t count) {
     for (size_t i = 0; i < count; i++) {
         DaiVM vm;
         DaiVM_init(&vm);
@@ -111,8 +115,9 @@ static void run_compiler_tests(DaiCompilerTestCase* tests, size_t count) {
     }
 }
 
-static MunitResult test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
-                                           __attribute__((unused)) void* user_data) {
+static MunitResult
+test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
+                        __attribute__((unused)) void*                user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "1 + 2;",
@@ -224,8 +229,9 @@ static MunitResult test_integer_arithmetic(__attribute__((unused)) const MunitPa
     return MUNIT_OK;
 }
 
-static MunitResult test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
-                                            __attribute__((unused)) void* user_data) {
+static MunitResult
+test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
+                         __attribute__((unused)) void*                user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "true;",
@@ -349,8 +355,9 @@ static MunitResult test_boolean_expressions(__attribute__((unused)) const MunitP
     return MUNIT_OK;
 }
 
-static MunitResult test_conditionals(__attribute__((unused)) const MunitParameter params[],
-                                     __attribute__((unused)) void* user_data) {
+static MunitResult
+test_conditionals(__attribute__((unused)) const MunitParameter params[],
+                  __attribute__((unused)) void*                user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "if (true) {10;};\n 3333;",
@@ -397,15 +404,8 @@ static MunitResult test_conditionals(__attribute__((unused)) const MunitParamete
             "",
             19,
             {
-                DaiOpTrue,
-                DaiOpJumpIfFalse, 0, 7,
-                DaiOpConstant, 0, 0,
-                DaiOpPop,
-                DaiOpJump, 0, 8,
-                DaiOpTrue,
-                DaiOpJumpIfFalse, 0, 4,
-                DaiOpConstant, 0, 1,
-                DaiOpPop,
+                DaiOpTrue, DaiOpJumpIfFalse, 0, 7, DaiOpConstant, 0, 0, DaiOpPop, DaiOpJump, 0, 8,
+                DaiOpTrue, DaiOpJumpIfFalse, 0, 4, DaiOpConstant, 0, 1, DaiOpPop,
             },
             {
                 INTEGER_VAL(1),
@@ -413,7 +413,7 @@ static MunitResult test_conditionals(__attribute__((unused)) const MunitParamete
             },
 
         },
-       {
+        {
             "if (true) {\n"
             "    1;\n"
             "} elif (true) {\n"
@@ -425,18 +425,32 @@ static MunitResult test_conditionals(__attribute__((unused)) const MunitParamete
             26,
             {
                 DaiOpTrue,
-                DaiOpJumpIfFalse, 0, 7,
-                DaiOpConstant, 0, 0,
+                DaiOpJumpIfFalse,
+                0,
+                7,
+                DaiOpConstant,
+                0,
+                0,
                 DaiOpPop,
-                DaiOpJump, 0, 15,
+                DaiOpJump,
+                0,
+                15,
 
                 DaiOpTrue,
-                DaiOpJumpIfFalse, 0, 7,
-                DaiOpConstant, 0, 1,
+                DaiOpJumpIfFalse,
+                0,
+                7,
+                DaiOpConstant,
+                0,
+                1,
                 DaiOpPop,
-                DaiOpJump, 0, 4,
+                DaiOpJump,
+                0,
+                4,
 
-                DaiOpConstant, 0, 2,
+                DaiOpConstant,
+                0,
+                2,
                 DaiOpPop,
             },
             {
@@ -446,7 +460,7 @@ static MunitResult test_conditionals(__attribute__((unused)) const MunitParamete
             },
 
         },
-       {
+        {
             "if (true) {\n"
             "    1;\n"
             "} elif (true) {\n"
@@ -460,24 +474,44 @@ static MunitResult test_conditionals(__attribute__((unused)) const MunitParamete
             37,
             {
                 DaiOpTrue,
-                DaiOpJumpIfFalse, 0, 7,
-                DaiOpConstant, 0, 0,
+                DaiOpJumpIfFalse,
+                0,
+                7,
+                DaiOpConstant,
+                0,
+                0,
                 DaiOpPop,
-                DaiOpJump, 0, 26,
+                DaiOpJump,
+                0,
+                26,
 
                 DaiOpTrue,
-                DaiOpJumpIfFalse, 0, 7,
-                DaiOpConstant, 0, 1,
+                DaiOpJumpIfFalse,
+                0,
+                7,
+                DaiOpConstant,
+                0,
+                1,
                 DaiOpPop,
-                DaiOpJump, 0, 15,
+                DaiOpJump,
+                0,
+                15,
 
                 DaiOpTrue,
-                DaiOpJumpIfFalse, 0, 7,
-                DaiOpConstant, 0, 2,
+                DaiOpJumpIfFalse,
+                0,
+                7,
+                DaiOpConstant,
+                0,
+                2,
                 DaiOpPop,
-                DaiOpJump, 0, 4,
+                DaiOpJump,
+                0,
+                4,
 
-                DaiOpConstant, 0, 3,
+                DaiOpConstant,
+                0,
+                3,
                 DaiOpPop,
             },
             {
@@ -493,8 +527,9 @@ static MunitResult test_conditionals(__attribute__((unused)) const MunitParamete
     return MUNIT_OK;
 }
 
-static MunitResult test_global_var_statements(__attribute__((unused)) const MunitParameter params[],
-                                              __attribute__((unused)) void* user_data) {
+static MunitResult
+test_global_var_statements(__attribute__((unused)) const MunitParameter params[],
+                           __attribute__((unused)) void*                user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "var one = 1;\n var two = 2;",
@@ -593,8 +628,9 @@ static MunitResult test_global_var_statements(__attribute__((unused)) const Muni
     return MUNIT_OK;
 }
 
-static MunitResult test_string_expressions(__attribute__((unused)) const MunitParameter params[],
-                                           __attribute__((unused)) void* user_data) {
+static MunitResult
+test_string_expressions(__attribute__((unused)) const MunitParameter params[],
+                        __attribute__((unused)) void*                user_data) {
     DaiObjString s = (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
     DaiCompilerTestCase tests[] = {
         {
@@ -628,13 +664,22 @@ static MunitResult test_string_expressions(__attribute__((unused)) const MunitPa
     return MUNIT_OK;
 }
 
-static MunitResult test_functions(__attribute__((unused)) const MunitParameter params[],
-                                  __attribute__((unused)) void* user_data) {
+static MunitResult
+test_functions(__attribute__((unused)) const MunitParameter params[],
+               __attribute__((unused)) void*                user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>");
-    uint8_t expected_codes1[] = {
-        DaiOpConstant, 0, 0, DaiOpConstant, 0, 1, DaiOpAdd, DaiOpReturnValue, DaiOpReturn,
+    DaiObjFunction* func1             = DaiObjFunction_New(&vm, "<test1>");
+    uint8_t         expected_codes1[] = {
+        DaiOpConstant,
+        0,
+        0,
+        DaiOpConstant,
+        0,
+        1,
+        DaiOpAdd,
+        DaiOpReturnValue,
+        DaiOpReturn,
     };
     for (int i = 0; i < sizeof(expected_codes1) / sizeof(expected_codes1[0]); i++) {
         DaiChunk_write(&func1->chunk, expected_codes1[i], 1);
@@ -643,7 +688,15 @@ static MunitResult test_functions(__attribute__((unused)) const MunitParameter p
     DaiObjFunction* func2 = DaiObjFunction_New(&vm, "<test2>");
     {
         uint8_t expected_codes2[] = {
-            DaiOpConstant, 0, 0, DaiOpConstant, 0, 1, DaiOpAdd, DaiOpPop, DaiOpReturn,
+            DaiOpConstant,
+            0,
+            0,
+            DaiOpConstant,
+            0,
+            1,
+            DaiOpAdd,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes2) / sizeof(expected_codes2[0]); i++) {
             DaiChunk_write(&func2->chunk, expected_codes2[i], 1);
@@ -738,14 +791,19 @@ static MunitResult test_functions(__attribute__((unused)) const MunitParameter p
     return MUNIT_OK;
 }
 
-static MunitResult test_function_calls(__attribute__((unused)) const MunitParameter params[],
-                                       __attribute__((unused)) void* user_data) {
+static MunitResult
+test_function_calls(__attribute__((unused)) const MunitParameter params[],
+                    __attribute__((unused)) void*                user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>");
     {
         uint8_t expected_codes1[] = {
-            DaiOpConstant, 0, 0, DaiOpPop, DaiOpReturn,
+            DaiOpConstant,
+            0,
+            0,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes1) / sizeof(expected_codes1[0]); i++) {
             DaiChunk_write(&func1->chunk, expected_codes1[i], 1);
@@ -784,8 +842,16 @@ static MunitResult test_function_calls(__attribute__((unused)) const MunitParame
     DaiObjFunction* func5 = DaiObjFunction_New(&vm, "<test1>");
     {
         uint8_t expected_codes1[] = {
-            DaiOpGetLocal, 1, DaiOpPop, DaiOpGetLocal, 2, DaiOpPop,
-            DaiOpGetLocal, 3, DaiOpPop, DaiOpReturn,
+            DaiOpGetLocal,
+            1,
+            DaiOpPop,
+            DaiOpGetLocal,
+            2,
+            DaiOpPop,
+            DaiOpGetLocal,
+            3,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes1) / sizeof(expected_codes1[0]); i++) {
             DaiChunk_write(&func5->chunk, expected_codes1[i], 1);
@@ -958,14 +1024,19 @@ static MunitResult test_function_calls(__attribute__((unused)) const MunitParame
     return MUNIT_OK;
 }
 
-static MunitResult test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
-                                             __attribute__((unused)) void* user_data) {
+static MunitResult
+test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
+                          __attribute__((unused)) void*                user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>");
     {
         uint8_t expected_codes1[] = {
-            DaiOpGetGlobal, 0, 0, DaiOpPop, DaiOpReturn,
+            DaiOpGetGlobal,
+            0,
+            0,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes1) / sizeof(expected_codes1[0]); i++) {
             DaiChunk_write(&func1->chunk, expected_codes1[i], 1);
@@ -974,7 +1045,15 @@ static MunitResult test_var_statement_scopes(__attribute__((unused)) const Munit
     DaiObjFunction* func2 = DaiObjFunction_New(&vm, "<test2>");
     {
         uint8_t expected_codes1[] = {
-            DaiOpConstant, 0, 0, DaiOpSetLocal, 1, DaiOpGetLocal, 1, DaiOpPop, DaiOpReturn,
+            DaiOpConstant,
+            0,
+            0,
+            DaiOpSetLocal,
+            1,
+            DaiOpGetLocal,
+            1,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes1) / sizeof(expected_codes1[0]); i++) {
             DaiChunk_write(&func2->chunk, expected_codes1[i], 1);
@@ -1064,15 +1143,24 @@ static MunitResult test_var_statement_scopes(__attribute__((unused)) const Munit
     return MUNIT_OK;
 }
 
-static MunitResult test_builtins(__attribute__((unused)) const MunitParameter params[],
-                                 __attribute__((unused)) void* user_data) {
+static MunitResult
+test_builtins(__attribute__((unused)) const MunitParameter params[],
+              __attribute__((unused)) void*                user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjString s = (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
+    DaiObjString    s = (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
     DaiObjFunction* func = DaiObjFunction_New(&vm, "<test2>");
     {
         uint8_t expected_codes2[] = {
-            DaiOpGetBuiltin, 1, DaiOpConstant, 0, 0, DaiOpCall, 1, DaiOpPop, DaiOpReturn,
+            DaiOpGetBuiltin,
+            1,
+            DaiOpConstant,
+            0,
+            0,
+            DaiOpCall,
+            1,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes2) / sizeof(expected_codes2[0]); i++) {
             DaiChunk_write(&func->chunk, expected_codes2[i], 1);
@@ -1118,14 +1206,21 @@ static MunitResult test_builtins(__attribute__((unused)) const MunitParameter pa
     return MUNIT_OK;
 }
 
-static MunitResult test_closures(__attribute__((unused)) const MunitParameter params[],
-                                 __attribute__((unused)) void* user_data) {
+static MunitResult
+test_closures(__attribute__((unused)) const MunitParameter params[],
+              __attribute__((unused)) void*                user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjFunction* func1_1 = DaiObjFunction_New(&vm, "<test1_1>");
     {
         uint8_t expected_codes2[] = {
-            DaiOpGetFree, 0, DaiOpGetLocal, 1, DaiOpAdd, DaiOpPop, DaiOpReturn,
+            DaiOpGetFree,
+            0,
+            DaiOpGetLocal,
+            1,
+            DaiOpAdd,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes2) / sizeof(expected_codes2[0]); i++) {
             DaiChunk_write(&func1_1->chunk, expected_codes2[i], 1);
@@ -1134,7 +1229,14 @@ static MunitResult test_closures(__attribute__((unused)) const MunitParameter pa
     DaiObjFunction* func1_2 = DaiObjFunction_New(&vm, "<test1_2>");
     {
         uint8_t expected_codes2[] = {
-            DaiOpGetLocal, 1, DaiOpClosure, 0, 0, 1, DaiOpPop, DaiOpReturn,
+            DaiOpGetLocal,
+            1,
+            DaiOpClosure,
+            0,
+            0,
+            1,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes2) / sizeof(expected_codes2[0]); i++) {
             DaiChunk_write(&func1_2->chunk, expected_codes2[i], 1);
@@ -1143,8 +1245,16 @@ static MunitResult test_closures(__attribute__((unused)) const MunitParameter pa
     DaiObjFunction* func2_1 = DaiObjFunction_New(&vm, "<test2>");
     {
         uint8_t expected_codes2[] = {
-            DaiOpGetFree,  0, DaiOpGetFree, 1,        DaiOpAdd,
-            DaiOpGetLocal, 1, DaiOpAdd,     DaiOpPop, DaiOpReturn,
+            DaiOpGetFree,
+            0,
+            DaiOpGetFree,
+            1,
+            DaiOpAdd,
+            DaiOpGetLocal,
+            1,
+            DaiOpAdd,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes2) / sizeof(expected_codes2[0]); i++) {
             DaiChunk_write(&func2_1->chunk, expected_codes2[i], 1);
@@ -1153,7 +1263,16 @@ static MunitResult test_closures(__attribute__((unused)) const MunitParameter pa
     DaiObjFunction* func2_2 = DaiObjFunction_New(&vm, "<test2>");
     {
         uint8_t expected_codes2[] = {
-            DaiOpGetFree, 0, DaiOpGetLocal, 1, DaiOpClosure, 0, 0, 2, DaiOpPop, DaiOpReturn,
+            DaiOpGetFree,
+            0,
+            DaiOpGetLocal,
+            1,
+            DaiOpClosure,
+            0,
+            0,
+            2,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes2) / sizeof(expected_codes2[0]); i++) {
             DaiChunk_write(&func2_2->chunk, expected_codes2[i], 1);
@@ -1162,7 +1281,14 @@ static MunitResult test_closures(__attribute__((unused)) const MunitParameter pa
     DaiObjFunction* func2_3 = DaiObjFunction_New(&vm, "<test2>");
     {
         uint8_t expected_codes2[] = {
-            DaiOpGetLocal, 1, DaiOpClosure, 0, 0, 1, DaiOpPop, DaiOpReturn,
+            DaiOpGetLocal,
+            1,
+            DaiOpClosure,
+            0,
+            0,
+            1,
+            DaiOpPop,
+            DaiOpReturn,
         };
         for (int i = 0; i < sizeof(expected_codes2) / sizeof(expected_codes2[0]); i++) {
             DaiChunk_write(&func2_3->chunk, expected_codes2[i], 1);
@@ -1320,12 +1446,13 @@ static MunitResult test_closures(__attribute__((unused)) const MunitParameter pa
     return MUNIT_OK;
 }
 
-static MunitResult test_class(__attribute__((unused)) const MunitParameter params[],
-                              __attribute__((unused)) void* user_data) {
+static MunitResult
+test_class(__attribute__((unused)) const MunitParameter params[],
+           __attribute__((unused)) void*                user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjString sa = (DaiObjString){{.type = DaiObjType_string}, .chars = "B", .length = 1};
-    DaiObjString s = (DaiObjString){{.type = DaiObjType_string}, .chars = "C", .length = 1};
+    DaiObjString s  = (DaiObjString){{.type = DaiObjType_string}, .chars = "C", .length = 1};
     DaiObjString s2 = (DaiObjString){{.type = DaiObjType_string}, .chars = "s2", .length = 2};
     DaiObjString s3 = (DaiObjString){{.type = DaiObjType_string}, .chars = "s3", .length = 2};
     DaiObjString s4 = (DaiObjString){{.type = DaiObjType_string}, .chars = "s4", .length = 2};
@@ -1856,8 +1983,9 @@ static MunitResult test_class(__attribute__((unused)) const MunitParameter param
     return MUNIT_OK;
 }
 
-static MunitResult test_compile_error(__attribute__((unused)) const MunitParameter params[],
-                                      __attribute__((unused)) void* user_data) {
+static MunitResult
+test_compile_error(__attribute__((unused)) const MunitParameter params[],
+                   __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
         const char* expected_error_msg;
@@ -1886,8 +2014,8 @@ static MunitResult test_compile_error(__attribute__((unused)) const MunitParamet
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiVM vm;
         DaiVM_init(&vm);
-        DaiObjFunction* func = DaiObjFunction_New(&vm, "<test>");
-        DaiCompileError* err = compile_error_helper(tests[i].input, func, &vm);
+        DaiObjFunction*  func = DaiObjFunction_New(&vm, "<test>");
+        DaiCompileError* err  = compile_error_helper(tests[i].input, func, &vm);
         munit_assert_not_null(err);
         char* msg = DaiCompileError_string(err);
         munit_assert_string_equal(msg, tests[i].expected_error_msg);
@@ -1899,19 +2027,39 @@ static MunitResult test_compile_error(__attribute__((unused)) const MunitParamet
 }
 
 MunitTest compile_tests[] = {
-    {(char*)"/test_integer_arithmetic", test_integer_arithmetic, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+    {(char*)"/test_integer_arithmetic",
+     test_integer_arithmetic,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
      NULL},
-    {(char*)"/test_boolean_expressions", test_boolean_expressions, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_boolean_expressions",
+     test_boolean_expressions,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {(char*)"/test_conditionals", test_conditionals, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_global_var_statements", test_global_var_statements, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_string_expressions", test_string_expressions, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+    {(char*)"/test_global_var_statements",
+     test_global_var_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_string_expressions",
+     test_string_expressions,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_functions", test_functions, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_function_calls", test_function_calls, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_var_statement_scopes", test_var_statement_scopes, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_var_statement_scopes",
+     test_var_statement_scopes,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {(char*)"/test_builtins", test_builtins, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_closures", test_closures, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_class", test_class, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},

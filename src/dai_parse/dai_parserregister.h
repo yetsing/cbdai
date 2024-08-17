@@ -5,11 +5,11 @@
 #define CBAI_SRC_DAI_PARSER_DAI_PARSERREGISTER_H_
 
 static void
-Parser_register(Parser *p) {
+Parser_register(Parser* p) {
     // 初始化
     for (int i = 0; i < DaiTokenType_end; i++) {
         p->prefix_parse_fns[i] = NULL;
-        p->infix_parse_fns[i] = NULL;
+        p->infix_parse_fns[i]  = NULL;
     }
     // 注册前缀表达式解析函数
     {

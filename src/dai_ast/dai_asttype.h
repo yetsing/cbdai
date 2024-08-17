@@ -4,7 +4,7 @@
 typedef enum {
     DaiAstType_unspecified = 0,
     DaiAstType_program,
-    //#region statement
+    // #region statement
     DaiAstType_StatementStart,
     DaiAstType_VarStatement,
     DaiAstType_ReturnStatement,
@@ -19,9 +19,9 @@ typedef enum {
     DaiAstType_ClassVarStatement,
     DaiAstType_ClassMethodStatement,
     DaiAstType_StatementEnd,
-    //#endregion
+    // #endregion
 
-    //#region expression
+    // #region expression
     DaiAstType_ExpressionStart,
     DaiAstType_IntegerLiteral,
     DaiAstType_Boolean,
@@ -35,10 +35,10 @@ typedef enum {
     DaiAstType_SelfExpression,
     DaiAstType_SuperExpression,
     DaiAstType_ExpressionEnd,
-    //#endregion
+    // #endregion
 } DaiAstType;
 
-const char *
+const char*
 DaiAstType_string(DaiAstType type);
 
 #endif /* A27DBEBF_6C4E_4D54_AFEF_42B0BCF50BC5 */

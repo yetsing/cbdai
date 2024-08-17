@@ -6,24 +6,27 @@
 
 #include <stdlib.h>
 
-#define GROW_CAPACITY(capacity) \
-    ((capacity) < 8 ? 8 : (capacity) * 2)
+#define GROW_CAPACITY(capacity) ((capacity) < 8 ? 8 : (capacity) * 2)
 
 /* Allocate memory or panic */
-void *dai_malloc(size_t size);
+void*
+dai_malloc(size_t size);
 /* Allocate memory or panic */
-void *dai_realloc(void *ptr, size_t size);
+void*
+dai_realloc(void* ptr, size_t size);
 
 /* Free *ptr memory and set null */
-#define dai_free(ptr) do { \
-  free(ptr);          \
-  ptr = NULL; \
-} while(0)
+#define dai_free(ptr) \
+    do {              \
+        free(ptr);    \
+        ptr = NULL;   \
+    } while (0)
 
 // 转移指针的所有权
-#define dai_move(src, dst) do { \
-  dst = src; \
-  src = NULL; \
-} while(0)
+#define dai_move(src, dst) \
+    do {                   \
+        dst = src;         \
+        src = NULL;        \
+    } while (0)
 
-#endif //CBDAI_SRC_DAI_MALLOC_H_
+#endif   // CBDAI_SRC_DAI_MALLOC_H_

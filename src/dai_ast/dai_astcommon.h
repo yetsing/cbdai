@@ -12,9 +12,7 @@
 #define KEY_COLOR(text) "\033[0;35m" text "\033[0m"
 #define TYPE_COLOR(text) "\033[0;36m" text "\033[0m"
 
-__attribute__ ((unused))
-static const char *indent = "    ";
-__attribute__ ((unused))
-static const char *doubleindent = "        ";
+__attribute__((unused)) static const char* indent       = "    ";
+__attribute__((unused)) static const char* doubleindent = "        ";
 
 #endif /* B0D14535_3DCF_4F93_879B_8B763471BC56 */

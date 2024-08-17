@@ -3,7 +3,8 @@
 
 #include "dai_parse/dai_parseBlockStatementOfClass.h"
 
-static DaiAstClassStatement* Parser_parseClassStatement(Parser* p) {
+static DaiAstClassStatement*
+Parser_parseClassStatement(Parser* p) {
     DaiToken* start_token = p->cur_token;
     // 类名
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
@@ -11,14 +12,14 @@ static DaiAstClassStatement* Parser_parseClassStatement(Parser* p) {
     }
     DaiAstClassStatement* klass = DaiAstClassStatement_New(p->cur_token);
     {
-        klass->start_line = start_token->start_line;
+        klass->start_line   = start_token->start_line;
         klass->start_column = start_token->start_column;
     }
     if (Parser_peekTokenIs(p, DaiTokenType_lt)) {
         // 父类
         Parser_nextToken(p);
         Parser_nextToken(p);
-        klass->parent = (DaiAstIdentifier *) Parser_parseIdentifier(p);
+        klass->parent = (DaiAstIdentifier*)Parser_parseIdentifier(p);
         if (klass->parent == NULL) {
             klass->free_fn((DaiAstBase*)klass, true);
             return NULL;
@@ -41,7 +42,7 @@ static DaiAstClassStatement* Parser_parseClassStatement(Parser* p) {
         return NULL;
     }
     {
-        klass->end_line = p->cur_token->end_line;
+        klass->end_line   = p->cur_token->end_line;
         klass->end_column = p->cur_token->end_column;
     }
     return klass;

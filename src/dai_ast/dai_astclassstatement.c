@@ -5,10 +5,11 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
-static char* DaiAstClassStatement_string(DaiAstBase* base, bool recursive) {
+static char*
+DaiAstClassStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_ClassStatement);
     DaiAstClassStatement* klass = (DaiAstClassStatement*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*      sb    = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     DaiStringBuffer_write(sb, KEY_COLOR("type") ": " TYPE_COLOR("DaiAstType_ClassStatement") ",\n");
@@ -36,7 +37,8 @@ static char* DaiAstClassStatement_string(DaiAstBase* base, bool recursive) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-void DaiAstClassStatement_free(DaiAstBase* base, bool recursive) {
+void
+DaiAstClassStatement_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_ClassStatement);
     DaiAstClassStatement* klass = (DaiAstClassStatement*)base;
     if (recursive) {
@@ -51,15 +53,16 @@ void DaiAstClassStatement_free(DaiAstBase* base, bool recursive) {
     dai_free(klass);
 }
 
-DaiAstClassStatement* DaiAstClassStatement_New(DaiToken* name) {
+DaiAstClassStatement*
+DaiAstClassStatement_New(DaiToken* name) {
     DaiAstClassStatement* klass = dai_malloc(sizeof(DaiAstClassStatement));
-    klass->type = DaiAstType_ClassStatement;
+    klass->type                 = DaiAstType_ClassStatement;
     {
         klass->string_fn = DaiAstClassStatement_string;
-        klass->free_fn = DaiAstClassStatement_free;
+        klass->free_fn   = DaiAstClassStatement_free;
     }
     dai_move(name->literal, klass->name);
     klass->parent = NULL;
-    klass->body = NULL;
+    klass->body   = NULL;
     return klass;
 }

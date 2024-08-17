@@ -6,11 +6,11 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    DaiAstExpression *left;
-    DaiAstExpression *value;
+    DaiAstExpression* left;
+    DaiAstExpression* value;
 } DaiAstAssignStatement;
 
-DaiAstAssignStatement *
+DaiAstAssignStatement*
 DaiAstAssignStatement_New(void);
 
 #endif /* F2A82CE3_A2B6_424D_A75C_6DC3B57957B2 */

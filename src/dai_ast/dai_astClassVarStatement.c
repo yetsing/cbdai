@@ -1,14 +1,15 @@
 #include <assert.h>
 
-#include "dai_ast/dai_astcommon.h"
 #include "dai_ast/dai_astClassVarStatement.h"
+#include "dai_ast/dai_astcommon.h"
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
-static char* DaiAstClassVarStatement_string(DaiAstBase* base, bool recursive) {
+static char*
+DaiAstClassVarStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_ClassVarStatement);
     DaiAstClassVarStatement* stmt = (DaiAstClassVarStatement*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*         sb   = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_ClassVarStatement,\n");
@@ -38,7 +39,8 @@ static char* DaiAstClassVarStatement_string(DaiAstBase* base, bool recursive) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-static void DaiAstClassVarStatement_free(DaiAstBase* base, bool recursive) {
+static void
+DaiAstClassVarStatement_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_ClassVarStatement);
     DaiAstClassVarStatement* stmt = (DaiAstClassVarStatement*)base;
     if (recursive) {
@@ -52,14 +54,15 @@ static void DaiAstClassVarStatement_free(DaiAstBase* base, bool recursive) {
     dai_free(stmt);
 }
 
-DaiAstClassVarStatement* DaiAstClassVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value) {
+DaiAstClassVarStatement*
+DaiAstClassVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value) {
     DaiAstClassVarStatement* stmt = dai_malloc(sizeof(DaiAstClassVarStatement));
     {
-        stmt->type = DaiAstType_ClassVarStatement;
+        stmt->type      = DaiAstType_ClassVarStatement;
         stmt->string_fn = DaiAstClassVarStatement_string;
-        stmt->free_fn = DaiAstClassVarStatement_free;
+        stmt->free_fn   = DaiAstClassVarStatement_free;
     }
-    stmt->name = name;
+    stmt->name  = name;
     stmt->value = value;
     return stmt;
 }

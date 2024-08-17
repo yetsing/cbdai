@@ -6,11 +6,11 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
-static char *
-DaiAstBoolean_string(DaiAstBase *base, bool recursive) {
+static char*
+DaiAstBoolean_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_Boolean);
-    DaiAstBoolean *boolean = (DaiAstBoolean *) base;
-    DaiStringBuffer *sb = DaiStringBuffer_New();
+    DaiAstBoolean*   boolean = (DaiAstBoolean*)base;
+    DaiStringBuffer* sb      = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_Boolean,\n");
@@ -24,35 +24,34 @@ DaiAstBoolean_string(DaiAstBase *base, bool recursive) {
 }
 
 static void
-DaiAstBoolean_free(DaiAstBase *base, bool recursive) {
+DaiAstBoolean_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_Boolean);
-    DaiAstBoolean *boolean = (DaiAstBoolean *) base;
+    DaiAstBoolean* boolean = (DaiAstBoolean*)base;
     dai_free(boolean);
 }
 
-static char *
-DaiAstBoolean_literal(DaiAstExpression *expr) {
+static char*
+DaiAstBoolean_literal(DaiAstExpression* expr) {
     assert(expr->type == DaiAstType_Boolean);
-    DaiAstBoolean *boolean = (DaiAstBoolean *) expr;
-    char *s = boolean->value ? "true" : "false";
+    DaiAstBoolean* boolean = (DaiAstBoolean*)expr;
+    char*          s       = boolean->value ? "true" : "false";
     return strdup(s);
 }
 
 
-DaiAstBoolean *
-DaiAstBoolean_New(DaiToken *token) {
-    DaiAstBoolean *boolean = dai_malloc(sizeof(DaiAstBoolean));
+DaiAstBoolean*
+DaiAstBoolean_New(DaiToken* token) {
+    DaiAstBoolean* boolean = dai_malloc(sizeof(DaiAstBoolean));
     {
-        boolean->type = DaiAstType_Boolean;
-        boolean->string_fn = DaiAstBoolean_string;
-        boolean->free_fn = DaiAstBoolean_free;
+        boolean->type       = DaiAstType_Boolean;
+        boolean->string_fn  = DaiAstBoolean_string;
+        boolean->free_fn    = DaiAstBoolean_free;
         boolean->literal_fn = DaiAstBoolean_literal;
     }
-    boolean->value = strcmp(token->literal, "true") == 0;
-    boolean->start_line = token->start_line;
+    boolean->value        = strcmp(token->literal, "true") == 0;
+    boolean->start_line   = token->start_line;
     boolean->start_column = token->start_column;
-    boolean->end_line = token->end_line;
-    boolean->end_column = token->end_column;
+    boolean->end_line     = token->end_line;
+    boolean->end_column   = token->end_column;
     return boolean;
-
 }

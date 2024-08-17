@@ -3,10 +3,11 @@
 
 #include "dai_parse/dai_parsefunctionliteral.h"
 
-DaiAstMethodStatement* Parser_parseMethodStatement(Parser* p) {
+DaiAstMethodStatement*
+Parser_parseMethodStatement(Parser* p) {
     DaiAstMethodStatement* func = DaiAstMethodStatement_New();
     {
-        func->start_line = p->cur_token->start_line;
+        func->start_line   = p->cur_token->start_line;
         func->start_column = p->cur_token->start_column;
     }
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
@@ -41,7 +42,7 @@ DaiAstMethodStatement* Parser_parseMethodStatement(Parser* p) {
     }
 
     {
-        func->end_line = p->cur_token->end_line;
+        func->end_line   = p->cur_token->end_line;
         func->end_column = p->cur_token->end_column;
     }
     return func;

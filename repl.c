@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#include <sys/resource.h>
 #include <sys/time.h>
 #include <time.h>
-#include <sys/resource.h>
 
 #include "atstr/atstr.h"
 
@@ -13,8 +13,8 @@
 #include "dai_utils.h"
 #include "dai_vm.h"
 
-__attribute__((unused))
-static void sljust(char* dst, char* s, int n) {
+__attribute__((unused)) static void
+sljust(char* dst, char* s, int n) {
     int l = strlen(s);
     memcpy(dst, s, l + 1);
     if (l < n) {
@@ -24,13 +24,14 @@ static void sljust(char* dst, char* s, int n) {
     }
 }
 
-int main() {
-    const char* filename = "<stdin>";
-    char line[2048] = {0};
+int
+main() {
+    const char* filename   = "<stdin>";
+    char        line[2048] = {0};
 
     printf("> ");
     // 初始化
-    DaiError* err = NULL;
+    DaiError*    err = NULL;
     DaiTokenList tlist;
     DaiTokenList_init(&tlist);
     DaiAstProgram program;
@@ -39,12 +40,12 @@ int main() {
     DaiVM_init(&vm);
     // 时间记录
     TimeRecord start_time, end_time;
-    bool enable_time = false;
+    bool       enable_time = false;
     // 循环读取输入行
     while (fgets(line, sizeof(line), stdin) != NULL) {
         vm.state = VMState_pending;
         DaiVM_resetStack(&vm);
-        enable_time = false;
+        enable_time       = false;
         const char* input = line;
         if (line[0] == ';') {
             atstr_t atstr = atstr_new(line + 1);
@@ -76,7 +77,7 @@ int main() {
             goto end;
         }
         DaiObjFunction* function = DaiObjFunction_New(&vm, "<stdin>");
-        err = dai_compile(&program, function, &vm);
+        err                      = dai_compile(&program, function, &vm);
         if (err != NULL) {
             DaiCompileError_pprint(err, input);
             goto end;

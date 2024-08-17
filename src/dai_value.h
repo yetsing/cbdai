@@ -6,11 +6,11 @@
 
 #include "dai_common.h"
 
-typedef struct DaiObj DaiObj;
+typedef struct DaiObj       DaiObj;
 typedef struct DaiObjString DaiObjString;
 
 typedef enum {
-    DaiValueType_undefined,  // 仅供内部使用，不会暴露给用户
+    DaiValueType_undefined,   // 仅供内部使用，不会暴露给用户
     DaiValueType_nil,
     DaiValueType_bool,
     DaiValueType_int,
@@ -21,30 +21,30 @@ typedef struct {
     DaiValueType type;
     union {
         int64_t intval;
-        bool boolean;
-        DaiObj *obj;
+        bool    boolean;
+        DaiObj* obj;
     } as;
 } DaiValue;
 
 // 返回类型的字符串表示
-const char *
+const char*
 dai_value_ts(DaiValue value);
 
 #define IS_UNDEFINED(value) ((value).type == DaiValueType_undefined)
-#define IS_BOOL(value)    ((value).type == DaiValueType_bool)
-#define IS_NIL(value)     ((value).type == DaiValueType_nil)
-#define IS_INTEGER(value)  ((value).type == DaiValueType_int)
-#define IS_OBJ(value)     ((value).type == DaiValueType_obj)
+#define IS_BOOL(value) ((value).type == DaiValueType_bool)
+#define IS_NIL(value) ((value).type == DaiValueType_nil)
+#define IS_INTEGER(value) ((value).type == DaiValueType_int)
+#define IS_OBJ(value) ((value).type == DaiValueType_obj)
 
-#define AS_BOOL(value)    ((value).as.boolean)
-#define AS_INTEGER(value)  ((value).as.intval)
-#define AS_OBJ(value)     ((value).as.obj)
+#define AS_BOOL(value) ((value).as.boolean)
+#define AS_INTEGER(value) ((value).as.intval)
+#define AS_OBJ(value) ((value).as.obj)
 
-#define UNDEFINED_VAL     ((DaiValue){DaiValueType_undefined, {.intval = 0}})
-#define BOOL_VAL(value)   ((DaiValue){DaiValueType_bool, {.boolean = value}})
-#define NIL_VAL           ((DaiValue){DaiValueType_nil, {.intval = 0}})
-#define INTEGER_VAL(value) ((DaiValue){DaiValueType_int, {.intval = value}})                
-#define OBJ_VAL(object)   ((DaiValue){DaiValueType_obj, {.obj = (DaiObj*)object}})
+#define UNDEFINED_VAL ((DaiValue){DaiValueType_undefined, {.intval = 0}})
+#define BOOL_VAL(value) ((DaiValue){DaiValueType_bool, {.boolean = value}})
+#define NIL_VAL ((DaiValue){DaiValueType_nil, {.intval = 0}})
+#define INTEGER_VAL(value) ((DaiValue){DaiValueType_int, {.intval = value}})
+#define OBJ_VAL(object) ((DaiValue){DaiValueType_obj, {.obj = (DaiObj*)object}})
 
 void
 dai_print_value(DaiValue value);
@@ -53,21 +53,21 @@ bool
 dai_value_equal(DaiValue a, DaiValue b);
 
 typedef struct {
-    int capcity;
-    int count;
-    DaiValue *values;
+    int       capcity;
+    int       count;
+    DaiValue* values;
 } DaiValueArray;
 
 void
-DaiValueArray_init(DaiValueArray *array);
+DaiValueArray_init(DaiValueArray* array);
 
 void
-DaiValueArray_write(DaiValueArray *array, DaiValue value);
+DaiValueArray_write(DaiValueArray* array, DaiValue value);
 
 void
-DaiValueArray_reset(DaiValueArray *array);
+DaiValueArray_reset(DaiValueArray* array);
 
 void
-DaiValueArray_copy(DaiValueArray *src, DaiValueArray *dst);
+DaiValueArray_copy(DaiValueArray* src, DaiValueArray* dst);
 
 #endif /* B2545ED5_584D_4263_BD5B_7D98D76B99E3 */

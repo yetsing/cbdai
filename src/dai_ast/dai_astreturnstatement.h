@@ -9,10 +9,10 @@
 #include "dai_ast/dai_aststatement.h"
 
 typedef struct {
-  DAI_AST_STATEMENT_HEAD
-  DaiAstExpression *return_value;
+    DAI_AST_STATEMENT_HEAD
+    DaiAstExpression* return_value;
 } DaiAstReturnStatement;
 
-DaiAstReturnStatement *
-DaiAstReturnStatement_New(DaiAstExpression *return_value);
-#endif //CBDAI_SRC_DAI_AST_DAI_ASTRETURNSTATEMENT_H_
+DaiAstReturnStatement*
+DaiAstReturnStatement_New(DaiAstExpression* return_value);
+#endif   // CBDAI_SRC_DAI_AST_DAI_ASTRETURNSTATEMENT_H_

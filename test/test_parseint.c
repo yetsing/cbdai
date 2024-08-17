@@ -6,12 +6,13 @@
 #include "dai_parseint.h"
 
 static MunitResult
-test_parseint(__attribute__((unused)) const MunitParameter params[], __attribute__((unused)) void* user_data) {
+test_parseint(__attribute__((unused)) const MunitParameter params[],
+              __attribute__((unused)) void*                user_data) {
     struct TestCase {
-        const char *str;
-        int base;
-        int64_t expected;
-        const char *error;
+        const char* str;
+        int         base;
+        int64_t     expected;
+        const char* error;
     } test_cases[] = {
         {"0", 10, 0, NULL},
         {"1", 10, 1, NULL},
@@ -25,7 +26,8 @@ test_parseint(__attribute__((unused)) const MunitParameter params[], __attribute
         {"+9223372036854775807", 10, 9223372036854775807LL, NULL},
         {"-9223372036854775807", 10, -9223372036854775807LL, NULL},
         // ref: https://github.com/emscripten-core/emscripten/issues/10336#issuecomment-581166814
-        // 为了避免 warning: integer literal is too large to be represented in a signed integer type, interpreting as unsigned [-Wimplicitly-unsigned-literal]
+        // 为了避免 warning: integer literal is too large to be represented in a signed integer
+        // type, interpreting as unsigned [-Wimplicitly-unsigned-literal]
         // 这里减一，而不是直接写最终数值
         {"-9223372036854775808", 10, -9223372036854775807LL - 1, NULL},
 
@@ -35,9 +37,18 @@ test_parseint(__attribute__((unused)) const MunitParameter params[], __attribute
         {"-0B10", 2, -2, NULL},
         {"-10", 2, -2, NULL},
         {"0b100000000000000000000000000000000", 2, 4294967296, NULL},
-        {"0b111111111111111111111111111111111111111111111111111111111111111", 2, 9223372036854775807LL, NULL},
-        {"-0b111111111111111111111111111111111111111111111111111111111111111", 2, -9223372036854775807LL, NULL},
-        {"-0b1000000000000000000000000000000000000000000000000000000000000000", 2, -9223372036854775807LL - 1, NULL},
+        {"0b111111111111111111111111111111111111111111111111111111111111111",
+         2,
+         9223372036854775807LL,
+         NULL},
+        {"-0b111111111111111111111111111111111111111111111111111111111111111",
+         2,
+         -9223372036854775807LL,
+         NULL},
+        {"-0b1000000000000000000000000000000000000000000000000000000000000000",
+         2,
+         -9223372036854775807LL - 1,
+         NULL},
 
         {"0o1", 8, 1, NULL},
         {"+0o1", 8, 1, NULL},
@@ -70,7 +81,7 @@ test_parseint(__attribute__((unused)) const MunitParameter params[], __attribute
         {"RSTUVWXYZ", 36, 78429158374139LL, NULL},
         {"rsTUVWxyz", 36, 78429158374139LL, NULL},
         {"r_s_T_U_VWxyz", 36, 78429158374139LL, NULL},
-        
+
         {"", 16, 0, "empty string"},
         {"1", 0, 0, "invalid base"},
         {"1", 1, 0, "invalid base"},
@@ -93,7 +104,7 @@ test_parseint(__attribute__((unused)) const MunitParameter params[], __attribute
         {"1__23", 10, 0, "invalid underscores usage in number"},
     };
 
-    char *error;
+    char* error;
     for (int i = 0; i < sizeof(test_cases) / sizeof(test_cases[0]); i++) {
         int64_t n = dai_parseint(test_cases[i].str, test_cases[i].base, &error);
         if (test_cases[i].error != NULL) {
@@ -109,6 +120,6 @@ test_parseint(__attribute__((unused)) const MunitParameter params[], __attribute
 }
 
 MunitTest parseint_tests[] = {
-  { (char*) "/test_parseint", test_parseint, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
-  { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+    {(char*)"/test_parseint", test_parseint, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

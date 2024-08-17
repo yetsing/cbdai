@@ -8,10 +8,11 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
-static char* DaiAstInsVarStatement_string(DaiAstBase* base, bool recursive) {
+static char*
+DaiAstInsVarStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_InsVarStatement);
     DaiAstInsVarStatement* stmt = (DaiAstInsVarStatement*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*       sb   = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_InsVarStatement,\n");
@@ -41,7 +42,8 @@ static char* DaiAstInsVarStatement_string(DaiAstBase* base, bool recursive) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-static void DaiAstInsVarStatement_free(DaiAstBase* base, bool recursive) {
+static void
+DaiAstInsVarStatement_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_InsVarStatement);
     DaiAstInsVarStatement* stmt = (DaiAstInsVarStatement*)base;
     if (recursive) {
@@ -55,14 +57,15 @@ static void DaiAstInsVarStatement_free(DaiAstBase* base, bool recursive) {
     dai_free(stmt);
 }
 
-DaiAstInsVarStatement* DaiAstInsVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value) {
+DaiAstInsVarStatement*
+DaiAstInsVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value) {
     DaiAstInsVarStatement* stmt = dai_malloc(sizeof(DaiAstInsVarStatement));
     {
-        stmt->type = DaiAstType_InsVarStatement;
+        stmt->type      = DaiAstType_InsVarStatement;
         stmt->string_fn = DaiAstInsVarStatement_string;
-        stmt->free_fn = DaiAstInsVarStatement_free;
+        stmt->free_fn   = DaiAstInsVarStatement_free;
     }
-    stmt->name = name;
+    stmt->name  = name;
     stmt->value = value;
     return stmt;
 }

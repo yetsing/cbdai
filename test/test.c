@@ -22,30 +22,30 @@ extern MunitTest table_tests[];
 extern MunitTest symboltable_tests[];
 
 static MunitSuite sub_suites[] = {
- { "/demo", demo_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/tokenize", tokenize_suite_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/stringbuffer", stringbuffer_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/parse", parse_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/parseint", parseint_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/ast", ast_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/codecs", codecs_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/chunk", chunk_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/compile", compile_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/vm", vm_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/table", table_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { "/symboltable", symboltable_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE },
- { NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE },
+    {"/demo", demo_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/tokenize", tokenize_suite_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/stringbuffer", stringbuffer_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/parse", parse_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/parseint", parseint_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/ast", ast_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/codecs", codecs_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/chunk", chunk_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/compile", compile_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/vm", vm_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/table", table_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/symboltable", symboltable_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE},
 };
 
 static const MunitSuite dai_suite = {
-  "/dai", /* name */
-  NULL, /* tests */
-  sub_suites, /* suites */
-  1, /* iterations */
-  MUNIT_SUITE_OPTION_NONE /* options */
+    "/dai",                 /* name */
+    NULL,                   /* tests */
+    sub_suites,             /* suites */
+    1,                      /* iterations */
+    MUNIT_SUITE_OPTION_NONE /* options */
 };
 
-int 
+int
 test(int argc, const char* argv[]) {
-  return munit_suite_main(&dai_suite, NULL, argc, (char *const *)argv);
+    return munit_suite_main(&dai_suite, NULL, argc, (char* const*)argv);
 }

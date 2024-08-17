@@ -5,13 +5,15 @@
 #ifndef CBDAI_SRC_DAI_PARSER_DAI_PARSEPROGRAM_H_
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSEPROGRAM_H_
 
+#include "dai_parse/dai_parserbase.h"
 #include "dai_parse/dai_parsestatement.h"
 
 // 解析程序
-static DaiSyntaxError *Parser_parseProgram(Parser *p, DaiAstProgram *program) {
+static DaiSyntaxError*
+Parser_parseProgram(Parser* p, DaiAstProgram* program) {
 
     while (p->cur_token->type != DaiTokenType_eof) {
-        DaiAstStatement *stmt = Parser_parseStatement(p);
+        DaiAstStatement* stmt = Parser_parseStatement(p);
         if (stmt == NULL) {
             // 语法错误，直接返回
             break;
@@ -24,4 +26,4 @@ static DaiSyntaxError *Parser_parseProgram(Parser *p, DaiAstProgram *program) {
     return p->syntax_error;
 }
 
-#endif //CBDAI_SRC_DAI_PARSER_DAI_PARSEPROGRAM_H_
+#endif   // CBDAI_SRC_DAI_PARSER_DAI_PARSEPROGRAM_H_

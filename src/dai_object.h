@@ -6,7 +6,7 @@
 #include "dai_table.h"
 #include "dai_value.h"
 
-typedef struct _DaiVM DaiVM;
+typedef struct _DaiVM       DaiVM;
 typedef struct _DaiObjClass DaiObjClass;
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
@@ -39,85 +39,98 @@ typedef enum {
 } DaiObjType;
 
 typedef DaiValue (*BuiltinFn)(DaiValue receiver, int argc, DaiValue* argv);
-typedef DaiValue (*GetPropertyFn)(DaiVM *vm, DaiValue receiver, DaiObjString *name);
-typedef DaiValue (*SetPropertyFn)(DaiVM *vm, DaiValue receiver, DaiObjString *name, DaiValue value);
+typedef DaiValue (*GetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name);
+typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
 
 struct DaiObj {
-    DaiObjType type;
-    bool is_marked; // 是否被标记（标记-清除垃圾回收算法）
-    struct DaiObj* next;  // 对象链表，会串起所有分配的对象
-    GetPropertyFn get_property_func;
-    SetPropertyFn set_property_func;
+    DaiObjType     type;
+    bool           is_marked;   // 是否被标记（标记-清除垃圾回收算法）
+    struct DaiObj* next;        // 对象链表，会串起所有分配的对象
+    GetPropertyFn  get_property_func;
+    SetPropertyFn  set_property_func;
 };
 
 typedef struct {
-    DaiObj obj;
-    int arity;
-    DaiChunk chunk;
+    DaiObj        obj;
+    int           arity;
+    DaiChunk      chunk;
     DaiObjString* name;
-    DaiObjClass* superclass;
+    DaiObjClass*  superclass;
 } DaiObjFunction;
-DaiObjFunction* DaiObjFunction_New(DaiVM* vm, const char* name);
-const char* DaiObjFunction_name(DaiObjFunction* function);
+DaiObjFunction*
+DaiObjFunction_New(DaiVM* vm, const char* name);
+const char*
+DaiObjFunction_name(DaiObjFunction* function);
 
 typedef struct {
-    DaiObj obj;
+    DaiObj          obj;
     DaiObjFunction* function;
-    DaiValue* frees; // 函数引用的自由变量
-    int free_count;
+    DaiValue*       frees;   // 函数引用的自由变量
+    int             free_count;
 } DaiObjClosure;
-DaiObjClosure* DaiObjClosure_New(DaiVM* vm, DaiObjFunction* function);
-const char *DaiObjClosure_name(DaiObjClosure* closure);
+DaiObjClosure*
+DaiObjClosure_New(DaiVM* vm, DaiObjFunction* function);
+const char*
+DaiObjClosure_name(DaiObjClosure* closure);
 
 typedef struct _DaiObjClass {
-    DaiObj obj;
+    DaiObj        obj;
     DaiObjString* name;
-    DaiTable class_fields;  // 类属性
-    DaiTable class_methods;  // 类方法
-    DaiTable methods;  // 实例方法
-    DaiTable fields;  // 实例属性
-    DaiValueArray field_names; // 按定义顺序存储实例属性名
-    DaiObjClass* parent;
+    DaiTable      class_fields;    // 类属性
+    DaiTable      class_methods;   // 类方法
+    DaiTable      methods;         // 实例方法
+    DaiTable      fields;          // 实例属性
+    DaiValueArray field_names;     // 按定义顺序存储实例属性名
+    DaiObjClass*  parent;
     // 下面是一些特殊的实例方法
-    DaiValue init;  // 实例初始化方法
+    DaiValue init;   // 实例初始化方法
 } DaiObjClass;
-DaiObjClass* DaiObjClass_New(DaiVM* vm, DaiObjString* name);
+DaiObjClass*
+DaiObjClass_New(DaiVM* vm, DaiObjString* name);
 
 typedef struct {
-    DaiObj obj;
+    DaiObj       obj;
     DaiObjClass* klass;
-    DaiTable fields;  // 实例属性
+    DaiTable     fields;   // 实例属性
 } DaiObjInstance;
-DaiObjInstance* DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass);
+DaiObjInstance*
+DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass);
 
 typedef struct {
-    DaiObj obj;
-    DaiValue receiver;
-    DaiObjClosure *method;
+    DaiObj         obj;
+    DaiValue       receiver;
+    DaiObjClosure* method;
 } DaiObjBoundMethod;
-DaiObjBoundMethod *DaiObjBoundMethod_New(DaiVM* vm, DaiValue receiver, DaiValue method);
-DaiObjBoundMethod *DaiObjClass_get_bound_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver);
+DaiObjBoundMethod*
+DaiObjBoundMethod_New(DaiVM* vm, DaiValue receiver, DaiValue method);
+DaiObjBoundMethod*
+DaiObjClass_get_bound_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver);
 
 typedef struct {
-    DaiObj obj;
+    DaiObj      obj;
     const char* name;
-    BuiltinFn function;
+    BuiltinFn   function;
 } DaiObjBuiltinFunction;
 
 struct DaiObjString {
-    DaiObj obj;
-    int length;
-    char* chars;
+    DaiObj   obj;
+    int      length;
+    char*    chars;
     uint32_t hash;
 };
 
-DaiObjString* dai_take_string(DaiVM* vm, char* chars, int length);
-DaiObjString* dai_copy_string(DaiVM* vm, const char* chars, int length);
+DaiObjString*
+dai_take_string(DaiVM* vm, char* chars, int length);
+DaiObjString*
+dai_copy_string(DaiVM* vm, const char* chars, int length);
 
-void dai_print_object(DaiValue value);
-const char * dai_object_ts(DaiValue value);
+void
+dai_print_object(DaiValue value);
+const char*
+dai_object_ts(DaiValue value);
 
-static inline bool dai_is_obj_type(DaiValue value, DaiObjType type) {
+static inline bool
+dai_is_obj_type(DaiValue value, DaiObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;
 }
 

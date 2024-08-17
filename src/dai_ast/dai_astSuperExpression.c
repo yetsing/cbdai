@@ -5,10 +5,11 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
-static char* DaiAstSuperExpression_string(DaiAstBase* base, bool recursive) {
+static char*
+DaiAstSuperExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_SuperExpression);
     DaiAstSuperExpression* expr = (DaiAstSuperExpression*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*       sb   = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_SuperExpression,\n");
@@ -29,7 +30,8 @@ static char* DaiAstSuperExpression_string(DaiAstBase* base, bool recursive) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-static void DaiAstSuperExpression_free(DaiAstBase* base, bool recursive) {
+static void
+DaiAstSuperExpression_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_SuperExpression);
     DaiAstSuperExpression* expr = (DaiAstSuperExpression*)base;
     if (recursive && expr->name != NULL) {
@@ -38,10 +40,11 @@ static void DaiAstSuperExpression_free(DaiAstBase* base, bool recursive) {
     dai_free(expr);
 }
 
-static char* DaiAstSuperExpression_literal(DaiAstExpression* base) {
+static char*
+DaiAstSuperExpression_literal(DaiAstExpression* base) {
     assert(base->type == DaiAstType_SuperExpression);
     DaiAstSuperExpression* expr = (DaiAstSuperExpression*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*       sb   = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "(");
     DaiStringBuffer_writen(sb, "super", 5);
     if (expr->name != NULL) {
@@ -54,20 +57,21 @@ static char* DaiAstSuperExpression_literal(DaiAstExpression* base) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-DaiAstSuperExpression* DaiAstSuperExpression_New(void) {
+DaiAstSuperExpression*
+DaiAstSuperExpression_New(void) {
     DaiAstSuperExpression* expr = (DaiAstSuperExpression*)dai_malloc(sizeof(DaiAstSuperExpression));
-    expr->type = DaiAstType_SuperExpression;
-    expr->name = NULL;
+    expr->type                  = DaiAstType_SuperExpression;
+    expr->name                  = NULL;
     {
-        expr->string_fn = DaiAstSuperExpression_string;
-        expr->free_fn = DaiAstSuperExpression_free;
+        expr->string_fn  = DaiAstSuperExpression_string;
+        expr->free_fn    = DaiAstSuperExpression_free;
         expr->literal_fn = DaiAstSuperExpression_literal;
     }
     {
-        expr->start_line = 0;
+        expr->start_line   = 0;
         expr->start_column = 0;
-        expr->end_line = 0;
-        expr->end_column = 0;
+        expr->end_line     = 0;
+        expr->end_column   = 0;
     }
     return expr;
 }

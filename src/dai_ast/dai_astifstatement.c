@@ -5,10 +5,11 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
-static char* DaiAstIfStatement_string(DaiAstBase* base, bool recursive) {
+static char*
+DaiAstIfStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_IfStatement);
     DaiAstIfStatement* ifstatement = (DaiAstIfStatement*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*   sb          = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_IfStatement,\n");
@@ -78,7 +79,8 @@ static char* DaiAstIfStatement_string(DaiAstBase* base, bool recursive) {
     return s;
 }
 
-void DaiAstIfStatement_free(DaiAstBase* base, bool recursive) {
+void
+DaiAstIfStatement_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_IfStatement);
     DaiAstIfStatement* ifstatement = (DaiAstIfStatement*)base;
     if (recursive) {
@@ -104,37 +106,38 @@ void DaiAstIfStatement_free(DaiAstBase* base, bool recursive) {
     dai_free(ifstatement);
 }
 
-DaiAstIfStatement* DaiAstIfStatement_New(void) {
-    DaiAstIfStatement* ifstatement = dai_malloc(sizeof(DaiAstIfStatement));
-    ifstatement->type = DaiAstType_IfStatement;
-    ifstatement->condition = NULL;
-    ifstatement->then_branch = NULL;
-    ifstatement->else_branch = NULL;
+DaiAstIfStatement*
+DaiAstIfStatement_New(void) {
+    DaiAstIfStatement* ifstatement    = dai_malloc(sizeof(DaiAstIfStatement));
+    ifstatement->type                 = DaiAstType_IfStatement;
+    ifstatement->condition            = NULL;
+    ifstatement->then_branch          = NULL;
+    ifstatement->else_branch          = NULL;
     ifstatement->elif_branch_capacity = 0;
-    ifstatement->elif_branch_count = 0;
-    ifstatement->elif_branches = NULL;
+    ifstatement->elif_branch_count    = 0;
+    ifstatement->elif_branches        = NULL;
     {
         ifstatement->string_fn = DaiAstIfStatement_string;
-        ifstatement->free_fn = DaiAstIfStatement_free;
+        ifstatement->free_fn   = DaiAstIfStatement_free;
     }
     {
-        ifstatement->start_line = 0;
+        ifstatement->start_line   = 0;
         ifstatement->start_column = 0;
-        ifstatement->end_line = 0;
-        ifstatement->end_column = 0;
+        ifstatement->end_line     = 0;
+        ifstatement->end_column   = 0;
     }
     return ifstatement;
 }
-void DaiAstIfStatement_append_elif_branch(DaiAstIfStatement* ifstatement,
-                                          DaiAstExpression* condition,
-                                          DaiAstBlockStatement* then_branch) {
+void
+DaiAstIfStatement_append_elif_branch(DaiAstIfStatement* ifstatement, DaiAstExpression* condition,
+                                     DaiAstBlockStatement* then_branch) {
     if (ifstatement->elif_branch_count >= ifstatement->elif_branch_capacity) {
         ifstatement->elif_branch_capacity = GROW_CAPACITY(ifstatement->elif_branch_capacity);
-        DaiBranch* new_branches = dai_realloc(
+        DaiBranch* new_branches           = dai_realloc(
             ifstatement->elif_branches, sizeof(DaiBranch) * ifstatement->elif_branch_capacity);
         ifstatement->elif_branches = new_branches;
     }
-    ifstatement->elif_branches[ifstatement->elif_branch_count].condition = condition;
+    ifstatement->elif_branches[ifstatement->elif_branch_count].condition   = condition;
     ifstatement->elif_branches[ifstatement->elif_branch_count].then_branch = then_branch;
     ifstatement->elif_branch_count++;
 }

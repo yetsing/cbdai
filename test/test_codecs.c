@@ -3,11 +3,12 @@
 #include "dai_codecs.h"
 
 static MunitResult
-test_utf8_decode(__attribute__((unused)) const MunitParameter params[], __attribute__((unused)) void* user_data) {
+test_utf8_decode(__attribute__((unused)) const MunitParameter params[],
+                 __attribute__((unused)) void*                user_data) {
     struct {
-        const char *input;
-        dai_rune_t expected;
-        int expected_len;
+        const char* input;
+        dai_rune_t  expected;
+        int         expected_len;
     } tests[] = {
         {"a", 97, 1},
         {"α", 945, 2},
@@ -38,16 +39,16 @@ test_utf8_decode(__attribute__((unused)) const MunitParameter params[], __attrib
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         dai_rune_t rune = 0;
-        int len = dai_utf8_decode(tests[i].input, &rune);
+        int        len  = dai_utf8_decode(tests[i].input, &rune);
         munit_assert_int(len, ==, tests[i].expected_len);
         if (len != -1) {
-          munit_assert_uint32(rune, ==, tests[i].expected);
+            munit_assert_uint32(rune, ==, tests[i].expected);
         }
     }
     return MUNIT_OK;
 }
 
 MunitTest codecs_tests[] = {
-  { (char*) "/test_utf8_decode", test_utf8_decode, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
-  { NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL },
+    {(char*)"/test_utf8_decode", test_utf8_decode, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

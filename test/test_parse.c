@@ -9,7 +9,8 @@
 
 // #region 测试辅助函数
 
-static void check_var_statement(DaiAstStatement* stmt, const char* name) {
+static void
+check_var_statement(DaiAstStatement* stmt, const char* name) {
     munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
     DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
     munit_assert_string_equal(var_stmt->name->value, name);
@@ -18,7 +19,8 @@ static void check_var_statement(DaiAstStatement* stmt, const char* name) {
     munit_assert_int(ident->start_column + strlen(name), ==, ident->end_column);
 }
 
-static void check_ins_var_statement(DaiAstInsVarStatement* stmt, const char* name) {
+static void
+check_ins_var_statement(DaiAstInsVarStatement* stmt, const char* name) {
     munit_assert_int(stmt->type, ==, DaiAstType_InsVarStatement);
     DaiAstInsVarStatement* var_stmt = (DaiAstInsVarStatement*)stmt;
     munit_assert_string_equal(var_stmt->name->value, name);
@@ -27,7 +29,8 @@ static void check_ins_var_statement(DaiAstInsVarStatement* stmt, const char* nam
     munit_assert_int(ident->start_column + strlen(name), ==, ident->end_column);
 }
 
-static void check_class_var_statement(DaiAstClassVarStatement* stmt, const char* name) {
+static void
+check_class_var_statement(DaiAstClassVarStatement* stmt, const char* name) {
     munit_assert_int(stmt->type, ==, DaiAstType_ClassVarStatement);
     DaiAstClassVarStatement* var_stmt = (DaiAstClassVarStatement*)stmt;
     munit_assert_string_equal(var_stmt->name->value, name);
@@ -36,7 +39,8 @@ static void check_class_var_statement(DaiAstClassVarStatement* stmt, const char*
     munit_assert_int(ident->start_column + strlen(name), ==, ident->end_column);
 }
 
-static void check_integer_literal(DaiAstExpression* expr, int64_t value) {
+static void
+check_integer_literal(DaiAstExpression* expr, int64_t value) {
     DaiAstIntegerLiteral* integ = (DaiAstIntegerLiteral*)expr;
     munit_assert_int(integ->type, ==, DaiAstType_IntegerLiteral);
     munit_assert_int(integ->value, ==, value);
@@ -44,7 +48,8 @@ static void check_integer_literal(DaiAstExpression* expr, int64_t value) {
     munit_assert_int(integ->start_column + strlen(integ->literal), ==, integ->end_column);
 }
 
-static void check_boolean_literal(DaiAstExpression* expr, bool value) {
+static void
+check_boolean_literal(DaiAstExpression* expr, bool value) {
     DaiAstBoolean* boolean = (DaiAstBoolean*)expr;
     munit_assert_int(boolean->type, ==, DaiAstType_Boolean);
     munit_assert_int(boolean->value, ==, value);
@@ -56,7 +61,8 @@ static void check_boolean_literal(DaiAstExpression* expr, bool value) {
     }
 }
 
-static void check_identifier(DaiAstExpression* expr, const char* value) {
+static void
+check_identifier(DaiAstExpression* expr, const char* value) {
     DaiAstIdentifier* ident = (DaiAstIdentifier*)expr;
     munit_assert_int(ident->type, ==, DaiAstType_Identifier);
     munit_assert_string_equal(ident->value, value);
@@ -65,37 +71,38 @@ static void check_identifier(DaiAstExpression* expr, const char* value) {
 }
 
 typedef enum {
-    ExpectedValueType_int64 = 0,
+    ExpectedValueType_int64  = 0,
     ExpectedValueType_string = 1,
     ExpectedValueType_bool,
 } ExpectedValueType;
 
-static void check_literal_expression(DaiAstExpression* expr, void* expected,
-                                     ExpectedValueType type) {
+static void
+check_literal_expression(DaiAstExpression* expr, void* expected, ExpectedValueType type) {
     switch (type) {
-    case ExpectedValueType_int64: {
-        check_integer_literal(expr, (int64_t)expected);
-        break;
-    }
-    case ExpectedValueType_string: {
-        check_identifier(expr, (char*)expected);
-        break;
-    }
-    case ExpectedValueType_bool: {
-        check_boolean_literal(expr, (bool)expected);
-        break;
-    }
+        case ExpectedValueType_int64: {
+            check_integer_literal(expr, (int64_t)expected);
+            break;
+        }
+        case ExpectedValueType_string: {
+            check_identifier(expr, (char*)expected);
+            break;
+        }
+        case ExpectedValueType_bool: {
+            check_boolean_literal(expr, (bool)expected);
+            break;
+        }
 
-    default: {
-        // unreachable
-        munit_assert(false);
-        break;
-    }
+        default: {
+            // unreachable
+            munit_assert(false);
+            break;
+        }
     }
 }
 
-static void check_infix_expression(DaiAstExpression* expr, void* left, ExpectedValueType left_type,
-                                   const char* op, void* right, ExpectedValueType right_type) {
+static void
+check_infix_expression(DaiAstExpression* expr, void* left, ExpectedValueType left_type,
+                       const char* op, void* right, ExpectedValueType right_type) {
     DaiAstInfixExpression* infix = (DaiAstInfixExpression*)expr;
     munit_assert_int(infix->type, ==, DaiAstType_InfixExpression);
     munit_assert_string_equal(infix->operator, op);
@@ -103,16 +110,17 @@ static void check_infix_expression(DaiAstExpression* expr, void* left, ExpectedV
     check_literal_expression(infix->right, right, right_type);
 }
 
-#define check_infix_expression_int64(expr, left, op, right)                                        \
-    check_infix_expression(expr, (void*)left, ExpectedValueType_int64, op, (void*)right,           \
-                           ExpectedValueType_int64)
-#define check_infix_expression_string(expr, left, op, right)                                       \
-    check_infix_expression(expr, left, ExpectedValueType_string, op, right,                        \
-                           ExpectedValueType_string)
+#define check_infix_expression_int64(expr, left, op, right) \
+    check_infix_expression(                                 \
+        expr, (void*)left, ExpectedValueType_int64, op, (void*)right, ExpectedValueType_int64)
+#define check_infix_expression_string(expr, left, op, right) \
+    check_infix_expression(                                  \
+        expr, left, ExpectedValueType_string, op, right, ExpectedValueType_string)
 
-static void parse_helper(const char* input, DaiAstProgram* program) {
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiSyntaxError* err = dai_tokenize_string(input, tlist);
+static void
+parse_helper(const char* input, DaiAstProgram* program) {
+    DaiTokenList*   tlist = DaiTokenList_New();
+    DaiSyntaxError* err   = dai_tokenize_string(input, tlist);
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, "<stdin>");
         DaiSyntaxError_pprint(err, input);
@@ -127,9 +135,10 @@ static void parse_helper(const char* input, DaiAstProgram* program) {
     DaiTokenList_free(tlist);
 }
 
-static DaiSyntaxError* parse_error(const char* input) {
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiSyntaxError* err = dai_tokenize_string(input, tlist);
+static DaiSyntaxError*
+parse_error(const char* input) {
+    DaiTokenList*   tlist = DaiTokenList_New();
+    DaiSyntaxError* err   = dai_tokenize_string(input, tlist);
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, "<stdin>");
         DaiSyntaxError_pprint(err, input);
@@ -138,7 +147,7 @@ static DaiSyntaxError* parse_error(const char* input) {
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
-    err = dai_parse(tlist, program);
+    err                    = dai_parse(tlist, program);
     if (err) {
         DaiSyntaxError_setFilename(err, "<stdin>");
     }
@@ -147,7 +156,8 @@ static DaiSyntaxError* parse_error(const char* input) {
     return err;
 }
 
-static char* string_from_file(const char* filename) {
+static char*
+string_from_file(const char* filename) {
     FILE* fp = fopen(filename, "r");
     munit_assert(fp != NULL);
     fseek(fp, 0, SEEK_END);
@@ -161,12 +171,13 @@ static char* string_from_file(const char* filename) {
 }
 // #endregion
 
-static MunitResult test_var_statements(__attribute__((unused)) const MunitParameter params[],
-                                       __attribute__((unused)) void* user_data) {
-    char* input = "var x = 5;\n"
-                  "var y = 10;\n"
-                  "var foobar = 838383;\n"
-                  "";
+static MunitResult
+test_var_statements(__attribute__((unused)) const MunitParameter params[],
+                    __attribute__((unused)) void*                user_data) {
+    char*         input = "var x = 5;\n"
+                          "var y = 10;\n"
+                          "var foobar = 838383;\n"
+                          "";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -176,10 +187,10 @@ static MunitResult test_var_statements(__attribute__((unused)) const MunitParame
 
     struct TestCase {
         const char* expectedIndentifier;
-        int start_line;
-        int start_column;
-        int end_line;
-        int end_column;
+        int         start_line;
+        int         start_column;
+        int         end_line;
+        int         end_column;
     };
     struct TestCase tests[] = {
         {"x", 1, 1, 1, 11},
@@ -198,10 +209,10 @@ static MunitResult test_var_statements(__attribute__((unused)) const MunitParame
     program->free_fn((DaiAstBase*)program, true);
 
     struct {
-        const char* input;
-        const char* expected_identifier;
+        const char*       input;
+        const char*       expected_identifier;
         ExpectedValueType expected_value_type;
-        void* expected_value;
+        void*             expected_value;
     } tests2[] = {
         {"var x = 5;", "x", ExpectedValueType_int64, (void*)5},
         {"var y = true;", "y", ExpectedValueType_bool, (void*)true},
@@ -213,21 +224,22 @@ static MunitResult test_var_statements(__attribute__((unused)) const MunitParame
         munit_assert_int(program->length, ==, 1);
         DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)program->statements[0];
         check_var_statement((DaiAstStatement*)var_stmt, tests2[i].expected_identifier);
-        check_literal_expression(var_stmt->value, tests2[i].expected_value,
-                                 tests2[i].expected_value_type);
+        check_literal_expression(
+            var_stmt->value, tests2[i].expected_value, tests2[i].expected_value_type);
         program->free_fn((DaiAstBase*)program, true);
     }
     return MUNIT_OK;
 }
 
-static MunitResult test_return_statements(__attribute__((unused)) const MunitParameter params[],
-                                          __attribute__((unused)) void* user_data) {
-    const char* input = ""
-                        "return 5;\n"
-                        "return 10;\n"
-                        "return 993;\n"
-                        "return ;\n"
-                        "";
+static MunitResult
+test_return_statements(__attribute__((unused)) const MunitParameter params[],
+                       __attribute__((unused)) void*                user_data) {
+    const char*   input = ""
+                          "return 5;\n"
+                          "return 10;\n"
+                          "return 993;\n"
+                          "return ;\n"
+                          "";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -245,9 +257,9 @@ static MunitResult test_return_statements(__attribute__((unused)) const MunitPar
     program->free_fn((DaiAstBase*)program, true);
 
     struct {
-        const char* input;
+        const char*       input;
         ExpectedValueType expected_value_type;
-        void* expected_value;
+        void*             expected_value;
     } tests[] = {
         {"return 5;", ExpectedValueType_int64, (void*)5},
         {"return true;", ExpectedValueType_bool, (void*)true},
@@ -258,16 +270,17 @@ static MunitResult test_return_statements(__attribute__((unused)) const MunitPar
 
         munit_assert_int(program->length, ==, 1);
         DaiAstReturnStatement* ret_stmt = (DaiAstReturnStatement*)program->statements[0];
-        check_literal_expression(ret_stmt->return_value, tests[i].expected_value,
-                                 tests[i].expected_value_type);
+        check_literal_expression(
+            ret_stmt->return_value, tests[i].expected_value, tests[i].expected_value_type);
         program->free_fn((DaiAstBase*)program, true);
     }
     return MUNIT_OK;
 }
 
-static MunitResult test_if_statements(__attribute__((unused)) const MunitParameter params[],
-                                      __attribute__((unused)) void* user_data) {
-    const char* input = "if (x < y) { x;};";
+static MunitResult
+test_if_statements(__attribute__((unused)) const MunitParameter params[],
+                   __attribute__((unused)) void*                user_data) {
+    const char*   input = "if (x < y) { x;};";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -304,9 +317,10 @@ static MunitResult test_if_statements(__attribute__((unused)) const MunitParamet
     return MUNIT_OK;
 }
 
-static MunitResult test_if_else_statements(__attribute__((unused)) const MunitParameter params[],
-                                           __attribute__((unused)) void* user_data) {
-    const char* input = "if (x < y) { x;} else {y;};";
+static MunitResult
+test_if_else_statements(__attribute__((unused)) const MunitParameter params[],
+                        __attribute__((unused)) void*                user_data) {
+    const char*   input = "if (x < y) { x;} else {y;};";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -341,11 +355,12 @@ static MunitResult test_if_else_statements(__attribute__((unused)) const MunitPa
     return MUNIT_OK;
 }
 
-static MunitResult test_if_elif_else_statements(__attribute__((unused)) const MunitParameter params[],
-                                           __attribute__((unused)) void* user_data) {
-    const char* input = "if (x < y) { x;} "
-                        "elif (x > y) { y;}"
-                        "else {y;};";
+static MunitResult
+test_if_elif_else_statements(__attribute__((unused)) const MunitParameter params[],
+                             __attribute__((unused)) void*                user_data) {
+    const char*   input = "if (x < y) { x;} "
+                          "elif (x > y) { y;}"
+                          "else {y;};";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -391,10 +406,11 @@ static MunitResult test_if_elif_else_statements(__attribute__((unused)) const Mu
     return MUNIT_OK;
 }
 
-static MunitResult test_assign_statements(__attribute__((unused)) const MunitParameter params[],
-                                          __attribute__((unused)) void* user_data) {
+static MunitResult
+test_assign_statements(__attribute__((unused)) const MunitParameter params[],
+                       __attribute__((unused)) void*                user_data) {
     {
-        const char* input = "x = y;";
+        const char*   input = "x = y;";
         DaiAstProgram prog;
         DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
@@ -414,19 +430,20 @@ static MunitResult test_assign_statements(__attribute__((unused)) const MunitPar
     return MUNIT_OK;
 }
 
-static MunitResult test_class_statements(__attribute__((unused)) const MunitParameter params[],
-                                         __attribute__((unused)) void* user_data) {
+static MunitResult
+test_class_statements(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void*                user_data) {
     {
-        const char* input = "class Foo {\n"
-                            "  var a1;\n"
-                            "  var a2 = 2;\n"
-                            "  var a3 = 1 + 2;\n"
-                            "  fn get() {\n"
-                            "    return 1;\n"
-                            "  };\n"
-                            "  class var c = 4;\n"
-                            "  class fn cget() {};\n"
-                            "};";
+        const char*   input = "class Foo {\n"
+                              "  var a1;\n"
+                              "  var a2 = 2;\n"
+                              "  var a3 = 1 + 2;\n"
+                              "  fn get() {\n"
+                              "    return 1;\n"
+                              "  };\n"
+                              "  class var c = 4;\n"
+                              "  class fn cget() {};\n"
+                              "};";
         DaiAstProgram prog;
         DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
@@ -448,8 +465,8 @@ static MunitResult test_class_statements(__attribute__((unused)) const MunitPara
         check_integer_literal(((DaiAstInsVarStatement*)stmt->body->statements[1])->value, 2);
 
         check_ins_var_statement((DaiAstInsVarStatement*)stmt->body->statements[2], "a3");
-        check_infix_expression_int64(((DaiAstInsVarStatement*)stmt->body->statements[2])->value, 1,
-                                     "+", 2);
+        check_infix_expression_int64(
+            ((DaiAstInsVarStatement*)stmt->body->statements[2])->value, 1, "+", 2);
 
         {
             DaiAstMethodStatement* method = (DaiAstMethodStatement*)stmt->body->statements[3];
@@ -487,16 +504,16 @@ static MunitResult test_class_statements(__attribute__((unused)) const MunitPara
     }
 
     {
-        const char* input = "class Foo < Bar {\n"
-                            "  var a1;\n"
-                            "  var a2 = 2;\n"
-                            "  var a3 = 1 + 2;\n"
-                            "  fn get() {\n"
-                            "    return 1;\n"
-                            "  };\n"
-                            "  class var c = 4;\n"
-                            "  class fn cget() {};\n"
-                            "};";
+        const char*   input = "class Foo < Bar {\n"
+                              "  var a1;\n"
+                              "  var a2 = 2;\n"
+                              "  var a3 = 1 + 2;\n"
+                              "  fn get() {\n"
+                              "    return 1;\n"
+                              "  };\n"
+                              "  class var c = 4;\n"
+                              "  class fn cget() {};\n"
+                              "};";
         DaiAstProgram prog;
         DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
@@ -519,8 +536,8 @@ static MunitResult test_class_statements(__attribute__((unused)) const MunitPara
         check_integer_literal(((DaiAstInsVarStatement*)stmt->body->statements[1])->value, 2);
 
         check_ins_var_statement((DaiAstInsVarStatement*)stmt->body->statements[2], "a3");
-        check_infix_expression_int64(((DaiAstInsVarStatement*)stmt->body->statements[2])->value, 1,
-                                     "+", 2);
+        check_infix_expression_int64(
+            ((DaiAstInsVarStatement*)stmt->body->statements[2])->value, 1, "+", 2);
 
         {
             DaiAstMethodStatement* method = (DaiAstMethodStatement*)stmt->body->statements[3];
@@ -559,9 +576,10 @@ static MunitResult test_class_statements(__attribute__((unused)) const MunitPara
     return MUNIT_OK;
 }
 
-static MunitResult test_identifier_expression(__attribute__((unused)) const MunitParameter params[],
-                                              __attribute__((unused)) void* user_data) {
-    const char* input = "foobar;";
+static MunitResult
+test_identifier_expression(__attribute__((unused)) const MunitParameter params[],
+                           __attribute__((unused)) void*                user_data) {
+    const char*   input = "foobar;";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -585,11 +603,11 @@ static MunitResult test_identifier_expression(__attribute__((unused)) const Muni
     return MUNIT_OK;
 }
 
-static MunitResult test_integer_literal_expiression(__attribute__((unused))
-                                                    const MunitParameter params[],
-                                                    __attribute__((unused)) void* user_data) {
+static MunitResult
+test_integer_literal_expiression(__attribute__((unused)) const MunitParameter params[],
+                                 __attribute__((unused)) void*                user_data) {
     {
-        const char* input = "5;";
+        const char*   input = "5;";
         DaiAstProgram prog;
         DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
@@ -613,15 +631,21 @@ static MunitResult test_integer_literal_expiression(__attribute__((unused))
 
     struct {
         const char* input;
-        int64_t value;
-        int end_column;
+        int64_t     value;
+        int         end_column;
     } integerTests[] = {
-        {"5;", 5, 2},   {"15;", 15, 3}, {"0b1;", 1, 4}, {"0B1;", 1, 4},
-        {"0o1;", 1, 4}, {"0O1;", 1, 4}, {"0x1;", 1, 4}, {"0X1;", 1, 4},
+        {"5;", 5, 2},
+        {"15;", 15, 3},
+        {"0b1;", 1, 4},
+        {"0B1;", 1, 4},
+        {"0o1;", 1, 4},
+        {"0O1;", 1, 4},
+        {"0x1;", 1, 4},
+        {"0X1;", 1, 4},
     };
 
     for (int i = 0; i < sizeof(integerTests) / sizeof(integerTests[0]); i++) {
-        const char* input = integerTests[i].input;
+        const char*   input = integerTests[i].input;
         DaiAstProgram prog;
         DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
@@ -645,10 +669,10 @@ static MunitResult test_integer_literal_expiression(__attribute__((unused))
     return MUNIT_OK;
 }
 
-static MunitResult test_function_literal_parsing(__attribute__((unused))
-                                                 const MunitParameter params[],
-                                                 __attribute__((unused)) void* user_data) {
-    const char* input = "fn(x, y) {x + y;};";
+static MunitResult
+test_function_literal_parsing(__attribute__((unused)) const MunitParameter params[],
+                              __attribute__((unused)) void*                user_data) {
+    const char*   input = "fn(x, y) {x + y;};";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -687,9 +711,10 @@ static MunitResult test_function_literal_parsing(__attribute__((unused))
     return MUNIT_OK;
 }
 
-static MunitResult test_function_statements(__attribute__((unused)) const MunitParameter params[],
-                                            __attribute__((unused)) void* user_data) {
-    const char* input = "fn add(x, y) {x + y;};";
+static MunitResult
+test_function_statements(__attribute__((unused)) const MunitParameter params[],
+                         __attribute__((unused)) void*                user_data) {
+    const char*   input = "fn add(x, y) {x + y;};";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -720,13 +745,13 @@ static MunitResult test_function_statements(__attribute__((unused)) const MunitP
     return MUNIT_OK;
 }
 
-static MunitResult test_function_parameter_parsing(__attribute__((unused))
-                                                   const MunitParameter params[],
-                                                   __attribute__((unused)) void* user_data) {
+static MunitResult
+test_function_parameter_parsing(__attribute__((unused)) const MunitParameter params[],
+                                __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
-        char* expected_params[10];
-        int expected_params_count;
+        char*       expected_params[10];
+        int         expected_params_count;
     } tests[] = {
         {"fn() {};", {}, 0},
         {"fn(x) {};", {"x"}, 1},
@@ -757,9 +782,9 @@ static MunitResult test_function_parameter_parsing(__attribute__((unused))
     return MUNIT_OK;
 }
 
-static MunitResult test_string_literal_parsing(__attribute__((unused))
-                                               const MunitParameter params[],
-                                               __attribute__((unused)) void* user_data) {
+static MunitResult
+test_string_literal_parsing(__attribute__((unused)) const MunitParameter params[],
+                            __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
         const char* expected;
@@ -784,14 +809,14 @@ static MunitResult test_string_literal_parsing(__attribute__((unused))
     }
     return MUNIT_OK;
 }
-static MunitResult test_parsing_prefix_expressions(__attribute__((unused))
-                                                   const MunitParameter params[],
-                                                   __attribute__((unused)) void* user_data) {
+static MunitResult
+test_parsing_prefix_expressions(__attribute__((unused)) const MunitParameter params[],
+                                __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
         const char* operator;
         int64_t integer_value;
-        int end_column;
+        int     end_column;
     } prefixTests[] = {
         {"!5;", "!", 5, 3},
         {"-15;", "-", 15, 4},
@@ -824,7 +849,7 @@ static MunitResult test_parsing_prefix_expressions(__attribute__((unused))
         const char* input;
         const char* operator;
         bool value;
-        int end_column;
+        int  end_column;
     } boolTests[] = {
         {"!true;", "!", true, 6},
         {"!false;", "!", false, 7},
@@ -857,19 +882,24 @@ static MunitResult test_parsing_prefix_expressions(__attribute__((unused))
     return MUNIT_OK;
 }
 
-static MunitResult test_parsing_infix_expressions(__attribute__((unused))
-                                                  const MunitParameter params[],
-                                                  __attribute__((unused)) void* user_data) {
+static MunitResult
+test_parsing_infix_expressions(__attribute__((unused)) const MunitParameter params[],
+                               __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
-        int64_t left_value;
+        int64_t     left_value;
         const char* operator;
         int64_t right_value;
-        int end_column;
+        int     end_column;
     } infix_tests[] = {
-        {"5 + 5;", 5, "+", 5, 6},   {"5 - 5;", 5, "-", 5, 6},   {"5 * 5;", 5, "*", 5, 6},
-        {"5 / 5;", 5, "/", 5, 6},   {"5 > 5;", 5, ">", 5, 6},   {"5 < 5;", 5, "<", 5, 6},
-        {"5 == 5;", 5, "==", 5, 7}, {"5 != 5;", 5, "!=", 5, 7},
+        {"5 + 5;", 5, "+", 5, 6},
+        {"5 - 5;", 5, "-", 5, 6},
+        {"5 * 5;", 5, "*", 5, 6},
+        {"5 / 5;", 5, "/", 5, 6},
+        {"5 > 5;", 5, ">", 5, 6},
+        {"5 < 5;", 5, "<", 5, 6},
+        {"5 == 5;", 5, "==", 5, 7},
+        {"5 != 5;", 5, "!=", 5, 7},
     };
     for (int i = 0; i < sizeof(infix_tests) / sizeof(infix_tests[0]); i++) {
         DaiAstProgram prog;
@@ -897,10 +927,10 @@ static MunitResult test_parsing_infix_expressions(__attribute__((unused))
 
     struct {
         const char* input;
-        bool left_value;
+        bool        left_value;
         const char* operator;
         bool right_value;
-        int end_column;
+        int  end_column;
     } bool_infix_tests[] = {
         {"true == false;", true, "==", false, 14},
         {"true != false;", true, "!=", false, 14},
@@ -931,10 +961,10 @@ static MunitResult test_parsing_infix_expressions(__attribute__((unused))
     return MUNIT_OK;
 }
 
-static MunitResult test_parsing_call_expressions(__attribute__((unused))
-                                                 const MunitParameter params[],
-                                                 __attribute__((unused)) void* user_data) {
-    const char* input = "add(1, 2 * 3, 4 + 5);";
+static MunitResult
+test_parsing_call_expressions(__attribute__((unused)) const MunitParameter params[],
+                              __attribute__((unused)) void*                user_data) {
+    const char*   input = "add(1, 2 * 3, 4 + 5);";
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
@@ -982,13 +1012,13 @@ static MunitResult test_parsing_call_expressions(__attribute__((unused))
 
 static MunitResult
 test_parsing_call_expression_parameter_parsing(__attribute__((unused))
-                                               const MunitParameter params[],
+                                               const MunitParameter          params[],
                                                __attribute__((unused)) void* user_data) {
     struct {
         const char* input;
         const char* expected_indent;
         const char* expected_args[10];
-        int expected_args_count;
+        int         expected_args_count;
     } tests[] = {
         {"add();", "add", {""}, 0},
         {"add(1);", "add", {"1"}, 1},
@@ -1012,7 +1042,7 @@ test_parsing_call_expression_parameter_parsing(__attribute__((unused))
         check_identifier(call->function, tests[i].expected_indent);
         for (int j = 0; j < tests[i].expected_args_count; j++) {
             DaiAstExpression* arg = call->arguments[j];
-            char* s = arg->literal_fn(arg);
+            char*             s   = arg->literal_fn(arg);
             munit_assert_string_equal(s, tests[i].expected_args[j]);
             dai_free(s);
         }
@@ -1021,9 +1051,9 @@ test_parsing_call_expression_parameter_parsing(__attribute__((unused))
     return MUNIT_OK;
 }
 
-static MunitResult test_operator_precedence_parsing(__attribute__((unused))
-                                                    const MunitParameter params[],
-                                                    __attribute__((unused)) void* user_data) {
+static MunitResult
+test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter params[],
+                                 __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
         const char* expected;
@@ -1142,8 +1172,8 @@ static MunitResult test_operator_precedence_parsing(__attribute__((unused))
         munit_assert_int(program->length, ==, 1);
         DaiAstExpressionStatement* stmt = (DaiAstExpressionStatement*)program->statements[0];
         munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
-        DaiAstExpression* expr = stmt->expression;
-        char* literal = expr->literal_fn(expr);
+        DaiAstExpression* expr    = stmt->expression;
+        char*             literal = expr->literal_fn(expr);
         munit_assert_string_equal(literal, tests[i].expected);
         dai_free(literal);
 
@@ -1152,11 +1182,12 @@ static MunitResult test_operator_precedence_parsing(__attribute__((unused))
     return MUNIT_OK;
 }
 
-static MunitResult test_boolean_expression(__attribute__((unused)) const MunitParameter params[],
-                                           __attribute__((unused)) void* user_data) {
+static MunitResult
+test_boolean_expression(__attribute__((unused)) const MunitParameter params[],
+                        __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
-        bool expected;
+        bool        expected;
     } tests[] = {
         {
             "true;",
@@ -1184,8 +1215,9 @@ static MunitResult test_boolean_expression(__attribute__((unused)) const MunitPa
     return MUNIT_OK;
 }
 
-static MunitResult test_syntax_error(__attribute__((unused)) const MunitParameter params[],
-                                     __attribute__((unused)) void* user_data) {
+static MunitResult
+test_syntax_error(__attribute__((unused)) const MunitParameter params[],
+                  __attribute__((unused)) void*                user_data) {
     struct {
         const char* input;
         const char* expected;
@@ -1393,276 +1425,278 @@ static MunitResult test_syntax_error(__attribute__((unused)) const MunitParamete
     return MUNIT_OK;
 }
 
-static void recursive_string_and_free(DaiAstBase* ast) {
+static void
+recursive_string_and_free(DaiAstBase* ast) {
     switch (ast->type) {
-    case DaiAstType_program: {
-        DaiAstProgram* program = (DaiAstProgram*)ast;
-        char* s = program->string_fn((DaiAstBase*)program, false);
-        free(s);
-        for (size_t i = 0; i < program->length; i++) {
-            recursive_string_and_free((DaiAstBase*)program->statements[i]);
-        }
-        program->free_fn((DaiAstBase*)program, false);
-        break;
-    }
-    case DaiAstType_VarStatement: {
-        DaiAstVarStatement* statement = (DaiAstVarStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)statement->name);
-        recursive_string_and_free((DaiAstBase*)statement->value);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_ReturnStatement: {
-        DaiAstReturnStatement* statement = (DaiAstReturnStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)statement->return_value);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_ExpressionStatement: {
-        DaiAstExpressionStatement* statement = (DaiAstExpressionStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)statement->expression);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_IfStatement: {
-        DaiAstIfStatement* statement = (DaiAstIfStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)statement->condition);
-        recursive_string_and_free((DaiAstBase*)statement->then_branch);
-        for (int i = 0; i < statement->elif_branch_count; i++) {
-            recursive_string_and_free((DaiAstBase*)statement->elif_branches[i].condition);
-            recursive_string_and_free((DaiAstBase*)statement->elif_branches[i].then_branch);
-        }
-        if (statement->else_branch) {
-            recursive_string_and_free((DaiAstBase*)statement->else_branch);
-        }
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_BlockStatement: {
-        DaiAstBlockStatement* statement = (DaiAstBlockStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        for (size_t i = 0; i < statement->length; i++) {
-            recursive_string_and_free((DaiAstBase*)statement->statements[i]);
-        }
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_AssignStatement: {
-        DaiAstAssignStatement* statement = (DaiAstAssignStatement*)ast;
-        {
-            char* s = statement->string_fn((DaiAstBase*)statement, false);
+        case DaiAstType_program: {
+            DaiAstProgram* program = (DaiAstProgram*)ast;
+            char*          s       = program->string_fn((DaiAstBase*)program, false);
             free(s);
+            for (size_t i = 0; i < program->length; i++) {
+                recursive_string_and_free((DaiAstBase*)program->statements[i]);
+            }
+            program->free_fn((DaiAstBase*)program, false);
+            break;
         }
-        recursive_string_and_free((DaiAstBase*)statement->left);
-        recursive_string_and_free((DaiAstBase*)statement->value);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_FunctionStatement: {
-        DaiAstFunctionStatement* statement = (DaiAstFunctionStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        for (size_t i = 0; i < statement->parameters_count; i++) {
-            recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
-        }
-        recursive_string_and_free((DaiAstBase*)statement->body);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_ClassStatement: {
-        DaiAstClassStatement* statement = (DaiAstClassStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        if (statement->parent) {
-            recursive_string_and_free((DaiAstBase*)statement->parent);
-        }
-        recursive_string_and_free((DaiAstBase*)statement->body);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_InsVarStatement: {
-        DaiAstInsVarStatement* statement = (DaiAstInsVarStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)statement->name);
-        if (statement->value) {
+        case DaiAstType_VarStatement: {
+            DaiAstVarStatement* statement = (DaiAstVarStatement*)ast;
+            char*               s         = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)statement->name);
             recursive_string_and_free((DaiAstBase*)statement->value);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
         }
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_MethodStatement: {
-        DaiAstMethodStatement* statement = (DaiAstMethodStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        for (size_t i = 0; i < statement->parameters_count; i++) {
-            recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
-        }
-        recursive_string_and_free((DaiAstBase*)statement->body);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_ClassVarStatement: {
-        DaiAstClassVarStatement* statement = (DaiAstClassVarStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)statement->name);
-        recursive_string_and_free((DaiAstBase*)statement->value);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_ClassMethodStatement: {
-        DaiAstClassMethodStatement* statement = (DaiAstClassMethodStatement*)ast;
-        char* s = statement->string_fn((DaiAstBase*)statement, false);
-        free(s);
-        for (size_t i = 0; i < statement->parameters_count; i++) {
-            recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
-        }
-        recursive_string_and_free((DaiAstBase*)statement->body);
-        statement->free_fn((DaiAstBase*)statement, false);
-        break;
-    }
-    case DaiAstType_IntegerLiteral: {
-        DaiAstIntegerLiteral* literal = (DaiAstIntegerLiteral*)ast;
-        char* s = literal->string_fn((DaiAstBase*)literal, false);
-        free(s);
-        literal->free_fn((DaiAstBase*)literal, false);
-        break;
-    }
-    case DaiAstType_Boolean: {
-        DaiAstBoolean* literal = (DaiAstBoolean*)ast;
-        char* s = literal->string_fn((DaiAstBase*)literal, false);
-        free(s);
-        literal->free_fn((DaiAstBase*)literal, false);
-        break;
-    }
-    case DaiAstType_Identifier: {
-        DaiAstIdentifier* identifier = (DaiAstIdentifier*)ast;
-        char* s = identifier->string_fn((DaiAstBase*)identifier, false);
-        free(s);
-        identifier->free_fn((DaiAstBase*)identifier, false);
-        break;
-    }
-    case DaiAstType_PrefixExpression: {
-        DaiAstPrefixExpression* expression = (DaiAstPrefixExpression*)ast;
-        char* s = expression->string_fn((DaiAstBase*)expression, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)expression->right);
-        expression->free_fn((DaiAstBase*)expression, false);
-        break;
-    }
-    case DaiAstType_InfixExpression: {
-        DaiAstInfixExpression* expression = (DaiAstInfixExpression*)ast;
-        char* s = expression->string_fn((DaiAstBase*)expression, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)expression->left);
-        recursive_string_and_free((DaiAstBase*)expression->right);
-        expression->free_fn((DaiAstBase*)expression, false);
-        break;
-    }
-    case DaiAstType_FunctionLiteral: {
-        DaiAstFunctionLiteral* literal = (DaiAstFunctionLiteral*)ast;
-        {
-            char* s = literal->string_fn((DaiAstBase*)literal, false);
+        case DaiAstType_ReturnStatement: {
+            DaiAstReturnStatement* statement = (DaiAstReturnStatement*)ast;
+            char*                  s         = statement->string_fn((DaiAstBase*)statement, false);
             free(s);
+            recursive_string_and_free((DaiAstBase*)statement->return_value);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
         }
-        {
-            char* s = literal->literal_fn((DaiAstExpression*)literal);
+        case DaiAstType_ExpressionStatement: {
+            DaiAstExpressionStatement* statement = (DaiAstExpressionStatement*)ast;
+            char*                      s = statement->string_fn((DaiAstBase*)statement, false);
             free(s);
+            recursive_string_and_free((DaiAstBase*)statement->expression);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
         }
-        for (size_t i = 0; i < literal->parameters_count; i++) {
-            recursive_string_and_free((DaiAstBase*)literal->parameters[i]);
-        }
-        recursive_string_and_free((DaiAstBase*)literal->body);
-        literal->free_fn((DaiAstBase*)literal, false);
-        break;
-    }
-    case DaiAstType_CallExpression: {
-        DaiAstCallExpression* expression = (DaiAstCallExpression*)ast;
-        char* s = expression->string_fn((DaiAstBase*)expression, false);
-        free(s);
-        recursive_string_and_free((DaiAstBase*)expression->function);
-        for (size_t i = 0; i < expression->arguments_count; i++) {
-            recursive_string_and_free((DaiAstBase*)expression->arguments[i]);
-        }
-        expression->free_fn((DaiAstBase*)expression, false);
-        break;
-    }
-    case DaiAstType_DotExpression: {
-        DaiAstDotExpression* expression = (DaiAstDotExpression*)ast;
-        {
-            char* s = expression->string_fn((DaiAstBase*)expression, false);
+        case DaiAstType_IfStatement: {
+            DaiAstIfStatement* statement = (DaiAstIfStatement*)ast;
+            char*              s         = statement->string_fn((DaiAstBase*)statement, false);
             free(s);
+            recursive_string_and_free((DaiAstBase*)statement->condition);
+            recursive_string_and_free((DaiAstBase*)statement->then_branch);
+            for (int i = 0; i < statement->elif_branch_count; i++) {
+                recursive_string_and_free((DaiAstBase*)statement->elif_branches[i].condition);
+                recursive_string_and_free((DaiAstBase*)statement->elif_branches[i].then_branch);
+            }
+            if (statement->else_branch) {
+                recursive_string_and_free((DaiAstBase*)statement->else_branch);
+            }
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
         }
-        {
-            char* s = expression->literal_fn((DaiAstExpression*)expression);
+        case DaiAstType_BlockStatement: {
+            DaiAstBlockStatement* statement = (DaiAstBlockStatement*)ast;
+            char*                 s         = statement->string_fn((DaiAstBase*)statement, false);
             free(s);
+            for (size_t i = 0; i < statement->length; i++) {
+                recursive_string_and_free((DaiAstBase*)statement->statements[i]);
+            }
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
         }
-        recursive_string_and_free((DaiAstBase*)expression->left);
-        recursive_string_and_free((DaiAstBase*)expression->name);
-        expression->free_fn((DaiAstBase*)expression, false);
-        break;
-    }
-    case DaiAstType_SelfExpression: {
-        DaiAstSelfExpression* expression = (DaiAstSelfExpression*)ast;
-        {
-            char* s = expression->string_fn((DaiAstBase*)expression, false);
+        case DaiAstType_AssignStatement: {
+            DaiAstAssignStatement* statement = (DaiAstAssignStatement*)ast;
+            {
+                char* s = statement->string_fn((DaiAstBase*)statement, false);
+                free(s);
+            }
+            recursive_string_and_free((DaiAstBase*)statement->left);
+            recursive_string_and_free((DaiAstBase*)statement->value);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
+        case DaiAstType_FunctionStatement: {
+            DaiAstFunctionStatement* statement = (DaiAstFunctionStatement*)ast;
+            char*                    s = statement->string_fn((DaiAstBase*)statement, false);
             free(s);
+            for (size_t i = 0; i < statement->parameters_count; i++) {
+                recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
+            }
+            recursive_string_and_free((DaiAstBase*)statement->body);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
         }
-        {
-            char* s = expression->literal_fn((DaiAstExpression*)expression);
+        case DaiAstType_ClassStatement: {
+            DaiAstClassStatement* statement = (DaiAstClassStatement*)ast;
+            char*                 s         = statement->string_fn((DaiAstBase*)statement, false);
             free(s);
+            if (statement->parent) {
+                recursive_string_and_free((DaiAstBase*)statement->parent);
+            }
+            recursive_string_and_free((DaiAstBase*)statement->body);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
         }
-        if (expression->name != NULL) {
+        case DaiAstType_InsVarStatement: {
+            DaiAstInsVarStatement* statement = (DaiAstInsVarStatement*)ast;
+            char*                  s         = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)statement->name);
+            if (statement->value) {
+                recursive_string_and_free((DaiAstBase*)statement->value);
+            }
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
+        case DaiAstType_MethodStatement: {
+            DaiAstMethodStatement* statement = (DaiAstMethodStatement*)ast;
+            char*                  s         = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            for (size_t i = 0; i < statement->parameters_count; i++) {
+                recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
+            }
+            recursive_string_and_free((DaiAstBase*)statement->body);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
+        case DaiAstType_ClassVarStatement: {
+            DaiAstClassVarStatement* statement = (DaiAstClassVarStatement*)ast;
+            char*                    s = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)statement->name);
+            recursive_string_and_free((DaiAstBase*)statement->value);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
+        case DaiAstType_ClassMethodStatement: {
+            DaiAstClassMethodStatement* statement = (DaiAstClassMethodStatement*)ast;
+            char*                       s = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            for (size_t i = 0; i < statement->parameters_count; i++) {
+                recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
+            }
+            recursive_string_and_free((DaiAstBase*)statement->body);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
+        case DaiAstType_IntegerLiteral: {
+            DaiAstIntegerLiteral* literal = (DaiAstIntegerLiteral*)ast;
+            char*                 s       = literal->string_fn((DaiAstBase*)literal, false);
+            free(s);
+            literal->free_fn((DaiAstBase*)literal, false);
+            break;
+        }
+        case DaiAstType_Boolean: {
+            DaiAstBoolean* literal = (DaiAstBoolean*)ast;
+            char*          s       = literal->string_fn((DaiAstBase*)literal, false);
+            free(s);
+            literal->free_fn((DaiAstBase*)literal, false);
+            break;
+        }
+        case DaiAstType_Identifier: {
+            DaiAstIdentifier* identifier = (DaiAstIdentifier*)ast;
+            char*             s          = identifier->string_fn((DaiAstBase*)identifier, false);
+            free(s);
+            identifier->free_fn((DaiAstBase*)identifier, false);
+            break;
+        }
+        case DaiAstType_PrefixExpression: {
+            DaiAstPrefixExpression* expression = (DaiAstPrefixExpression*)ast;
+            char*                   s = expression->string_fn((DaiAstBase*)expression, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)expression->right);
+            expression->free_fn((DaiAstBase*)expression, false);
+            break;
+        }
+        case DaiAstType_InfixExpression: {
+            DaiAstInfixExpression* expression = (DaiAstInfixExpression*)ast;
+            char*                  s = expression->string_fn((DaiAstBase*)expression, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)expression->left);
+            recursive_string_and_free((DaiAstBase*)expression->right);
+            expression->free_fn((DaiAstBase*)expression, false);
+            break;
+        }
+        case DaiAstType_FunctionLiteral: {
+            DaiAstFunctionLiteral* literal = (DaiAstFunctionLiteral*)ast;
+            {
+                char* s = literal->string_fn((DaiAstBase*)literal, false);
+                free(s);
+            }
+            {
+                char* s = literal->literal_fn((DaiAstExpression*)literal);
+                free(s);
+            }
+            for (size_t i = 0; i < literal->parameters_count; i++) {
+                recursive_string_and_free((DaiAstBase*)literal->parameters[i]);
+            }
+            recursive_string_and_free((DaiAstBase*)literal->body);
+            literal->free_fn((DaiAstBase*)literal, false);
+            break;
+        }
+        case DaiAstType_CallExpression: {
+            DaiAstCallExpression* expression = (DaiAstCallExpression*)ast;
+            char*                 s = expression->string_fn((DaiAstBase*)expression, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)expression->function);
+            for (size_t i = 0; i < expression->arguments_count; i++) {
+                recursive_string_and_free((DaiAstBase*)expression->arguments[i]);
+            }
+            expression->free_fn((DaiAstBase*)expression, false);
+            break;
+        }
+        case DaiAstType_DotExpression: {
+            DaiAstDotExpression* expression = (DaiAstDotExpression*)ast;
+            {
+                char* s = expression->string_fn((DaiAstBase*)expression, false);
+                free(s);
+            }
+            {
+                char* s = expression->literal_fn((DaiAstExpression*)expression);
+                free(s);
+            }
+            recursive_string_and_free((DaiAstBase*)expression->left);
             recursive_string_and_free((DaiAstBase*)expression->name);
+            expression->free_fn((DaiAstBase*)expression, false);
+            break;
         }
-        expression->free_fn((DaiAstBase*)expression, false);
-        break;
-    }
-    case DaiAstType_SuperExpression: {
-        DaiAstSuperExpression* expression = (DaiAstSuperExpression*)ast;
-        {
-            char* s = expression->string_fn((DaiAstBase*)expression, false);
+        case DaiAstType_SelfExpression: {
+            DaiAstSelfExpression* expression = (DaiAstSelfExpression*)ast;
+            {
+                char* s = expression->string_fn((DaiAstBase*)expression, false);
+                free(s);
+            }
+            {
+                char* s = expression->literal_fn((DaiAstExpression*)expression);
+                free(s);
+            }
+            if (expression->name != NULL) {
+                recursive_string_and_free((DaiAstBase*)expression->name);
+            }
+            expression->free_fn((DaiAstBase*)expression, false);
+            break;
+        }
+        case DaiAstType_SuperExpression: {
+            DaiAstSuperExpression* expression = (DaiAstSuperExpression*)ast;
+            {
+                char* s = expression->string_fn((DaiAstBase*)expression, false);
+                free(s);
+            }
+            {
+                char* s = expression->literal_fn((DaiAstExpression*)expression);
+                free(s);
+            }
+            if (expression->name != NULL) {
+                recursive_string_and_free((DaiAstBase*)expression->name);
+            }
+            expression->free_fn((DaiAstBase*)expression, false);
+            break;
+        }
+        case DaiAstType_StringLiteral: {
+            DaiAstStringLiteral* literal = (DaiAstStringLiteral*)ast;
+            char*                s       = literal->string_fn((DaiAstBase*)literal, false);
             free(s);
-        }
-        {
-            char* s = expression->literal_fn((DaiAstExpression*)expression);
+            s = literal->literal_fn((DaiAstExpression*)literal);
             free(s);
+            literal->free_fn((DaiAstBase*)literal, false);
+            break;
         }
-        if (expression->name != NULL) {
-            recursive_string_and_free((DaiAstBase*)expression->name);
-        }
-        expression->free_fn((DaiAstBase*)expression, false);
-        break;
-    }
-    case DaiAstType_StringLiteral: {
-        DaiAstStringLiteral* literal = (DaiAstStringLiteral*)ast;
-        char* s = literal->string_fn((DaiAstBase*)literal, false);
-        free(s);
-        s = literal->literal_fn((DaiAstExpression*)literal);
-        free(s);
-        literal->free_fn((DaiAstBase*)literal, false);
-        break;
-    }
 
-    default: {
-        unreachable();
-        break;
-    }
+        default: {
+            unreachable();
+            break;
+        }
     }
 }
 
-static MunitResult test_parse_example(__attribute__((unused)) const MunitParameter params[],
-                                      __attribute__((unused)) void* user_data) {
+static MunitResult
+test_parse_example(__attribute__((unused)) const MunitParameter params[],
+                   __attribute__((unused)) void*                user_data) {
     char* input = string_from_file("test/parse_example.dai");
 
     DaiAstProgram prog;
@@ -1684,42 +1718,110 @@ static MunitResult test_parse_example(__attribute__((unused)) const MunitParamet
 
 MunitTest parse_tests[] = {
     {(char*)"/test_var_statements", test_var_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_return_statements", test_return_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+    {(char*)"/test_return_statements",
+     test_return_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_if_statements", test_if_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_assign_statements", test_assign_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+    {(char*)"/test_assign_statements",
+     test_assign_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
      NULL},
-    {(char*)"/test_if_else_statements", test_if_else_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+    {(char*)"/test_if_else_statements",
+     test_if_else_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
      NULL},
-    {(char*)"/test_if_elif_else_statements", test_if_elif_else_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+    {(char*)"/test_if_elif_else_statements",
+     test_if_elif_else_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
      NULL},
-    {(char*)"/test_class_statements", test_class_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+    {(char*)"/test_class_statements",
+     test_class_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
      NULL},
-    {(char*)"/test_identifier_expression", test_identifier_expression, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_integer_literal_expiression", test_integer_literal_expiression, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_identifier_expression",
+     test_identifier_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_integer_literal_expiression",
+     test_integer_literal_expiression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {(char*)"/test_syntax_error", test_syntax_error, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_function_literal_parsing", test_function_literal_parsing, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_function_parameter_parsing", test_function_parameter_parsing, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_string_literal_parsing", test_string_literal_parsing, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_parsing_prefix_expressions", test_parsing_prefix_expressions, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_parsing_infix_expressions", test_parsing_infix_expressions, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_parsing_call_expressions", test_parsing_call_expressions, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_function_literal_parsing",
+     test_function_literal_parsing,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_function_parameter_parsing",
+     test_function_parameter_parsing,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_string_literal_parsing",
+     test_string_literal_parsing,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_parsing_prefix_expressions",
+     test_parsing_prefix_expressions,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_parsing_infix_expressions",
+     test_parsing_infix_expressions,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_parsing_call_expressions",
+     test_parsing_call_expressions,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {(char*)"/test_parsing_call_expression_parameter_parsing",
-     test_parsing_call_expression_parameter_parsing, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_operator_precedence_parsing", test_operator_precedence_parsing, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_boolean_expressions", test_boolean_expression, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_function_statements", test_function_statements, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
+     test_parsing_call_expression_parameter_parsing,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_operator_precedence_parsing",
+     test_operator_precedence_parsing,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_boolean_expressions",
+     test_boolean_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_function_statements",
+     test_function_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {(char*)"/test_parse_example", test_parse_example, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

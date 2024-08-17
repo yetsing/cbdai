@@ -6,10 +6,10 @@
 
 typedef struct {
     DAI_AST_EXPRESSION_HEAD
-    DaiAstIdentifier *name;
+    DaiAstIdentifier* name;
 } DaiAstSelfExpression;
 
-DaiAstSelfExpression *
+DaiAstSelfExpression*
 DaiAstSelfExpression_New(void);
 
 #endif /* CBDAI_SRC_DAI_AST_DAI_ASTSELFEXPRESSION_H */

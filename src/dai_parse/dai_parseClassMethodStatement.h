@@ -3,10 +3,11 @@
 
 #include "dai_parse/dai_parsefunctionliteral.h"
 
-DaiAstClassMethodStatement* Parser_parseClassMethodStatement(Parser* p) {
+DaiAstClassMethodStatement*
+Parser_parseClassMethodStatement(Parser* p) {
     DaiAstClassMethodStatement* func = DaiAstClassMethodStatement_New();
     {
-        func->start_line = p->cur_token->start_line;
+        func->start_line   = p->cur_token->start_line;
         func->start_column = p->cur_token->start_column;
     }
     // 跳过 class 关键字，现在当前 token 是 var
@@ -45,7 +46,7 @@ DaiAstClassMethodStatement* Parser_parseClassMethodStatement(Parser* p) {
     }
 
     {
-        func->end_line = p->cur_token->end_line;
+        func->end_line   = p->cur_token->end_line;
         func->end_column = p->cur_token->end_column;
     }
     return func;

@@ -5,10 +5,11 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
-static char* DaiAstSelfExpression_string(DaiAstBase* base, bool recursive) {
+static char*
+DaiAstSelfExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_SelfExpression);
     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*      sb   = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_SelfExpression,\n");
@@ -28,7 +29,8 @@ static char* DaiAstSelfExpression_string(DaiAstBase* base, bool recursive) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-static void DaiAstSelfExpression_free(DaiAstBase* base, bool recursive) {
+static void
+DaiAstSelfExpression_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_SelfExpression);
     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)base;
     if (recursive && expr->name != NULL) {
@@ -37,10 +39,11 @@ static void DaiAstSelfExpression_free(DaiAstBase* base, bool recursive) {
     dai_free(expr);
 }
 
-static char* DaiAstSelfExpression_literal(DaiAstExpression* base) {
+static char*
+DaiAstSelfExpression_literal(DaiAstExpression* base) {
     assert(base->type == DaiAstType_SelfExpression);
     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)base;
-    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiStringBuffer*      sb   = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "(");
     DaiStringBuffer_writen(sb, "self", 4);
     if (expr->name != NULL) {
@@ -53,20 +56,21 @@ static char* DaiAstSelfExpression_literal(DaiAstExpression* base) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-DaiAstSelfExpression* DaiAstSelfExpression_New(void) {
+DaiAstSelfExpression*
+DaiAstSelfExpression_New(void) {
     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)dai_malloc(sizeof(DaiAstSelfExpression));
-    expr->type = DaiAstType_SelfExpression;
-    expr->name = NULL;
+    expr->type                 = DaiAstType_SelfExpression;
+    expr->name                 = NULL;
     {
-        expr->string_fn = DaiAstSelfExpression_string;
-        expr->free_fn = DaiAstSelfExpression_free;
+        expr->string_fn  = DaiAstSelfExpression_string;
+        expr->free_fn    = DaiAstSelfExpression_free;
         expr->literal_fn = DaiAstSelfExpression_literal;
     }
     {
-        expr->start_line = 0;
+        expr->start_line   = 0;
         expr->start_column = 0;
-        expr->end_line = 0;
-        expr->end_column = 0;
+        expr->end_line     = 0;
+        expr->end_column   = 0;
     }
     return expr;
 }

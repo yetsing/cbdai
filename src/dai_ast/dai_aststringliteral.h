@@ -5,11 +5,11 @@
 #include "dai_tokenize.h"
 
 typedef struct {
-  DAI_AST_EXPRESSION_HEAD
-  char *value;
+    DAI_AST_EXPRESSION_HEAD
+    char* value;
 } DaiAstStringLiteral;
 
-DaiAstStringLiteral *
-DaiAstStringLiteral_New(DaiToken *token);
+DaiAstStringLiteral*
+DaiAstStringLiteral_New(DaiToken* token);
 
 #endif /* CB57E96B_E733_407C_AA33_5B030EBC6088 */

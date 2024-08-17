@@ -5,7 +5,7 @@
 #ifndef CBDAI_TEST_TEST_H_
 #define CBDAI_TEST_TEST_H_
 
-int 
+int
 test(int argc, const char* argv[]);
 
-#endif //CBDAI_TEST_TEST_H_
+#endif   // CBDAI_TEST_TEST_H_

@@ -3,33 +3,34 @@
 
 #include "dai_parse/dai_parseStatementOfClass.h"
 
-static DaiAstBlockStatement *Parser_parseBlockStatementOfClass(Parser *p) {
-    DaiAstBlockStatement *blockstatement = DaiAstBlockStatement_New();
-    blockstatement->start_line = p->cur_token->start_line;
-    blockstatement->start_column = p->cur_token->start_column;
+static DaiAstBlockStatement*
+Parser_parseBlockStatementOfClass(Parser* p) {
+    DaiAstBlockStatement* blockstatement = DaiAstBlockStatement_New();
+    blockstatement->start_line           = p->cur_token->start_line;
+    blockstatement->start_column         = p->cur_token->start_column;
     Parser_nextToken(p);
 
     while (!Parser_curTokenIs(p, DaiTokenType_rbrace) && !Parser_curTokenIs(p, DaiTokenType_eof)) {
-        DaiAstStatement *stmt = Parser_parseStatementOfClass(p);
+        DaiAstStatement* stmt = Parser_parseStatementOfClass(p);
         if (stmt == NULL) {
-            blockstatement->free_fn((DaiAstBase *)blockstatement, true);
+            blockstatement->free_fn((DaiAstBase*)blockstatement, true);
             return NULL;
         }
         DaiAstBlockStatement_append(blockstatement, stmt);
         Parser_nextToken(p);
     }
     if (!Parser_curTokenIs(p, DaiTokenType_rbrace)) {
-        int line = p->cur_token->start_line;
+        int line   = p->cur_token->start_line;
         int column = p->cur_token->start_column;
         if (p->cur_token->type == DaiTokenType_eof) {
-            line = p->prev_token->end_line;
+            line   = p->prev_token->end_line;
             column = p->prev_token->end_column;
         }
         p->syntax_error = DaiSyntaxError_New("expected '}'", line, column);
-        blockstatement->free_fn((DaiAstBase *)blockstatement, true);
+        blockstatement->free_fn((DaiAstBase*)blockstatement, true);
         return NULL;
     }
-    blockstatement->start_line = p->cur_token->start_line;
+    blockstatement->start_line   = p->cur_token->start_line;
     blockstatement->start_column = p->cur_token->start_column;
     return blockstatement;
 }

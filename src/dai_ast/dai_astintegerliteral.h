@@ -11,12 +11,12 @@
 #include "dai_tokenize.h"
 
 typedef struct {
-  DAI_AST_EXPRESSION_HEAD
-  char *literal;
-  int64_t value;
+    DAI_AST_EXPRESSION_HEAD
+    char*   literal;
+    int64_t value;
 } DaiAstIntegerLiteral;
 
-DaiAstIntegerLiteral *
-DaiAstIntegerLiteral_New(DaiToken *token);
+DaiAstIntegerLiteral*
+DaiAstIntegerLiteral_New(DaiToken* token);
 
-#endif //CBDAI_SRC_DAI_AST_DAI_ASTINTEGERLITERAL_H_
+#endif   // CBDAI_SRC_DAI_AST_DAI_ASTINTEGERLITERAL_H_

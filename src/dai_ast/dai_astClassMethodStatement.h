@@ -3,18 +3,18 @@
 
 #include <stddef.h>
 
-#include "dai_ast/dai_astidentifier.h"
 #include "dai_ast/dai_astblockstatement.h"
+#include "dai_ast/dai_astidentifier.h"
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    char *name;
-    size_t parameters_count;
-    DaiAstIdentifier **parameters;
-    DaiAstBlockStatement *body;
+    char*                 name;
+    size_t                parameters_count;
+    DaiAstIdentifier**    parameters;
+    DaiAstBlockStatement* body;
 } DaiAstClassMethodStatement;
 
-DaiAstClassMethodStatement *
+DaiAstClassMethodStatement*
 DaiAstClassMethodStatement_New(void);
 
 #endif /* E589CD75_711C_4911_AC51_EB9CD2E268F3 */
