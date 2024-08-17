@@ -63,3 +63,14 @@ class Goo < Foo {};
 var foo = Foo();
 foo.a1;
 foo.a2 = 2;
+
+var x = 1;
+if (x == 1) {
+    x;
+} elif (x == 2) {
+    x;
+} elif (x == 3) {
+    x;
+} else {
+    x;
+};

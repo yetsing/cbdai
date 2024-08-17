@@ -63,7 +63,7 @@ static MunitResult test_next_token(__attribute__((unused))
                       "`  a  b  \n`\n"
                       "class Foo {};\n"
                       "self.a = 3;\n"
-                      "super.b\n";
+                      "super.b elif\n";
 
   DaiToken tests[] = {
       {
@@ -246,6 +246,7 @@ static MunitResult test_next_token(__attribute__((unused))
       {DaiTokenType_super, "super", 31, 1, 31, 6},
       {DaiTokenType_dot, ".", 31, 6, 31, 7},
       {DaiTokenType_ident, "b", 31, 7, 31, 8},
+      {DaiTokenType_elif, "elif", 31, 9, 31, 13},
 
       {DaiTokenType_eof, "", 32, 1},
   };

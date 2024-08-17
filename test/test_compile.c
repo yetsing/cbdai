@@ -388,6 +388,106 @@ static MunitResult test_conditionals(__attribute__((unused)) const MunitParamete
                 INTEGER_VAL(3333),
             },
         },
+        {
+            "if (true) {\n"
+            "    1;\n"
+            "} elif (true) {\n"
+            "    2;\n"
+            "};\n"
+            "",
+            19,
+            {
+                DaiOpTrue,
+                DaiOpJumpIfFalse, 0, 7,
+                DaiOpConstant, 0, 0,
+                DaiOpPop,
+                DaiOpJump, 0, 8,
+                DaiOpTrue,
+                DaiOpJumpIfFalse, 0, 4,
+                DaiOpConstant, 0, 1,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+            },
+
+        },
+       {
+            "if (true) {\n"
+            "    1;\n"
+            "} elif (true) {\n"
+            "    2;\n"
+            "} else {\n"
+            "    3;\n"
+            "};\n"
+            "",
+            26,
+            {
+                DaiOpTrue,
+                DaiOpJumpIfFalse, 0, 7,
+                DaiOpConstant, 0, 0,
+                DaiOpPop,
+                DaiOpJump, 0, 15,
+
+                DaiOpTrue,
+                DaiOpJumpIfFalse, 0, 7,
+                DaiOpConstant, 0, 1,
+                DaiOpPop,
+                DaiOpJump, 0, 4,
+
+                DaiOpConstant, 0, 2,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+                INTEGER_VAL(3),
+            },
+
+        },
+       {
+            "if (true) {\n"
+            "    1;\n"
+            "} elif (true) {\n"
+            "    2;\n"
+            "} elif (true) {\n"
+            "    3;\n"
+            "} else {\n"
+            "    9;\n"
+            "};\n"
+            "",
+            37,
+            {
+                DaiOpTrue,
+                DaiOpJumpIfFalse, 0, 7,
+                DaiOpConstant, 0, 0,
+                DaiOpPop,
+                DaiOpJump, 0, 26,
+
+                DaiOpTrue,
+                DaiOpJumpIfFalse, 0, 7,
+                DaiOpConstant, 0, 1,
+                DaiOpPop,
+                DaiOpJump, 0, 15,
+
+                DaiOpTrue,
+                DaiOpJumpIfFalse, 0, 7,
+                DaiOpConstant, 0, 2,
+                DaiOpPop,
+                DaiOpJump, 0, 4,
+
+                DaiOpConstant, 0, 3,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+                INTEGER_VAL(3),
+                INTEGER_VAL(9),
+            },
+
+        },
     };
     run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
@@ -1303,7 +1403,8 @@ static MunitResult test_class(__attribute__((unused)) const MunitParameter param
             DaiChunk_write(&func2->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjString s6_2 = (DaiObjString){{.type = DaiObjType_string}, .chars = "func2_2", .length = 7};
+    DaiObjString s6_2 =
+        (DaiObjString){{.type = DaiObjType_string}, .chars = "func2_2", .length = 7};
     DaiObjFunction* func2_2 = DaiObjFunction_New(&vm, "func2_2");
     {
         /* 常量

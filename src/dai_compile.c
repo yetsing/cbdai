@@ -4,6 +4,7 @@
 
 #include "dai_assert.h"
 #include "dai_compile.h"
+#include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
@@ -339,12 +340,28 @@ static DaiCompileError* DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* n
         if (err != NULL) {
             return err;
         }
+        int *jump_array = ALLOCATE(int, stmt->elif_branch_count + 1);
         // 先发出虚假偏移量的跳转指令
         int jump_if_false_offset =
             DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, 9999, stmt->start_line);
         err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->then_branch);
         if (err != NULL) {
             return err;
+        }
+        for (int i = 0; i < stmt->elif_branch_count; i++) {
+            // 先发出虚假偏移量的跳转指令
+            jump_array[i] = DaiCompiler_emit2(compiler, DaiOpJump, 9999, stmt->start_line);
+            DaiCompiler_patchJump(compiler, jump_if_false_offset);
+            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->elif_branches[i].condition);
+            if (err != NULL) {
+                return err;
+            }
+            // 先发出虚假偏移量的跳转指令
+            jump_if_false_offset = DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, 9999, stmt->start_line);
+            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->elif_branches[i].then_branch);
+            if (err != NULL) {
+                return err;
+            }
         }
         if (stmt->else_branch == NULL) {
             DaiCompiler_patchJump(compiler, jump_if_false_offset);
@@ -359,6 +376,10 @@ static DaiCompileError* DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* n
             }
             DaiCompiler_patchJump(compiler, jump_offset);
         }
+        for (int i = 0; i < stmt->elif_branch_count; i++) {
+            DaiCompiler_patchJump(compiler, jump_array[i]);
+        }
+        FREE_ARRAY(int, jump_array, stmt->elif_branch_count + 1);
         break;
     }
     case DaiAstType_VarStatement: {

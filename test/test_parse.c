@@ -341,6 +341,56 @@ static MunitResult test_if_else_statements(__attribute__((unused)) const MunitPa
     return MUNIT_OK;
 }
 
+static MunitResult test_if_elif_else_statements(__attribute__((unused)) const MunitParameter params[],
+                                           __attribute__((unused)) void* user_data) {
+    const char* input = "if (x < y) { x;} "
+                        "elif (x > y) { y;}"
+                        "else {y;};";
+    DaiAstProgram prog;
+    DaiAstProgram_init(&prog);
+    DaiAstProgram* program = &prog;
+    parse_helper(input, program);
+
+    munit_assert_int(program->length, ==, 1);
+    munit_assert_int(program->statements[0]->type, ==, DaiAstType_IfStatement);
+
+    DaiAstIfStatement* ifstatement = (DaiAstIfStatement*)program->statements[0];
+    {
+        munit_assert_int(ifstatement->start_line, ==, 1);
+        munit_assert_int(ifstatement->start_column, ==, 1);
+        munit_assert_int(ifstatement->end_line, ==, 1);
+        munit_assert_int(ifstatement->end_column, ==, strlen(input) + 1);
+    }
+    check_infix_expression_string(ifstatement->condition, "x", "<", "y");
+
+    munit_assert_int(ifstatement->then_branch->type, ==, DaiAstType_BlockStatement);
+    munit_assert_int(ifstatement->then_branch->length, ==, 1);
+    DaiAstExpressionStatement* stmt =
+        (DaiAstExpressionStatement*)ifstatement->then_branch->statements[0];
+    munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+    check_identifier(stmt->expression, "x");
+
+    munit_assert_int(ifstatement->elif_branch_count, ==, 1);
+    {
+        DaiBranch branch = ifstatement->elif_branches[0];
+        check_infix_expression_string(branch.condition, "x", ">", "y");
+        munit_assert_int(branch.then_branch->length, ==, 1);
+        DaiAstExpressionStatement* stmt =
+            (DaiAstExpressionStatement*)branch.then_branch->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        check_identifier(stmt->expression, "y");
+    }
+
+    munit_assert_int(ifstatement->else_branch->type, ==, DaiAstType_BlockStatement);
+    munit_assert_int(ifstatement->else_branch->length, ==, 1);
+    stmt = (DaiAstExpressionStatement*)ifstatement->else_branch->statements[0];
+    munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+    check_identifier(stmt->expression, "y");
+
+    program->free_fn((DaiAstBase*)program, true);
+    return MUNIT_OK;
+}
+
 static MunitResult test_assign_statements(__attribute__((unused)) const MunitParameter params[],
                                           __attribute__((unused)) void* user_data) {
     {
@@ -1386,6 +1436,10 @@ static void recursive_string_and_free(DaiAstBase* ast) {
         free(s);
         recursive_string_and_free((DaiAstBase*)statement->condition);
         recursive_string_and_free((DaiAstBase*)statement->then_branch);
+        for (int i = 0; i < statement->elif_branch_count; i++) {
+            recursive_string_and_free((DaiAstBase*)statement->elif_branches[i].condition);
+            recursive_string_and_free((DaiAstBase*)statement->elif_branches[i].then_branch);
+        }
         if (statement->else_branch) {
             recursive_string_and_free((DaiAstBase*)statement->else_branch);
         }
@@ -1636,6 +1690,8 @@ MunitTest parse_tests[] = {
     {(char*)"/test_assign_statements", test_assign_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_if_else_statements", test_if_else_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_if_elif_else_statements", test_if_elif_else_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_class_statements", test_class_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE,
      NULL},

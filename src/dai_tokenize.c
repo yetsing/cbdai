@@ -78,6 +78,7 @@ static DaiToken keywords[] = {
     {DaiTokenType_function, "fn"},   {DaiTokenType_var, "var"},
     {DaiTokenType_true, "true"},     {DaiTokenType_false, "false"},
     {DaiTokenType_if, "if"},         {DaiTokenType_else, "else"},
+    {DaiTokenType_elif, "elif"},
     {DaiTokenType_return, "return"},
     {DaiTokenType_class, "class"},
     {DaiTokenType_self, "self"},
