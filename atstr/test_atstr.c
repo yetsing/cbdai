@@ -4,14 +4,14 @@
 
 static MunitResult
 test_split(__attribute__((unused)) const MunitParameter params[],
-           __attribute__((unused)) void*                user_data) {
+           __attribute__((unused)) void* user_data) {
     struct item {
         int offset;
         int length;
     };
     struct {
         const char* input;
-        int         count;
+        int count;
         struct item expected[16];
     } tests[] = {{
                      "",
@@ -114,15 +114,15 @@ test_split(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_splitc(__attribute__((unused)) const MunitParameter params[],
-            __attribute__((unused)) void*                user_data) {
+            __attribute__((unused)) void* user_data) {
     struct item {
         int offset;
         int length;
     };
     struct {
         const char* input;
-        char        c;
-        int         count;
+        char c;
+        int count;
         struct item expected[16];
     } tests[] = {
         {

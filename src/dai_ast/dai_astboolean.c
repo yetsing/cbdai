@@ -9,8 +9,8 @@
 static char*
 DaiAstBoolean_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_Boolean);
-    DaiAstBoolean*   boolean = (DaiAstBoolean*)base;
-    DaiStringBuffer* sb      = DaiStringBuffer_New();
+    DaiAstBoolean* boolean = (DaiAstBoolean*)base;
+    DaiStringBuffer* sb    = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_Boolean,\n");
@@ -34,7 +34,7 @@ static char*
 DaiAstBoolean_literal(DaiAstExpression* expr) {
     assert(expr->type == DaiAstType_Boolean);
     DaiAstBoolean* boolean = (DaiAstBoolean*)expr;
-    char*          s       = boolean->value ? "true" : "false";
+    char* s                = boolean->value ? "true" : "false";
     return strdup(s);
 }
 

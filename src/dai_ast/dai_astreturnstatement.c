@@ -12,7 +12,7 @@ static char*
 DaiAstReturnStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_ReturnStatement);
     DaiAstReturnStatement* stmt = (DaiAstReturnStatement*)base;
-    DaiStringBuffer*       sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_ReturnStatement,\n");

@@ -68,9 +68,9 @@ compile_error_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
 
 typedef struct {
     const char* input;
-    int         expected_count;
-    uint8_t     expected_codes[64];
-    DaiValue    expected_constants[32];
+    int expected_count;
+    uint8_t expected_codes[64];
+    DaiValue expected_constants[32];
 
 } DaiCompilerTestCase;
 
@@ -117,7 +117,7 @@ run_compiler_tests(DaiCompilerTestCase* tests, size_t count) {
 
 static MunitResult
 test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
-                        __attribute__((unused)) void*                user_data) {
+                        __attribute__((unused)) void* user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "1 + 2;",
@@ -231,7 +231,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
-                         __attribute__((unused)) void*                user_data) {
+                         __attribute__((unused)) void* user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "true;",
@@ -357,7 +357,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_conditionals(__attribute__((unused)) const MunitParameter params[],
-                  __attribute__((unused)) void*                user_data) {
+                  __attribute__((unused)) void* user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "if (true) {10;};\n 3333;",
@@ -529,7 +529,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_while_statements(__attribute__((unused)) const MunitParameter params[],
-                      __attribute__((unused)) void*                user_data) {
+                      __attribute__((unused)) void* user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "while (false) { }",
@@ -870,7 +870,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_global_var_statements(__attribute__((unused)) const MunitParameter params[],
-                           __attribute__((unused)) void*                user_data) {
+                           __attribute__((unused)) void* user_data) {
     DaiCompilerTestCase tests[] = {
         {
             "var one = 1;\n var two = 2;",
@@ -971,7 +971,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
 
 static MunitResult
 test_string_expressions(__attribute__((unused)) const MunitParameter params[],
-                        __attribute__((unused)) void*                user_data) {
+                        __attribute__((unused)) void* user_data) {
     DaiObjString s = (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
     DaiCompilerTestCase tests[] = {
         {
@@ -1007,11 +1007,11 @@ test_string_expressions(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_functions(__attribute__((unused)) const MunitParameter params[],
-               __attribute__((unused)) void*                user_data) {
+               __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjFunction* func1             = DaiObjFunction_New(&vm, "<test1>");
-    uint8_t         expected_codes1[] = {
+    DaiObjFunction* func1     = DaiObjFunction_New(&vm, "<test1>");
+    uint8_t expected_codes1[] = {
         DaiOpConstant,
         0,
         0,
@@ -1134,7 +1134,7 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_function_calls(__attribute__((unused)) const MunitParameter params[],
-                    __attribute__((unused)) void*                user_data) {
+                    __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>");
@@ -1367,7 +1367,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
-                          __attribute__((unused)) void*                user_data) {
+                          __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>");
@@ -1486,10 +1486,10 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_builtins(__attribute__((unused)) const MunitParameter params[],
-              __attribute__((unused)) void*                user_data) {
+              __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjString    s = (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
+    DaiObjString s = (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
     DaiObjFunction* func = DaiObjFunction_New(&vm, "<test2>");
     {
         uint8_t expected_codes2[] = {
@@ -1549,7 +1549,7 @@ test_builtins(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_closures(__attribute__((unused)) const MunitParameter params[],
-              __attribute__((unused)) void*                user_data) {
+              __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjFunction* func1_1 = DaiObjFunction_New(&vm, "<test1_1>");
@@ -1789,7 +1789,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_class(__attribute__((unused)) const MunitParameter params[],
-           __attribute__((unused)) void*                user_data) {
+           __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjString sa = (DaiObjString){{.type = DaiObjType_string}, .chars = "B", .length = 1};
@@ -2326,7 +2326,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_compile_error(__attribute__((unused)) const MunitParameter params[],
-                   __attribute__((unused)) void*                user_data) {
+                   __attribute__((unused)) void* user_data) {
     struct {
         const char* input;
         const char* expected_error_msg;
@@ -2355,8 +2355,8 @@ test_compile_error(__attribute__((unused)) const MunitParameter params[],
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiVM vm;
         DaiVM_init(&vm);
-        DaiObjFunction*  func = DaiObjFunction_New(&vm, "<test>");
-        DaiCompileError* err  = compile_error_helper(tests[i].input, func, &vm);
+        DaiObjFunction* func = DaiObjFunction_New(&vm, "<test>");
+        DaiCompileError* err = compile_error_helper(tests[i].input, func, &vm);
         munit_assert_not_null(err);
         char* msg = DaiCompileError_string(err);
         munit_assert_string_equal(msg, tests[i].expected_error_msg);

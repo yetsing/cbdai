@@ -6,7 +6,7 @@
 
 #include "dai_common.h"
 
-typedef struct DaiObj       DaiObj;
+typedef struct DaiObj DaiObj;
 typedef struct DaiObjString DaiObjString;
 
 typedef enum {
@@ -21,7 +21,7 @@ typedef struct {
     DaiValueType type;
     union {
         int64_t intval;
-        bool    boolean;
+        bool boolean;
         DaiObj* obj;
     } as;
 } DaiValue;
@@ -53,8 +53,8 @@ bool
 dai_value_equal(DaiValue a, DaiValue b);
 
 typedef struct {
-    int       capcity;
-    int       count;
+    int capcity;
+    int count;
     DaiValue* values;
 } DaiValueArray;
 

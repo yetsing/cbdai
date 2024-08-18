@@ -64,7 +64,7 @@ DaiVM_init(DaiVM* vm) {
             }
             DaiSymbolTable_defineBuiltin(vm->globalSymbolTable, i, builtin_funcs[i].name);
             DaiSymbol symbol;
-            bool      found =
+            bool found =
                 DaiSymbolTable_resolve(vm->globalSymbolTable, builtin_funcs[i].name, &symbol);
             assert(found);
             vm->builtin_funcs[i] = OBJ_VAL(&builtin_funcs[i]);
@@ -91,8 +91,8 @@ concatenate_string(DaiVM* vm, DaiValue v1, DaiValue v2) {
     DaiObjString* a = (DaiObjString*)AS_OBJ(v1);
     DaiObjString* b = (DaiObjString*)AS_OBJ(v2);
 
-    int   length = a->length + b->length;
-    char* chars  = VM_ALLOCATE(vm, char, length + 1);
+    int length  = a->length + b->length;
+    char* chars = VM_ALLOCATE(vm, char, length + 1);
     memcpy(chars, a->chars, a->length);
     memcpy(chars + a->length, b->chars, b->length);
     chars[length] = '\0';
@@ -107,7 +107,7 @@ static DaiRuntimeError*
 DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     if (argCount != function->arity) {
         CallFrame* frame = &vm->frames[vm->frameCount - 1];
-        DaiChunk*  chunk = &frame->function->chunk;
+        DaiChunk* chunk  = &frame->function->chunk;
         return DaiRuntimeError_Newf(chunk->filename,
                                     DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                                     0,
@@ -117,7 +117,7 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     }
     if (vm->frameCount == FRAMES_MAX) {
         CallFrame* frame = &vm->frames[vm->frameCount - 1];
-        DaiChunk*  chunk = &frame->function->chunk;
+        DaiChunk* chunk  = &frame->function->chunk;
         return DaiRuntimeError_New("Stack overflow",
                                    chunk->filename,
                                    DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
@@ -138,13 +138,13 @@ DaiVM_callValue(DaiVM* vm, DaiValue callee, int argCount);
 // 在实例的 init 方法后调用
 static DaiValue
 DaiVM_post_init(DaiVM* vm) {
-    CallFrame*      frame    = CURRENT_FRAME;
-    DaiValue        value    = frame->slots[0];
+    CallFrame* frame         = CURRENT_FRAME;
+    DaiValue value           = frame->slots[0];
     DaiObjInstance* instance = AS_INSTANCE(value);
     // 检查所有实例属性都已初始化
     for (int i = 0; i < instance->klass->field_names.count; i++) {
         DaiObjString* name = AS_STRING(instance->klass->field_names.values[i]);
-        DaiValue      res  = UNDEFINED_VAL;
+        DaiValue res       = UNDEFINED_VAL;
         DaiTable_get(&instance->fields, name, &res);
         if (IS_UNDEFINED(res)) {
             // todo Exception
@@ -188,15 +188,15 @@ DaiVM_callValue(DaiVM* vm, DaiValue callee, int argCount) {
             }
             case DaiObjType_builtinFn: {
                 BuiltinFn func = AS_BUILTINFN(callee)->function;
-                DaiValue  result =
+                DaiValue result =
                     func(DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
                 vm->stack_top -= argCount + 1;
                 DaiVM_push(vm, result);
                 return NULL;
             }
             case DaiObjType_closure: {
-                DaiObjClosure*   closure = (DaiObjClosure*)AS_OBJ(callee);
-                DaiRuntimeError* err     = DaiVM_call(vm, closure->function, argCount);
+                DaiObjClosure* closure = (DaiObjClosure*)AS_OBJ(callee);
+                DaiRuntimeError* err   = DaiVM_call(vm, closure->function, argCount);
                 vm->frames[vm->frameCount - 1].closure = closure;
                 return err;
             }
@@ -204,7 +204,7 @@ DaiVM_callValue(DaiVM* vm, DaiValue callee, int argCount) {
         }
     }
     CallFrame* frame = &vm->frames[vm->frameCount - 1];
-    DaiChunk*  chunk = &frame->function->chunk;
+    DaiChunk* chunk  = &frame->function->chunk;
     return DaiRuntimeError_Newf(chunk->filename,
                                 DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                                 0,
@@ -215,7 +215,7 @@ DaiVM_callValue(DaiVM* vm, DaiValue callee, int argCount) {
 static DaiRuntimeError*
 DaiVM_dorun(DaiVM* vm) {
     CallFrame* frame = &vm->frames[vm->frameCount - 1];
-    DaiChunk*  chunk = &frame->function->chunk;
+    DaiChunk* chunk  = &frame->function->chunk;
     // 先取值，再自增
 #define READ_BYTE() (*frame->ip++)
 #define READ_UINT16()                                        \
@@ -420,9 +420,9 @@ DaiVM_dorun(DaiVM* vm) {
             }
 
             case DaiOpCall: {
-                int              argCount = READ_BYTE();
-                DaiValue         callee   = DaiVM_peek(vm, argCount);
-                DaiRuntimeError* err      = DaiVM_callValue(vm, callee, argCount);
+                int argCount         = READ_BYTE();
+                DaiValue callee      = DaiVM_peek(vm, argCount);
+                DaiRuntimeError* err = DaiVM_callValue(vm, callee, argCount);
                 if (err != NULL) {
                     return err;
                 }
@@ -478,7 +478,7 @@ DaiVM_dorun(DaiVM* vm) {
 
             case DaiOpClosure: {
                 uint16_t function_index = READ_UINT16();
-                uint8_t  free_var_count = READ_BYTE();
+                uint8_t free_var_count  = READ_BYTE();
                 DaiValue constant       = chunk->constants.values[function_index];
                 assert(IS_FUNCTION(constant));
                 DaiValue* frees = VM_ALLOCATE(vm, DaiValue, free_var_count);
@@ -500,16 +500,16 @@ DaiVM_dorun(DaiVM* vm) {
             }
 
             case DaiOpClass: {
-                uint16_t     name_index = READ_UINT16();
-                DaiValue     name       = chunk->constants.values[name_index];
-                DaiObjClass* cls        = DaiObjClass_New(vm, AS_STRING(name));
+                uint16_t name_index = READ_UINT16();
+                DaiValue name       = chunk->constants.values[name_index];
+                DaiObjClass* cls    = DaiObjClass_New(vm, AS_STRING(name));
                 DaiVM_push(vm, OBJ_VAL(cls));
                 break;
             }
             case DaiOpDefineField: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiObjClass*  cls        = AS_CLASS(DaiVM_peek(vm, 1));
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiObjClass* cls    = AS_CLASS(DaiVM_peek(vm, 1));
                 if (!DaiTable_has(&cls->fields, name)) {
                     DaiValueArray_write(&cls->field_names, OBJ_VAL(name));
                 }
@@ -517,10 +517,10 @@ DaiVM_dorun(DaiVM* vm) {
                 break;
             }
             case DaiOpDefineMethod: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiObjClass*  klass      = AS_CLASS(DaiVM_peek(vm, 1));
-                DaiValue      value      = DaiVM_pop(vm);
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
+                DaiValue value      = DaiVM_pop(vm);
                 // 设置方法的 super class
                 {
                     DaiObjFunction* function = NULL;
@@ -538,18 +538,18 @@ DaiVM_dorun(DaiVM* vm) {
                 break;
             }
             case DaiOpDefineClassField: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiObjClass*  klass      = AS_CLASS(DaiVM_peek(vm, 1));
-                DaiValue      value      = DaiVM_pop(vm);
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
+                DaiValue value      = DaiVM_pop(vm);
                 DaiTable_set(&klass->class_fields, name, value);
                 break;
             }
             case DaiOpDefineClassMethod: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiObjClass*  klass      = AS_CLASS(DaiVM_peek(vm, 1));
-                DaiValue      method     = DaiVM_pop(vm);
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
+                DaiValue method     = DaiVM_pop(vm);
                 // 设置方法的 super class
                 {
                     DaiObjFunction* function = NULL;
@@ -564,9 +564,9 @@ DaiVM_dorun(DaiVM* vm) {
                 break;
             }
             case DaiOpGetProperty: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiValue      receiver   = DaiVM_pop(vm);
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiValue receiver   = DaiVM_pop(vm);
                 if (IS_OBJ(receiver)) {
                     DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
                     DaiVM_push(vm, res);
@@ -582,10 +582,10 @@ DaiVM_dorun(DaiVM* vm) {
                 break;
             }
             case DaiOpSetProperty: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiValue      receiver   = DaiVM_pop(vm);
-                DaiValue      value      = DaiVM_pop(vm);
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiValue receiver   = DaiVM_pop(vm);
+                DaiValue value      = DaiVM_pop(vm);
                 if (IS_OBJ(receiver)) {
                     AS_OBJ(receiver)->set_property_func(vm, receiver, name, value);
                 } else {
@@ -600,17 +600,17 @@ DaiVM_dorun(DaiVM* vm) {
                 break;
             }
             case DaiOpGetSelfProperty: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiValue      receiver   = frame->slots[0];
-                DaiValue      res        = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiValue receiver   = frame->slots[0];
+                DaiValue res        = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
                 DaiVM_push(vm, res);
                 break;
             }
             case DaiOpSetSelfProperty: {
-                uint16_t      name_index = READ_UINT16();
-                DaiObjString* name       = AS_STRING(chunk->constants.values[name_index]);
-                DaiValue      receiver   = frame->slots[0];
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                DaiValue receiver   = frame->slots[0];
                 AS_OBJ(receiver)->set_property_func(vm, receiver, name, DaiVM_pop(vm));
                 break;
             }
@@ -626,8 +626,8 @@ DaiVM_dorun(DaiVM* vm) {
             }
             case DaiOpGetSuperProperty: {
                 assert(frame->function->superclass != NULL);
-                uint16_t           name_index   = READ_UINT16();
-                DaiObjString*      name         = AS_STRING(chunk->constants.values[name_index]);
+                uint16_t name_index             = READ_UINT16();
+                DaiObjString* name              = AS_STRING(chunk->constants.values[name_index]);
                 DaiObjBoundMethod* bound_method = DaiObjClass_get_bound_method(
                     vm, frame->function->superclass, name, frame->slots[0]);
                 DaiVM_push(vm, OBJ_VAL(bound_method));

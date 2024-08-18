@@ -10,7 +10,7 @@
 
 typedef struct {
     const char* name;
-    int         operand_bytes;   // 操作数的字节数
+    int operand_bytes;   // 操作数的字节数
 } DaiOpCodeDefinition;
 
 typedef enum __attribute__((__packed__)) {
@@ -78,11 +78,11 @@ dai_opcode_name(DaiOpCode op);
 
 typedef struct {
     // filename 不归 DaiChunk 所有
-    const char*   filename;
-    int           count;
-    int           capacity;
-    uint8_t*      code;
-    int*          lines;
+    const char* filename;
+    int count;
+    int capacity;
+    uint8_t* code;
+    int* lines;
     DaiValueArray constants;
 #ifdef DISASSEMBLE_VARIABLE_NAME
     char** names;

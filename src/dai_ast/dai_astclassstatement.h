@@ -9,8 +9,8 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    char*                 name;
-    DaiAstIdentifier*     parent;   // 父类
+    char* name;
+    DaiAstIdentifier* parent;   // 父类
     DaiAstBlockStatement* body;
 } DaiAstClassStatement;
 

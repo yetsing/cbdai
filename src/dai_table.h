@@ -6,12 +6,12 @@
 
 typedef struct {
     DaiObjString* key;
-    DaiValue      value;
+    DaiValue value;
 } Entry;
 
 typedef struct {
-    int    count;
-    int    capacity;
+    int count;
+    int capacity;
     Entry* entries;
 } DaiTable;
 

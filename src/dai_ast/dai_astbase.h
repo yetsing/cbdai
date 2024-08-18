@@ -16,9 +16,9 @@ typedef void (*DaiAstFreeFn)(DaiAstBase* ast, bool recursive);
 
 // ast 节点公共部分，每个 ast 结构体的前面都要有这个部分
 #define DAI_AST_BASE_HEAD     \
-    DaiAstType     type;      \
+    DaiAstType type;          \
     DaiAstStringFn string_fn; \
-    DaiAstFreeFn   free_fn;
+    DaiAstFreeFn free_fn;
 
 typedef struct _DaiAstBase {
     DAI_AST_BASE_HEAD

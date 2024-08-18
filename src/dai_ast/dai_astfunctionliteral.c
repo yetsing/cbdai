@@ -9,7 +9,7 @@ static char*
 DaiAstFunctionLiteral_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_FunctionLiteral);
     DaiAstFunctionLiteral* expr = (DaiAstFunctionLiteral*)base;
-    DaiStringBuffer*       sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_FunctionLiteral,\n");
@@ -67,7 +67,7 @@ static char*
 DaiAstFunctionLiteral_literal(DaiAstExpression* base) {
     assert(base->type == DaiAstType_FunctionLiteral);
     DaiAstFunctionLiteral* expr = (DaiAstFunctionLiteral*)base;
-    DaiStringBuffer*       sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "fn(");
     for (size_t i = 0; i < expr->parameters_count; i++) {
         DaiAstIdentifier* param = expr->parameters[i];

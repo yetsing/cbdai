@@ -15,9 +15,9 @@ typedef struct {
 } LevelInt;
 
 typedef struct {
-    int       capacity;
-    int       count;
-    int       level;
+    int capacity;
+    int count;
+    int level;
     LevelInt* values;
 } IntArray;
 void
@@ -255,14 +255,14 @@ DaiCompiler_reset(DaiCompiler* compiler) {
 static DaiCompileError*
 DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     // 函数名字
-    const char*           name;
-    FunctionType          function_type    = FunctionType_function;
-    DaiAstBlockStatement* body             = NULL;
-    int                   parameters_count = 0;
-    DaiAstIdentifier**    parameters       = NULL;
-    int                   start_line       = 0;
-    int                   end_line         = 0;
-    char                  buf[32];
+    const char* name;
+    FunctionType function_type    = FunctionType_function;
+    DaiAstBlockStatement* body    = NULL;
+    int parameters_count          = 0;
+    DaiAstIdentifier** parameters = NULL;
+    int start_line                = 0;
+    int end_line                  = 0;
+    char buf[32];
     switch (node->type) {
         case DaiAstType_FunctionLiteral: {
             body = ((DaiAstFunctionLiteral*)node)->body;
@@ -365,9 +365,9 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
 // 更新符号表
 static DaiCompileError*
 DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
-    char* name   = NULL;
-    int   line   = 0;
-    int   column = 0;
+    char* name = NULL;
+    int line   = 0;
+    int column = 0;
     switch (node->type) {
         case DaiAstType_program: {
             DaiAstProgram* program = (DaiAstProgram*)node;
@@ -467,7 +467,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             // @end
             IntArray_push(&compiler->scope_stack, ScopeType_if);
             DaiAstIfStatement* stmt = (DaiAstIfStatement*)node;
-            DaiCompileError*   err  = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
+            DaiCompileError* err    = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
             if (err != NULL) {
                 return err;
             }
@@ -518,7 +518,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_VarStatement: {
             DaiAstVarStatement* stmt = (DaiAstVarStatement*)node;
-            DaiCompileError*    err  = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+            DaiCompileError* err     = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
             if (err != NULL) {
                 return err;
             }
@@ -557,15 +557,15 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_AssignStatement: {
             DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)node;
-            DaiCompileError*       err  = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+            DaiCompileError* err        = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
             if (err != NULL) {
                 return err;
             }
             switch (stmt->left->type) {
                 case DaiAstType_Identifier: {
                     DaiAstIdentifier* ident = (DaiAstIdentifier*)stmt->left;
-                    DaiSymbol         symbol;
-                    bool              found =
+                    DaiSymbol symbol;
+                    bool found =
                         DaiSymbolTable_resolve(compiler->symbolTable, ident->value, &symbol);
                     if (!found || !symbol.defined) {
                         return DaiCompileError_Newf(compiler->filename,
@@ -611,7 +611,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 case DaiAstType_SelfExpression: {
                     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)stmt->left;
-                    DaiObjString*         name =
+                    DaiObjString* name =
                         dai_copy_string(compiler->vm, expr->name->value, strlen(expr->name->value));
                     int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
                     DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
@@ -695,8 +695,8 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                             "symbol '%s' already defined",
                                             stmt->name);
             }
-            DaiObjString* name  = dai_copy_string(compiler->vm, stmt->name, strlen(stmt->name));
-            int           index = DaiCompiler_addConstant(compiler, OBJ_VAL(name));
+            DaiObjString* name = dai_copy_string(compiler->vm, stmt->name, strlen(stmt->name));
+            int index          = DaiCompiler_addConstant(compiler, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpClass, index, stmt->start_line);
             if (stmt->parent != NULL) {
                 DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->parent);
@@ -791,7 +791,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_ClassVarStatement: {
             DaiAstClassVarStatement* stmt = (DaiAstClassVarStatement*)node;
-            DaiCompileError*         err  = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+            DaiCompileError* err          = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
             if (err != NULL) {
                 return err;
             }
@@ -812,12 +812,12 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         case DaiAstType_ClassMethodStatement: {
             IntArray_push(&compiler->scope_stack, ScopeType_method);
             DaiAstClassMethodStatement* stmt = (DaiAstClassMethodStatement*)node;
-            DaiCompileError*            err  = DaiCompiler_compileFunction(compiler, node);
+            DaiCompileError* err             = DaiCompiler_compileFunction(compiler, node);
             if (err != NULL) {
                 return err;
             }
-            DaiObjString* name  = dai_copy_string(compiler->vm, stmt->name, strlen(stmt->name));
-            int           index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+            DaiObjString* name = dai_copy_string(compiler->vm, stmt->name, strlen(stmt->name));
+            int index          = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpDefineClassMethod, index, stmt->start_line);
             IntArray_pop(&compiler->scope_stack);
             break;
@@ -826,9 +826,9 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             IntArray_push(&compiler->scope_stack, ScopeType_while);
             IntArray_enter(&compiler->break_array);
             IntArray_enter(&compiler->continue_array);
-            int                   while_start = compiler->function->chunk.count;
-            DaiAstWhileStatement* stmt        = (DaiAstWhileStatement*)node;
-            DaiCompileError*      err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
+            int while_start            = compiler->function->chunk.count;
+            DaiAstWhileStatement* stmt = (DaiAstWhileStatement*)node;
+            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
             if (err != NULL) {
                 return err;
             }
@@ -931,7 +931,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_DotExpression: {
             DaiAstDotExpression* expr = (DaiAstDotExpression*)node;
-            DaiCompileError*     err  = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+            DaiCompileError* err      = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
             if (err != NULL) {
                 return err;
             }
@@ -998,7 +998,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_PrefixExpression: {
             DaiAstPrefixExpression* expr = (DaiAstPrefixExpression*)node;
-            DaiCompileError*        err  = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+            DaiCompileError* err         = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
             if (err != NULL) {
                 return err;
             }
@@ -1039,7 +1039,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_Identifier: {
             DaiAstIdentifier* id = (DaiAstIdentifier*)node;
-            DaiSymbol         symbol;
+            DaiSymbol symbol;
             bool found = DaiSymbolTable_resolve(compiler->symbolTable, id->value, &symbol);
             // 全局变量可能是预定义状态
             if (!found || (compiler->type == FunctionType_script && !symbol.defined)) {
@@ -1059,8 +1059,8 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             return DaiCompiler_compileFunction(compiler, node);
         }
         case DaiAstType_IntegerLiteral: {
-            DaiAstIntegerLiteral* lit     = (DaiAstIntegerLiteral*)node;
-            DaiValue              integer = INTEGER_VAL(lit->value);
+            DaiAstIntegerLiteral* lit = (DaiAstIntegerLiteral*)node;
+            DaiValue integer          = INTEGER_VAL(lit->value);
             DaiCompiler_emit2(compiler,
                               DaiOpConstant,
                               DaiCompiler_addConstant(compiler, integer),

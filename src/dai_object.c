@@ -85,8 +85,8 @@ DaiObjInstance_init(DaiValue receiver, int argc, DaiValue* argv) {
         DaiTable_set(&instance->fields, name, argv[i]);
     }
     for (int i = argc; i < field_names->count; i++) {
-        DaiObjString* name  = AS_STRING(field_names->values[i]);
-        DaiValue      value = UNDEFINED_VAL;
+        DaiObjString* name = AS_STRING(field_names->values[i]);
+        DaiValue value     = UNDEFINED_VAL;
         DaiTable_get(&instance->klass->fields, name, &value);
         if (IS_UNDEFINED(value)) {
             dai_error(
@@ -120,7 +120,7 @@ static DaiValue
 DaiObjInstance_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     assert(IS_OBJ(receiver));
     DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiValue        value;
+    DaiValue value;
     if (DaiTable_get(&instance->fields, name, &value)) {
         return value;
     }
@@ -165,7 +165,7 @@ static DaiValue
 DaiObjClass_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     assert(IS_OBJ(receiver));
     DaiObjClass* klass = AS_CLASS(receiver);
-    DaiValue     value;
+    DaiValue value;
     if (DaiTable_get(&klass->class_fields, name, &value)) {
         return value;
     }
@@ -269,7 +269,7 @@ hash_string(const char* key, int length) {
 }
 DaiObjString*
 dai_take_string(DaiVM* vm, char* chars, int length) {
-    uint32_t      hash     = hash_string(chars, length);
+    uint32_t hash          = hash_string(chars, length);
     DaiObjString* interned = DaiTable_findString(&vm->strings, chars, length, hash);
     if (interned != NULL) {
         FREE_ARRAY(char, chars, length + 1);
@@ -280,7 +280,7 @@ dai_take_string(DaiVM* vm, char* chars, int length) {
 }
 DaiObjString*
 dai_copy_string(DaiVM* vm, const char* chars, int length) {
-    uint32_t      hash     = hash_string(chars, length);
+    uint32_t hash          = hash_string(chars, length);
     DaiObjString* interned = DaiTable_findString(&vm->strings, chars, length, hash);
     if (interned != NULL) return interned;
 

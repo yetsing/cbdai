@@ -9,7 +9,7 @@ static char*
 DaiAstDotExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_DotExpression);
     DaiAstDotExpression* expr = (DaiAstDotExpression*)base;
-    DaiStringBuffer*     sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb       = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_DotExpression,\n");
@@ -56,7 +56,7 @@ static char*
 DaiAstDotExpression_literal(DaiAstExpression* base) {
     assert(base->type == DaiAstType_DotExpression);
     DaiAstDotExpression* expr = (DaiAstDotExpression*)base;
-    DaiStringBuffer*     sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb       = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "(");
     {
         char* s = expr->left->literal_fn((DaiAstExpression*)expr->left);

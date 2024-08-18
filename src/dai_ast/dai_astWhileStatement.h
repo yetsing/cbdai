@@ -7,7 +7,7 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    DaiAstExpression*     condition;
+    DaiAstExpression* condition;
     DaiAstBlockStatement* body;
 } DaiAstWhileStatement;
 

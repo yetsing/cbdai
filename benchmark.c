@@ -21,7 +21,7 @@ main(int argc, char** argv) {
     TimeRecord start_time, end_time;
     pin_time_record(&start_time);
     {
-        DaiError*    err = NULL;
+        DaiError* err = NULL;
         DaiTokenList tlist;
         DaiTokenList_init(&tlist);
         DaiAstProgram program;

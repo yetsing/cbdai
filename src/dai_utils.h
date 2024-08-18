@@ -10,7 +10,7 @@
 #include <time.h>
 
 typedef struct {
-    struct rusage   usage;
+    struct rusage usage;
     struct timespec tv;
 } TimeRecord;
 

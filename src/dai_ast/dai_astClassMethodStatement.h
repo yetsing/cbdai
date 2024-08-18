@@ -8,9 +8,9 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    char*                 name;
-    size_t                parameters_count;
-    DaiAstIdentifier**    parameters;
+    char* name;
+    size_t parameters_count;
+    DaiAstIdentifier** parameters;
     DaiAstBlockStatement* body;
 } DaiAstClassMethodStatement;
 

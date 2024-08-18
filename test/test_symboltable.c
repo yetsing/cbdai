@@ -6,10 +6,10 @@
 
 static MunitResult
 test_define(__attribute__((unused)) const MunitParameter params[],
-            __attribute__((unused)) void*                user_data) {
+            __attribute__((unused)) void* user_data) {
     struct {
         const char* name;
-        DaiSymbol   symbol;
+        DaiSymbol symbol;
     } tests[] = {
         {
             "a",
@@ -98,7 +98,7 @@ test_define(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_resolve_global(__attribute__((unused)) const MunitParameter params[],
-                    __attribute__((unused)) void*                user_data) {
+                    __attribute__((unused)) void* user_data) {
     DaiSymbolTable* table = DaiSymbolTable_New();
     DaiSymbolTable_define(table, "a");
     DaiSymbolTable_define(table, "b");
@@ -118,7 +118,7 @@ test_resolve_global(__attribute__((unused)) const MunitParameter params[],
 
     for (int i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
         DaiSymbol got;
-        bool      found = DaiSymbolTable_resolve(table, expected[i].name, &got);
+        bool found = DaiSymbolTable_resolve(table, expected[i].name, &got);
         munit_assert_true(found);
         munit_assert_string_equal(got.name, expected[i].name);
         munit_assert_int(got.depth, ==, expected[i].depth);
@@ -131,7 +131,7 @@ test_resolve_global(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_resolve_local(__attribute__((unused)) const MunitParameter params[],
-                   __attribute__((unused)) void*                user_data) {
+                   __attribute__((unused)) void* user_data) {
     DaiSymbolTable* global = DaiSymbolTable_New();
     DaiSymbolTable_define(global, "a");
     DaiSymbolTable_define(global, "b");
@@ -177,7 +177,7 @@ test_resolve_local(__attribute__((unused)) const MunitParameter params[],
 
     for (int i = 0; i < sizeof(expected) / sizeof(expected[0]); i++) {
         DaiSymbol got;
-        bool      found = DaiSymbolTable_resolve(secondLocal, expected[i].name, &got);
+        bool found = DaiSymbolTable_resolve(secondLocal, expected[i].name, &got);
         munit_assert_true(found);
         munit_assert_string_equal(got.name, expected[i].name);
         munit_assert_int(got.depth, ==, expected[i].depth);

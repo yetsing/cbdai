@@ -12,7 +12,7 @@
 static void
 interpret(DaiVM* vm, const char* input) {
     const char* filename = "<test>";
-    DaiError*   err;
+    DaiError* err;
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
     err                 = dai_tokenize_string(input, tlist);
@@ -48,7 +48,7 @@ interpret(DaiVM* vm, const char* input) {
 
 typedef struct {
     const char* input;
-    DaiValue    expected;
+    DaiValue expected;
 } DaiVMTestCase;
 
 void
@@ -100,7 +100,7 @@ run_vm_tests(DaiVMTestCase* tests, size_t count) {
 
 static MunitResult
 test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
-                        __attribute__((unused)) void*                user_data) {
+                        __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {{"1;", INTEGER_VAL(1)},
                              {"2;", INTEGER_VAL(2)},
                              {"1 + 2;", INTEGER_VAL(3)},
@@ -124,7 +124,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
-                         __attribute__((unused)) void*                user_data) {
+                         __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {"true;", dai_true},
         {"false;", dai_false},
@@ -156,7 +156,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_conditionals(__attribute__((unused)) const MunitParameter params[],
-                  __attribute__((unused)) void*                user_data) {
+                  __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {"if (true) { 10; };", INTEGER_VAL(10)},
         {"if (true) { 10; } else { 20 ;};", INTEGER_VAL(10)},
@@ -361,7 +361,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_while_statements(__attribute__((unused)) const MunitParameter params[],
-                      __attribute__((unused)) void*                user_data) {
+                      __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {"var a = 1; while (a < 10) { a = a + 1; }; a;", INTEGER_VAL(10)},
         {"var a = 1; while (a < 10) { if (a < 5) { break; }; a = a + 1; }; a;", INTEGER_VAL(1)},
@@ -407,7 +407,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_global_var_statements(__attribute__((unused)) const MunitParameter params[],
-                           __attribute__((unused)) void*                user_data) {
+                           __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {"var one = 1; one;", INTEGER_VAL(1)},
         {"var one = 1; one = 2; one;", INTEGER_VAL(2)},
@@ -419,7 +419,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
 }
 static MunitResult
 test_string_expressions(__attribute__((unused)) const MunitParameter params[],
-                        __attribute__((unused)) void*                user_data) {
+                        __attribute__((unused)) void* user_data) {
     DaiObjString monkey =
         (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
     DaiObjString monkeybanana =
@@ -444,7 +444,7 @@ test_string_expressions(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_calling_functions_without_arguments(__attribute__((unused)) const MunitParameter params[],
-                                         __attribute__((unused)) void*                user_data) {
+                                         __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {
             "var fivePlusTen = fn() {return 5 + 10; };\n fivePlusTen();",
@@ -490,7 +490,7 @@ test_calling_functions_without_return_value(__attribute__((unused)) const MunitP
 }
 static MunitResult
 test_calling_functions_with_bindings(__attribute__((unused)) const MunitParameter params[],
-                                     __attribute__((unused)) void*                user_data) {
+                                     __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {
             "var one = fn() {var one = 1; return one;};\n one();",
@@ -546,7 +546,7 @@ test_calling_functions_with_bindings(__attribute__((unused)) const MunitParamete
 }
 static MunitResult
 test_calling_functions_with_arguments_and_bindings(__attribute__((unused))
-                                                   const MunitParameter          params[],
+                                                   const MunitParameter params[],
                                                    __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {
@@ -582,7 +582,7 @@ test_calling_functions_with_arguments_and_bindings(__attribute__((unused))
 
 static MunitResult
 test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
-                       __attribute__((unused)) void*                user_data) {
+                       __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {"len(\"\");", INTEGER_VAL(0)},
         {"len(\"four\");", INTEGER_VAL(4)},
@@ -595,7 +595,7 @@ test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_closures(__attribute__((unused)) const MunitParameter params[],
-              __attribute__((unused)) void*                user_data) {
+              __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {
             "var newClosure = fn(a) {\n"
@@ -664,7 +664,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_class_instance(__attribute__((unused)) const MunitParameter params[],
-                    __attribute__((unused)) void*                user_data) {
+                    __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {
             "class Foo {\n"
@@ -950,7 +950,7 @@ test_class_instance(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_fibonacci(__attribute__((unused)) const MunitParameter params[],
-               __attribute__((unused)) void*                user_data) {
+               __attribute__((unused)) void* user_data) {
     DaiVMTestCase tests[] = {
         {
             "var fib = fn(n) {if (n < 2) { return n; }; return fib(n - 1) + fib(n - 2);};\n"

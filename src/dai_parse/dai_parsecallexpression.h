@@ -12,7 +12,7 @@ Parser_FreeCallArguments(DaiAstExpression** args, size_t arg_count) {
 // 返回 NULL 表示解析失败
 static DaiAstExpression**
 Parser_parseCallArguments(Parser* p, size_t* arg_count) {
-    size_t             arg_size = 4;
+    size_t arg_size         = 4;
     DaiAstExpression** args = (DaiAstExpression**)dai_malloc(sizeof(DaiAstExpression*) * arg_size);
     *arg_count              = 0;
 

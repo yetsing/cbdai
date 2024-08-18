@@ -9,7 +9,7 @@ static char*
 DaiAstClassStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_ClassStatement);
     DaiAstClassStatement* klass = (DaiAstClassStatement*)base;
-    DaiStringBuffer*      sb    = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     DaiStringBuffer_write(sb, KEY_COLOR("type") ": " TYPE_COLOR("DaiAstType_ClassStatement") ",\n");

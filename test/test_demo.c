@@ -2,7 +2,7 @@
 
 static MunitResult
 test_demo(__attribute__((unused)) const MunitParameter params[],
-          __attribute__((unused)) void*                user_data) {
+          __attribute__((unused)) void* user_data) {
     return MUNIT_OK;
 }
 

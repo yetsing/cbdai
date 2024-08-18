@@ -10,7 +10,7 @@
 typedef struct _DaiStringBuffer {
     size_t size;
     size_t length;
-    char*  data;
+    char* data;
 } DaiStringBuffer;
 
 DaiStringBuffer*
@@ -31,7 +31,7 @@ DaiStringBuffer_write(DaiStringBuffer* sb, const char* str) {
 void
 DaiStringBuffer_writef(DaiStringBuffer* sb, const char* fmt, ...) {
     va_list arg;
-    size_t  len;
+    size_t len;
 
     va_start(arg, fmt);
     len = vsnprintf(NULL, 0, fmt, arg);
@@ -71,9 +71,9 @@ void
 DaiStringBuffer_writeWithLinePrefix(DaiStringBuffer* sb, char* str, const char* prefix) {
     // 如果 str 以换行符结尾，需要添加换行符
     // 比如 "hello/n" 经过 strtok 之后会变成 "hello"
-    size_t length          = strlen(str);
-    bool   endsWithNewLine = str[length - 1] == '\n';
-    char*  ptr             = strtok(str, "\n");
+    size_t length        = strlen(str);
+    bool endsWithNewLine = str[length - 1] == '\n';
+    char* ptr            = strtok(str, "\n");
     while (ptr != NULL) {
         DaiStringBuffer_write(sb, prefix);
         DaiStringBuffer_write(sb, ptr);
@@ -90,21 +90,21 @@ DaiStringBuffer_writeWithLinePrefix(DaiStringBuffer* sb, char* str, const char* 
 void
 DaiStringBuffer_writeInt(DaiStringBuffer* sb, int n) {
     char buffer[32];
-    int  len = snprintf(buffer, 32, "%d", n);
+    int len = snprintf(buffer, 32, "%d", n);
     DaiStringBuffer_writen(sb, buffer, len);
 }
 
 void
 DaiStringBuffer_writeInt64(DaiStringBuffer* sb, int64_t n) {
     char buffer[32];
-    int  len = snprintf(buffer, 32, "%" PRId64, n);
+    int len = snprintf(buffer, 32, "%" PRId64, n);
     DaiStringBuffer_writen(sb, buffer, len);
 }
 
 void
 DaiStringBuffer_writePointer(DaiStringBuffer* sb, void* ptr) {
     char buffer[32];
-    int  len = snprintf(buffer, 32, "%p", ptr);
+    int len = snprintf(buffer, 32, "%p", ptr);
     DaiStringBuffer_writen(sb, buffer, len);
 }
 

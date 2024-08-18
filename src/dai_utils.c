@@ -24,7 +24,7 @@ print_used_time(TimeRecord* start, TimeRecord* end) {
     // 计算 sys time
     timersub(&end->usage.ru_stime, &start->usage.ru_stime, &sys_tv);
 
-    const char*   unit;
+    const char* unit;
     unsigned long wall_ts = 0;
     unsigned long sys_ts  = 0;
     unsigned long user_ts = 0;

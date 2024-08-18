@@ -9,7 +9,7 @@ static char*
 DaiAstCallExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_CallExpression);
     DaiAstCallExpression* call = (DaiAstCallExpression*)base;
-    DaiStringBuffer*      sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb        = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_CallExpression,\n");
@@ -68,7 +68,7 @@ static char*
 DaiAstCallExpression_literal(DaiAstExpression* base) {
     assert(base->type == DaiAstType_CallExpression);
     DaiAstCallExpression* call = (DaiAstCallExpression*)base;
-    DaiStringBuffer*      sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb        = DaiStringBuffer_New();
     {
         char* s = call->function->literal_fn(call->function);
         DaiStringBuffer_write(sb, s);

@@ -90,7 +90,7 @@ dai_utf8_decode(const char* str, dai_rune_t* rune) {
 
 size_t
 dai_utf8_strlen(const char* s) {
-    size_t     len  = 0;
+    size_t len      = 0;
     dai_rune_t rune = 0;
     while (*s) {
         int count_of_bytes = dai_utf8_decode(s, &rune);

@@ -12,7 +12,7 @@
 
 typedef struct {
     DAI_AST_EXPRESSION_HEAD
-    char*   literal;
+    char* literal;
     int64_t value;
 } DaiAstIntegerLiteral;
 

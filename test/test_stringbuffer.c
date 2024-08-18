@@ -5,7 +5,7 @@
 
 static MunitResult
 test_stringbuffer(__attribute__((unused)) const MunitParameter params[],
-                  __attribute__((unused)) void*                user_data) {
+                  __attribute__((unused)) void* user_data) {
     DaiStringBuffer* sb = DaiStringBuffer_New();
     munit_assert_int(DaiStringBuffer_length(sb), ==, 0);
 
@@ -52,9 +52,9 @@ test_stringbuffer(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_stringbuffer_line_prefix(__attribute__((unused)) const MunitParameter params[],
-                              __attribute__((unused)) void*                user_data) {
-    char             buf[1024];
-    size_t           length;
+                              __attribute__((unused)) void* user_data) {
+    char buf[1024];
+    size_t length;
     DaiStringBuffer* sb = DaiStringBuffer_New();
     munit_assert_int(DaiStringBuffer_length(sb), ==, 0);
     DaiStringBuffer_writeWithLinePrefix(sb, "hello", ">>");

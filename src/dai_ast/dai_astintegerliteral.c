@@ -13,7 +13,7 @@ static char*
 DaiAstIntegerLiteral_string(DaiAstBase* base, __attribute__((unused)) bool recursive) {
     assert(base->type == DaiAstType_IntegerLiteral);
     DaiAstIntegerLiteral* num = (DaiAstIntegerLiteral*)base;
-    DaiStringBuffer*      sb  = DaiStringBuffer_New();
+    DaiStringBuffer* sb       = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_IntegerLiteral,\n");

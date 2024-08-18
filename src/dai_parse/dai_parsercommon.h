@@ -66,7 +66,7 @@ typedef struct _Parser {
 
     // DaiTokenType 对应前缀、中缀解析函数
     prefixParseFn prefix_parse_fns[DaiTokenType_end];
-    infixParseFn  infix_parse_fns[DaiTokenType_end];
+    infixParseFn infix_parse_fns[DaiTokenType_end];
 
     // syntax error 需要返回给调用方，所以不应该由 parser 释放其内存
     DaiSyntaxError* syntax_error;

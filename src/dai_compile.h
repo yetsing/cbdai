@@ -11,7 +11,7 @@
 
 typedef struct {
     DaiObjFunction* function;
-    DaiValueArray*  constants;
+    DaiValueArray* constants;
 } DaiCompileResult;
 
 // NOTE: 函数内会释放 program 的内存

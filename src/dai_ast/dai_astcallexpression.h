@@ -7,8 +7,8 @@
 
 typedef struct {
     DAI_AST_EXPRESSION_HEAD
-    DaiAstExpression*  function;
-    size_t             arguments_count;
+    DaiAstExpression* function;
+    size_t arguments_count;
     DaiAstExpression** arguments;
 } DaiAstCallExpression;
 

@@ -9,7 +9,7 @@ static char*
 DaiAstIfStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_IfStatement);
     DaiAstIfStatement* ifstatement = (DaiAstIfStatement*)base;
-    DaiStringBuffer*   sb          = DaiStringBuffer_New();
+    DaiStringBuffer* sb            = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_IfStatement,\n");

@@ -47,10 +47,10 @@ atstr_split_next(atstr_t* atstr) {
         }
     }
     if (s != atstr->start) {
-        int     length = s - atstr->start;
-        atstr_t res    = (atstr_t){
-               .start  = atstr->start,
-               .length = length,
+        int length  = s - atstr->start;
+        atstr_t res = (atstr_t){
+            .start  = atstr->start,
+            .length = length,
         };
         atstr->start += length + 1;
         atstr->length -= length + 1;
@@ -75,10 +75,10 @@ atstr_splitc_next(atstr_t* atstr, char delimiter) {
         }
     }
     if (s != atstr->start) {
-        int     length = s - atstr->start;
-        atstr_t res    = (atstr_t){
-               .start  = atstr->start,
-               .length = length,
+        int length  = s - atstr->start;
+        atstr_t res = (atstr_t){
+            .start  = atstr->start,
+            .length = length,
         };
         atstr->start += length + 1;
         atstr->length -= length + 1;

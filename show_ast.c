@@ -21,8 +21,8 @@ string_from_file(const char* filename) {
 
 static void
 parse_helper(const char* input, DaiAstProgram* program) {
-    DaiTokenList*   tlist = DaiTokenList_New();
-    DaiSyntaxError* err   = dai_tokenize_string(input, tlist);
+    DaiTokenList* tlist = DaiTokenList_New();
+    DaiSyntaxError* err = dai_tokenize_string(input, tlist);
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, "<stdin>");
         DaiSyntaxError_pprint(err, input);
@@ -39,8 +39,8 @@ parse_helper(const char* input, DaiAstProgram* program) {
 
 int
 main(int argc, const char* argv[]) {
-    const char*   filename = argv[1];
-    char*         input    = string_from_file(filename);
+    const char* filename = argv[1];
+    char* input          = string_from_file(filename);
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;

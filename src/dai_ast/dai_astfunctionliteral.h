@@ -8,8 +8,8 @@
 
 typedef struct {
     DAI_AST_EXPRESSION_HEAD
-    size_t                parameters_count;
-    DaiAstIdentifier**    parameters;
+    size_t parameters_count;
+    DaiAstIdentifier** parameters;
     DaiAstBlockStatement* body;
 } DaiAstFunctionLiteral;
 

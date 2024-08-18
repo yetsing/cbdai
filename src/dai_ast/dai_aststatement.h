@@ -3,14 +3,14 @@
 
 #include "dai_ast/dai_astbase.h"
 
-#define DAI_AST_STATEMENT_HEAD   \
-    DaiAstType     type;         \
-    DaiAstStringFn string_fn;    \
-    DaiAstFreeFn   free_fn;      \
-    int            start_line;   \
-    int            start_column; \
-    int            end_line;     \
-    int            end_column;
+#define DAI_AST_STATEMENT_HEAD \
+    DaiAstType type;           \
+    DaiAstStringFn string_fn;  \
+    DaiAstFreeFn free_fn;      \
+    int start_line;            \
+    int start_column;          \
+    int end_line;              \
+    int end_column;
 
 typedef struct _DaiAstStatement {
     DAI_AST_STATEMENT_HEAD

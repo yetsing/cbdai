@@ -9,7 +9,7 @@ static char*
 DaiAstSuperExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_SuperExpression);
     DaiAstSuperExpression* expr = (DaiAstSuperExpression*)base;
-    DaiStringBuffer*       sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_SuperExpression,\n");
@@ -44,7 +44,7 @@ static char*
 DaiAstSuperExpression_literal(DaiAstExpression* base) {
     assert(base->type == DaiAstType_SuperExpression);
     DaiAstSuperExpression* expr = (DaiAstSuperExpression*)base;
-    DaiStringBuffer*       sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "(");
     DaiStringBuffer_writen(sb, "super", 5);
     if (expr->name != NULL) {

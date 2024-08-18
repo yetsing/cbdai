@@ -4,11 +4,11 @@
 
 static MunitResult
 test_utf8_decode(__attribute__((unused)) const MunitParameter params[],
-                 __attribute__((unused)) void*                user_data) {
+                 __attribute__((unused)) void* user_data) {
     struct {
         const char* input;
-        dai_rune_t  expected;
-        int         expected_len;
+        dai_rune_t expected;
+        int expected_len;
     } tests[] = {
         {"a", 97, 1},
         {"α", 945, 2},
@@ -39,7 +39,7 @@ test_utf8_decode(__attribute__((unused)) const MunitParameter params[],
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         dai_rune_t rune = 0;
-        int        len  = dai_utf8_decode(tests[i].input, &rune);
+        int len         = dai_utf8_decode(tests[i].input, &rune);
         munit_assert_int(len, ==, tests[i].expected_len);
         if (len != -1) {
             munit_assert_uint32(rune, ==, tests[i].expected);

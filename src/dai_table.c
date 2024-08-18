@@ -23,8 +23,8 @@ DaiTable_reset(DaiTable* table) {
 // If you change it here, make sure to update that copy.
 static Entry*
 find_entry(Entry* entries, int capacity, DaiObjString* key) {
-    uint32_t index     = key->hash % capacity;
-    Entry*   tombstone = NULL;
+    uint32_t index   = key->hash % capacity;
+    Entry* tombstone = NULL;
 
     for (;;) {
         Entry* entry = &entries[index];
@@ -93,8 +93,8 @@ DaiTable_set(DaiTable* table, DaiObjString* key, DaiValue value) {
         adjust_capacity(table, capacity);
     }
 
-    Entry* entry    = find_entry(table->entries, table->capacity, key);
-    bool   isNewKey = entry->key == NULL;
+    Entry* entry  = find_entry(table->entries, table->capacity, key);
+    bool isNewKey = entry->key == NULL;
     if (isNewKey && IS_NIL(entry->value)) table->count++;
 
     entry->key   = key;

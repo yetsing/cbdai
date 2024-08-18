@@ -145,14 +145,14 @@ DaiTokenList_free(DaiTokenList* list) {
 // #region Tokenizer 分词器，进行词法分析
 typedef struct {
     const char* s;
-    size_t      slength;
-    dai_rune_t  ch;              // 当前字符
-    size_t      position;        // 指向当前字符
-    size_t      read_position;   // 指向下一个字符
+    size_t slength;
+    dai_rune_t ch;          // 当前字符
+    size_t position;        // 指向当前字符
+    size_t read_position;   // 指向下一个字符
 
     size_t mark_position;
-    int    mark_line;
-    int    mark_column;
+    int mark_line;
+    int mark_column;
 
     int line;
     int column;
@@ -160,8 +160,8 @@ typedef struct {
     bool has_error_msg;
     char error_msg[128];
 
-    size_t    tokens_offset;
-    size_t    tokens_size;
+    size_t tokens_offset;
+    size_t tokens_size;
     DaiToken* tokens;
 } Tokenizer;
 
@@ -463,8 +463,8 @@ Tokenizer_nextToken(Tokenizer* tker) {
 static DaiSyntaxError*
 Tokenizer_run(Tokenizer* tker, DaiTokenList* tlist) {
     while (true) {
-        size_t    prev_position = tker->position;
-        DaiToken* tok           = Tokenizer_nextToken(tker);
+        size_t prev_position = tker->position;
+        DaiToken* tok        = Tokenizer_nextToken(tker);
         switch (tok->type) {
             case DaiTokenType_illegal: {
                 if (!tker->has_error_msg) {
@@ -500,8 +500,8 @@ Tokenizer_run(Tokenizer* tker, DaiTokenList* tlist) {
 
 DaiSyntaxError*
 dai_tokenize_string(const char* s, DaiTokenList* tlist) {
-    Tokenizer*      tker = Tokenizer_New(s);
-    DaiSyntaxError* err  = Tokenizer_run(tker, tlist);
+    Tokenizer* tker     = Tokenizer_New(s);
+    DaiSyntaxError* err = Tokenizer_run(tker, tlist);
     Tokenizer_free(tker);
     return err;
 }

@@ -11,8 +11,8 @@
 static char*
 DaiAstProgram_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_program);
-    DaiAstProgram*   prog = (DaiAstProgram*)base;
-    DaiStringBuffer* sb   = DaiStringBuffer_New();
+    DaiAstProgram* prog = (DaiAstProgram*)base;
+    DaiStringBuffer* sb = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_program,\n");

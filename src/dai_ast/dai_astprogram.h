@@ -12,8 +12,8 @@
 #include "dai_ast/dai_aststatement.h"
 typedef struct {
     DAI_AST_BASE_HEAD
-    size_t            size;
-    size_t            length;
+    size_t size;
+    size_t length;
     DaiAstStatement** statements;
 } DaiAstProgram;
 

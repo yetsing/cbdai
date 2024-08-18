@@ -27,10 +27,10 @@ get_line_at(const char* s, int lineno) {
 
 typedef struct _DaiError {
     const char* name;   // 静态字符串，不用释放
-    char*       msg;
-    char*       filename;
-    int         lineno;
-    int         column;
+    char* msg;
+    char* filename;
+    int lineno;
+    int column;
 } DaiError;
 
 static DaiError*
@@ -126,7 +126,7 @@ DaiRuntimeError_Newf(const char* filename, int lineno, int column, const char* f
 char*
 DaiError_string(DaiError* error) {
     size_t bufsize = strlen(error->msg) + 256;
-    char*  buf     = dai_malloc(bufsize);
+    char* buf      = dai_malloc(bufsize);
     snprintf(buf,
              bufsize,
              "%s: %s in %s:%d:%d",

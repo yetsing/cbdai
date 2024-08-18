@@ -13,14 +13,14 @@
 // #region SymbolMap 结构体及其方法
 #define TABLE_MAX_LOAD 0.75
 typedef struct {
-    char*     key;
-    int       key_length;
+    char* key;
+    int key_length;
     DaiSymbol value;
 } SymbolEntry;
 
 typedef struct {
-    int          count;
-    int          capacity;
+    int count;
+    int capacity;
     SymbolEntry* entries;
 } SymbolMap;
 
@@ -116,9 +116,9 @@ SymbolMap_set(SymbolMap* table, char* key, DaiSymbol value) {
         adjust_capacity(table, capacity);
     }
 
-    int          key_length = strlen(key);
-    SymbolEntry* entry      = find_entry(table->entries, table->capacity, key, key_length);
-    bool         isNewKey   = entry->key == NULL;
+    int key_length     = strlen(key);
+    SymbolEntry* entry = find_entry(table->entries, table->capacity, key, key_length);
+    bool isNewKey      = entry->key == NULL;
     if (isNewKey) {
         table->count++;
     }
@@ -130,8 +130,8 @@ SymbolMap_set(SymbolMap* table, char* key, DaiSymbol value) {
 }
 
 typedef struct {
-    int          offset;
-    int          capacity;
+    int offset;
+    int capacity;
     SymbolEntry* entries;
 } SymbolMapIterator;
 
@@ -159,14 +159,14 @@ SymbolMap_newIterator(SymbolMap* table) {
 // #endregion
 
 typedef struct _DaiSymbolTable {
-    SymbolMap       store;
-    int             num_symbols;
-    int             num_symbols_of_outer;
-    int             depth;   // 0 表示全局，> 0 都是局部
+    SymbolMap store;
+    int num_symbols;
+    int num_symbols_of_outer;
+    int depth;   // 0 表示全局，> 0 都是局部
     DaiSymbolTable* outer;
-    int             function_depth;   // 函数所在层级
+    int function_depth;   // 函数所在层级
 
-    int       num_free;   // 自由变量数
+    int num_free;   // 自由变量数
     DaiSymbol free_symbols[256];
 } DaiSymbolTable;
 
@@ -217,7 +217,7 @@ DaiSymbolTable_free(DaiSymbolTable* table) {
 
 DaiSymbol
 DaiSymbolTable_predefine(DaiSymbolTable* table, const char* name) {
-    char*     cname  = strdup(name);
+    char* cname      = strdup(name);
     DaiSymbol symbol = {
         cname, table->depth, table->num_symbols + table->num_symbols_of_outer, false};
     if (table->depth == 0) {
@@ -234,13 +234,13 @@ DaiSymbolTable_predefine(DaiSymbolTable* table, const char* name) {
 DaiSymbol
 DaiSymbolTable_define(DaiSymbolTable* table, const char* name) {
     DaiSymbol symbol;
-    bool      found = SymbolMap_get(&table->store, name, &symbol);
+    bool found = SymbolMap_get(&table->store, name, &symbol);
     if (found) {
         assert(!symbol.defined);
         symbol.defined = true;
     } else {
         char* cname = strdup(name);
-        int   index = table->num_symbols + table->num_symbols_of_outer;
+        int index   = table->num_symbols + table->num_symbols_of_outer;
         symbol      = (DaiSymbol){cname, table->depth, index, true};
     }
     if (table->depth == 0) {
@@ -256,9 +256,9 @@ DaiSymbolTable_define(DaiSymbolTable* table, const char* name) {
 
 DaiSymbol
 DaiSymbolTable_defineBuiltin(DaiSymbolTable* table, int index, const char* name) {
-    char*     cname    = strdup(name);
-    DaiSymbol symbol   = (DaiSymbol){cname, -1, index, true, DaiSymbolType_builtin};
-    bool      isNewKey = SymbolMap_set(&table->store, symbol.name, symbol);
+    char* cname      = strdup(name);
+    DaiSymbol symbol = (DaiSymbol){cname, -1, index, true, DaiSymbolType_builtin};
+    bool isNewKey    = SymbolMap_set(&table->store, symbol.name, symbol);
     assert(isNewKey);
     return symbol;
 }
@@ -266,9 +266,9 @@ DaiSymbolTable_defineBuiltin(DaiSymbolTable* table, int index, const char* name)
 DaiSymbol
 DaiSymbolTable_defineSelf(DaiSymbolTable* table) {
     assert(table->num_symbols == 0 && table->num_symbols_of_outer == 0);
-    char*     cname    = strdup("self");
-    DaiSymbol symbol   = (DaiSymbol){cname, table->depth, 0, true, DaiSymbolType_self};
-    bool      isNewKey = SymbolMap_set(&table->store, symbol.name, symbol);
+    char* cname      = strdup("self");
+    DaiSymbol symbol = (DaiSymbol){cname, table->depth, 0, true, DaiSymbolType_self};
+    bool isNewKey    = SymbolMap_set(&table->store, symbol.name, symbol);
     assert(isNewKey);
     table->num_symbols++;
     return symbol;
@@ -277,7 +277,7 @@ DaiSymbolTable_defineSelf(DaiSymbolTable* table) {
 DaiSymbol
 DaiSymbolTable_defineFree(DaiSymbolTable* table, DaiSymbol original) {
     table->free_symbols[table->num_free] = original;
-    char*     cname                      = strdup(original.name);
+    char* cname                          = strdup(original.name);
     DaiSymbol symbol =
         (DaiSymbol){cname, original.depth, table->num_free, true, DaiSymbolType_free};
     bool isNewKey = SymbolMap_set(&table->store, symbol.name, symbol);

@@ -10,7 +10,7 @@ static char*
 DaiAstInfixExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_InfixExpression);
     DaiAstInfixExpression* expr = (DaiAstInfixExpression*)base;
-    DaiStringBuffer*       sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_InfixExpression,\n");
@@ -64,7 +64,7 @@ static char*
 DaiAstInfixExpression_literal(DaiAstExpression* base) {
     assert(base->type == DaiAstType_InfixExpression);
     DaiAstInfixExpression* expr = (DaiAstInfixExpression*)base;
-    DaiStringBuffer*       sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "(");
     {
         char* s = expr->left->literal_fn(expr->left);

@@ -7,11 +7,11 @@
 
 static MunitResult
 test_parseint(__attribute__((unused)) const MunitParameter params[],
-              __attribute__((unused)) void*                user_data) {
+              __attribute__((unused)) void* user_data) {
     struct TestCase {
         const char* str;
-        int         base;
-        int64_t     expected;
+        int base;
+        int64_t expected;
         const char* error;
     } test_cases[] = {
         {"0", 10, 0, NULL},

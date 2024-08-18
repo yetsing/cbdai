@@ -9,7 +9,7 @@ static char*
 DaiAstClassMethodStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_ClassMethodStatement);
     DaiAstClassMethodStatement* stmt = (DaiAstClassMethodStatement*)base;
-    DaiStringBuffer*            sb   = DaiStringBuffer_New();
+    DaiStringBuffer* sb              = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_ClassMethodStatement,\n");

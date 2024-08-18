@@ -74,7 +74,7 @@ DaiTokenType_string(DaiTokenType type);
 
 typedef struct {
     DaiTokenType type;
-    char*        literal;
+    char* literal;
     // 从 1 开始的行和列
     int start_line;
     int start_column;
@@ -84,8 +84,8 @@ typedef struct {
 
 // #region DaiTokenList 结构体及其方法，保存词法分析的结果和错误，提供方法读取
 typedef struct _DaiTokenList {
-    size_t    index;
-    size_t    length;
+    size_t index;
+    size_t length;
     DaiToken* tokens;
 } DaiTokenList;
 

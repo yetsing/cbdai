@@ -12,9 +12,9 @@ Parser_FreeFunctionParameters(DaiAstIdentifier** params, size_t param_count) {
 // 返回 NULL 表示解析失败
 static DaiAstIdentifier**
 Parser_parseFunctionParameters(Parser* p, size_t* param_count) {
-    size_t             param_size = 4;
-    DaiAstIdentifier** params     = dai_malloc(sizeof(DaiAstIdentifier*) * param_size);
-    *param_count                  = 0;
+    size_t param_size         = 4;
+    DaiAstIdentifier** params = dai_malloc(sizeof(DaiAstIdentifier*) * param_size);
+    *param_count              = 0;
 
     // 没有参数
     if (Parser_peekTokenIs(p, DaiTokenType_rparen)) {

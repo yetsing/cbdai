@@ -20,9 +20,9 @@ typedef DaiValue (*VMCallback)(DaiVM* vm);
 
 typedef struct {
     DaiObjFunction* function;
-    DaiObjClosure*  closure;
-    uint8_t*        ip;
-    DaiValue*       slots;   // 局部变量存放位置
+    DaiObjClosure* closure;
+    uint8_t* ip;
+    DaiValue* slots;             // 局部变量存放位置
     VMCallback returnCallback;   // 函数 return 时的回调，回调返回的值会作为函数返回值
 } CallFrame;
 
@@ -32,24 +32,24 @@ extern DaiValue dai_false;
 
 typedef struct _DaiVM {
     CallFrame frames[FRAMES_MAX];
-    int       frameCount;
+    int frameCount;
 
     DaiChunk* chunk;
-    uint8_t*  ip;   // 指向下一条指令
-    DaiValue  stack[STACK_MAX];
-    DaiValue* stack_top;        // 指向栈顶的下一个位置
-    DaiTable  strings;          // 字符串驻留
-    size_t    bytesAllocated;   // 虚拟机管理的内存字节数
-    size_t    nextGC;           // 下一次 GC 的阈值
-    DaiObj*   objects;
+    uint8_t* ip;   // 指向下一条指令
+    DaiValue stack[STACK_MAX];
+    DaiValue* stack_top;     // 指向栈顶的下一个位置
+    DaiTable strings;        // 字符串驻留
+    size_t bytesAllocated;   // 虚拟机管理的内存字节数
+    size_t nextGC;           // 下一次 GC 的阈值
+    DaiObj* objects;
 
-    int      grayCount;
-    int      grayCapacity;
+    int grayCount;
+    int grayCapacity;
     DaiObj** grayStack;
 
     // 全局变量和全局符号表
     DaiSymbolTable* globalSymbolTable;
-    DaiValue*       globals;
+    DaiValue* globals;
 
     VMState state;
 

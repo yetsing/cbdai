@@ -7,8 +7,8 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    size_t            size;
-    size_t            length;
+    size_t size;
+    size_t length;
     DaiAstStatement** statements;
 } DaiAstBlockStatement;
 

@@ -37,7 +37,7 @@ dai_underscore_ok(const char* str, size_t len) {
     // _ 表示下划线
     // ! 表示除了上面之外的字符
     char saw = '^';
-    int  i   = 0;
+    int i    = 0;
 
     // 去掉前面的符号
     if (len >= 1 && (str[0] == '+' || str[0] == '-')) {
@@ -151,8 +151,8 @@ dai_parseuint(const char* str, int base, char** error) {
     }
 
     // 解析字符串
-    bool     underscores = false;   // 是否包含下划线 _
-    uint64_t n           = 0;
+    bool underscores = false;   // 是否包含下划线 _
+    uint64_t n       = 0;
     for (; *str != 0; str++) {
         char c = *str;
         if (c == '_') {

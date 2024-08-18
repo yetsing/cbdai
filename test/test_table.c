@@ -33,7 +33,7 @@ free_obj_string(DaiObjString* obj) {
 
 static MunitResult
 test_crud(__attribute__((unused)) const MunitParameter params[],
-          __attribute__((unused)) void*                user_data) {
+          __attribute__((unused)) void* user_data) {
     DaiTable table;
     DaiTable_init(&table);
     DaiObjString* keys[] = {
@@ -49,20 +49,20 @@ test_crud(__attribute__((unused)) const MunitParameter params[],
     };
     size_t count = sizeof(keys) / sizeof(DaiObjString*);
     for (int i = 0; i < count; i++) {
-        DaiObjString* key    = keys[i];
-        bool          newkey = DaiTable_set(&table, key, INTEGER_VAL(i));
+        DaiObjString* key = keys[i];
+        bool newkey       = DaiTable_set(&table, key, INTEGER_VAL(i));
         munit_assert_true(newkey);
         DaiValue got;
-        bool     found = DaiTable_get(&table, key, &got);
+        bool found = DaiTable_get(&table, key, &got);
         munit_assert_true(found);
         munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)));
     }
     for (int i = 0; i < count; i++) {
-        DaiObjString* key    = keys[i];
-        bool          newkey = DaiTable_set(&table, key, INTEGER_VAL(i));
+        DaiObjString* key = keys[i];
+        bool newkey       = DaiTable_set(&table, key, INTEGER_VAL(i));
         munit_assert_false(newkey);
         DaiValue got;
-        bool     found = DaiTable_get(&table, key, &got);
+        bool found = DaiTable_get(&table, key, &got);
         munit_assert_true(found);
         munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)));
     }
@@ -71,15 +71,15 @@ test_crud(__attribute__((unused)) const MunitParameter params[],
         bool deleted = DaiTable_delete(&table, keys[i]);
         munit_assert_true(deleted);
         DaiValue got;
-        bool     found = DaiTable_get(&table, keys[i], &got);
+        bool found = DaiTable_get(&table, keys[i], &got);
         munit_assert_false(found);
     }
     for (int i = 0; i < count; i++) {
-        DaiObjString* key    = keys[i];
-        bool          newkey = DaiTable_set(&table, key, INTEGER_VAL(i));
+        DaiObjString* key = keys[i];
+        bool newkey       = DaiTable_set(&table, key, INTEGER_VAL(i));
         munit_assert_true(newkey);
         DaiValue got;
-        bool     found = DaiTable_get(&table, key, &got);
+        bool found = DaiTable_get(&table, key, &got);
         munit_assert_true(found);
         munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)));
     }

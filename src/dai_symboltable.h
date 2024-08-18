@@ -16,8 +16,8 @@ typedef enum {
 
 typedef struct {
     char* name;
-    int   depth;   // -1 表示内置，0 表示全局，> 0 都是局部
-    int   index;
+    int depth;   // -1 表示内置，0 表示全局，> 0 都是局部
+    int index;
     bool defined;   // 是否已经定义，用于全局变量，全局变量会先预定义一波，以备后续解析
     DaiSymbolType type;
 } DaiSymbol;

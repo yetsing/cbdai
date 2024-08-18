@@ -14,7 +14,7 @@ Parser_parseInteger(Parser* p) {
               "not an integer: %s",
               DaiTokenType_string(p->cur_token->type));
     // 解析字符串为整数
-    int   base    = 10;
+    int base      = 10;
     char* literal = p->cur_token->literal;
     if (strlen(literal) >= 3 && literal[0] == '0') {
         switch (literal[1]) {
@@ -26,8 +26,8 @@ Parser_parseInteger(Parser* p) {
             case 'B': base = 2; break;
         }
     }
-    char*   error = NULL;
-    int64_t n     = dai_parseint(literal, base, &error);
+    char* error = NULL;
+    int64_t n   = dai_parseint(literal, base, &error);
     if (error != NULL) {
         char buf[256];
         snprintf(buf, sizeof(buf), "%s \"%s\"", error, p->cur_token->literal);

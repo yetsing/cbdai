@@ -5,17 +5,17 @@
 #include "dai_ast/dai_astexpression.h"
 
 typedef struct {
-    DaiAstExpression*     condition;
+    DaiAstExpression* condition;
     DaiAstBlockStatement* then_branch;
 } DaiBranch;
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
-    DaiAstExpression*     condition;
+    DaiAstExpression* condition;
     DaiAstBlockStatement* then_branch;
-    int                   elif_branch_capacity;
-    int                   elif_branch_count;
-    DaiBranch*            elif_branches;
+    int elif_branch_capacity;
+    int elif_branch_count;
+    DaiBranch* elif_branches;
     DaiAstBlockStatement* else_branch;
 } DaiAstIfStatement;
 

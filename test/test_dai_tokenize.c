@@ -18,7 +18,7 @@
 static DaiTokenList*
 dai_tokenize_file(const char* filename) {
     DaiTokenList* list = DaiTokenList_New();
-    char*         s    = dai_string_from_file(filename);
+    char* s            = dai_string_from_file(filename);
     munit_assert_not_null(s);
     DaiSyntaxError* err = dai_tokenize_string(s, list);
     if (err) {
@@ -34,7 +34,7 @@ dai_tokenize_file(const char* filename) {
 
 static MunitResult
 test_next_token(__attribute__((unused)) const MunitParameter params[],
-                __attribute__((unused)) void*                user_data) {
+                __attribute__((unused)) void* user_data) {
     const char* input = "=+(){},;\n"
                         "var five = 5;\n"
                         "var ten = 10;\n"
@@ -261,8 +261,8 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
     }
     munit_assert_null(err);
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
-        DaiToken  expect = tests[i];
-        DaiToken* tok    = DaiTokenList_next(&list);
+        DaiToken expect = tests[i];
+        DaiToken* tok   = DaiTokenList_next(&list);
         munit_assert_int(expect.type, ==, tok->type);
         munit_assert_string_equal(expect.literal, tok->literal);
         munit_assert_int(expect.start_line, ==, tok->start_line);
@@ -283,14 +283,14 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
-                   __attribute__((unused)) void*                user_data) {
+                   __attribute__((unused)) void* user_data) {
     const char* filename = "test_tokenize_file.dai";
     unlink(filename);
     FILE* fp = fopen(filename, "w");
     munit_assert_not_null(fp);
 
     const char* input = "\nvar _Fiv = 5;=\t\r";
-    size_t      wn    = fwrite(input, strlen(input), 1, fp);
+    size_t wn         = fwrite(input, strlen(input), 1, fp);
     munit_assert_size(1, ==, wn);
     fclose(fp);
     DaiToken tests[] = {
@@ -305,8 +305,8 @@ test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
     DaiTokenList* list = dai_tokenize_file(filename);
     munit_assert_size(sizeof(tests) / sizeof(tests[0]), ==, DaiTokenList_length(list));
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
-        DaiToken  expect = tests[i];
-        DaiToken* tok    = DaiTokenList_next(list);
+        DaiToken expect = tests[i];
+        DaiToken* tok   = DaiTokenList_next(list);
         munit_assert_int(expect.type, ==, tok->type);
         munit_assert_string_equal(expect.literal, tok->literal);
         munit_assert_int(expect.start_line, ==, tok->start_line);
@@ -322,7 +322,7 @@ test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_illegal_token(__attribute__((unused)) const MunitParameter params[],
-                   __attribute__((unused)) void*                user_data) {
+                   __attribute__((unused)) void* user_data) {
     struct {
         const char* input;
         const char* error_message;
@@ -332,8 +332,8 @@ test_illegal_token(__attribute__((unused)) const MunitParameter params[],
         {"'a\n'", "SyntaxError: unclosed string literal in <stdin>:1:3"},
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
-        const char*     input = tests[i].input;
-        DaiTokenList    list;
+        const char* input = tests[i].input;
+        DaiTokenList list;
         DaiSyntaxError* err = dai_tokenize_string(input, &list);
         DaiSyntaxError_setFilename(err, "<stdin>");
         munit_assert_not_null(err);

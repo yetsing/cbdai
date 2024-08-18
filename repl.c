@@ -26,12 +26,12 @@ sljust(char* dst, char* s, int n) {
 
 int
 main() {
-    const char* filename   = "<stdin>";
-    char        line[2048] = {0};
+    const char* filename = "<stdin>";
+    char line[2048]      = {0};
 
     printf("> ");
     // 初始化
-    DaiError*    err = NULL;
+    DaiError* err = NULL;
     DaiTokenList tlist;
     DaiTokenList_init(&tlist);
     DaiAstProgram program;
@@ -40,7 +40,7 @@ main() {
     DaiVM_init(&vm);
     // 时间记录
     TimeRecord start_time, end_time;
-    bool       enable_time = false;
+    bool enable_time = false;
     // 循环读取输入行
     while (fgets(line, sizeof(line), stdin) != NULL) {
         vm.state = VMState_pending;

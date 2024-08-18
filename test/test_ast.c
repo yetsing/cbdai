@@ -5,7 +5,7 @@
 
 static MunitResult
 test_ast_type_string(__attribute__((unused)) const MunitParameter params[],
-                     __attribute__((unused)) void*                user_data) {
+                     __attribute__((unused)) void* user_data) {
     munit_assert_string_equal(DaiAstType_string(DaiAstType_unspecified), "DaiAstType_unspecified");
     munit_assert_string_equal(DaiAstType_string(DaiAstType_program), "DaiAstType_program");
     munit_assert_string_equal(DaiAstType_string(DaiAstType_StatementStart),
@@ -42,12 +42,12 @@ test_ast_type_string(__attribute__((unused)) const MunitParameter params[],
 
 static MunitResult
 test_ast_node_string(__attribute__((unused)) const MunitParameter params[],
-                     __attribute__((unused)) void*                user_data) {
-    DaiToken              token    = {DaiTokenType_ident, "foo", 0, 0, 0, 0};
-    DaiAstIdentifier*     ident    = DaiAstIdentifier_New(&token);
-    DaiToken              token2   = {DaiTokenType_int, "123", 0, 0, 0, 0};
-    DaiAstIntegerLiteral* num      = DaiAstIntegerLiteral_New(&token2);
-    DaiAstVarStatement*   var_stmt = DaiAstVarStatement_New(ident, (DaiAstExpression*)num);
+                     __attribute__((unused)) void* user_data) {
+    DaiToken token               = {DaiTokenType_ident, "foo", 0, 0, 0, 0};
+    DaiAstIdentifier* ident      = DaiAstIdentifier_New(&token);
+    DaiToken token2              = {DaiTokenType_int, "123", 0, 0, 0, 0};
+    DaiAstIntegerLiteral* num    = DaiAstIntegerLiteral_New(&token2);
+    DaiAstVarStatement* var_stmt = DaiAstVarStatement_New(ident, (DaiAstExpression*)num);
     for (int i = 0; i < 10; i++) {
         char* s;
         s = var_stmt->string_fn((DaiAstBase*)var_stmt, false);
