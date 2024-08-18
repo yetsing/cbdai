@@ -9,12 +9,107 @@
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 
+typedef struct {
+    int level;
+    int value;
+} LevelInt;
+
+typedef struct {
+    int       capacity;
+    int       count;
+    int       level;
+    LevelInt* values;
+} IntArray;
+void
+IntArray_init(IntArray* array) {
+    array->capacity = 0;
+    array->count    = 0;
+    array->level    = 0;
+    array->values   = NULL;
+}
+
+void
+IntArray_reset(IntArray* array) {
+    FREE_ARRAY(LevelInt, array->values, array->capacity);
+    IntArray_init(array);
+}
+
+void
+IntArray_push(IntArray* array, int value) {
+    if (array->capacity < array->count + 1) {
+        int oldCapacity = array->capacity;
+        array->capacity += 8;
+        array->values = GROW_ARRAY(LevelInt, array->values, oldCapacity, array->capacity);
+    }
+    array->values[array->count] = (LevelInt){.value = value, .level = array->level};
+    array->count++;
+}
+
+LevelInt
+IntArray_pop(IntArray* array) {
+    array->count--;
+    return array->values[array->count];
+}
+
+// -1 表示没有了
+int
+IntArray_popCurrentLevel(IntArray* array) {
+    if (array->count == 0) {
+        return -1;
+    }
+    LevelInt v = array->values[array->count - 1];
+    if (v.level == array->level) {
+        array->count--;
+        return v.value;
+    }
+    return -1;
+}
+
+void
+IntArray_enter(IntArray* array) {
+    array->level++;
+}
+
+void
+IntArray_leave(IntArray* array) {
+    array->level--;
+}
+
+bool
+IntArray_contains(IntArray* array, int value) {
+    for (int i = 0; i < array->count; i++) {
+        if (array->values[i].value == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void
+IntArray_show(IntArray* array) {
+    dai_log("IntArray level=%d, count=%d [\n", array->level, array->count);
+    for (int i = 0; i < array->count; i++) {
+        dai_log("    level=%d, value=%d\n", array->values[i].level, array->values[i].value);
+    }
+    dai_log("]\n");
+}
+
 typedef enum {
     FunctionType_classMethod,
     FunctionType_method,
     FunctionType_function,
     FunctionType_script,
 } FunctionType;
+
+typedef enum {
+    ScopeType_script,
+    ScopeType_function,
+    ScopeType_class,
+    ScopeType_method,
+    ScopeType_if,
+    ScopeType_while,
+    ScopeType_for,
+} ScopeType;
 
 typedef struct {
     // filename 不归 DaiCompiler 所有，仅作为编译器的一部分
@@ -42,6 +137,10 @@ typedef struct {
 
     // 匿名函数数量，用来给匿名函数命名区分
     int anonymous_count;
+
+    IntArray scope_stack;   // 记录作用域
+    IntArray break_array;   // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
+    IntArray continue_array;   // 记录 continue 跳转指令的位置，用于后续更新跳转偏移量
 
 } DaiCompiler;
 
@@ -82,6 +181,8 @@ DaiCompiler_emit3(DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_
 static void
 DaiCompiler_patchJump(DaiCompiler* compiler, int offset);
 static void
+DaiCompiler_patchJumpBack(DaiCompiler* compiler, int offset, int dst);
+static void
 DaiCompiler_reset(DaiCompiler* compiler);
 static DaiCompileError*
 DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node);
@@ -119,7 +220,7 @@ DaiCompiler_loadSymbol(DaiCompiler* compiler, DaiSymbol* symbol, int start_line)
             break;
         }
         default: {
-            printf("Unknown symbol type: %d\n", symbol->type);
+            dai_error("Unknown symbol type: %d\n", symbol->type);
             unreachable();
             break;
         }
@@ -138,6 +239,17 @@ DaiCompiler_init(DaiCompiler* compiler, DaiObjFunction* function, DaiSymbolTable
     compiler->is_function_block = false;
     DaiTable_init(&compiler->propertys);
     compiler->anonymous_count = 0;
+    IntArray_init(&compiler->scope_stack);
+    IntArray_init(&compiler->break_array);
+    IntArray_init(&compiler->continue_array);
+}
+
+static void
+DaiCompiler_reset(DaiCompiler* compiler) {
+    DaiTable_reset(&compiler->propertys);
+    IntArray_reset(&compiler->scope_stack);
+    IntArray_reset(&compiler->break_array);
+    IntArray_reset(&compiler->continue_array);
 }
 
 static DaiCompileError*
@@ -193,7 +305,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
             break;
         }
         default: {
-            printf("Unknown function type: %d\n", node->type);
+            dai_error("Unknown function type: %d\n", node->type);
             unreachable();
             break;
         }
@@ -206,6 +318,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     // 创建子编译器
     DaiCompiler subcompiler;
     DaiCompiler_init(&subcompiler, function, functable, FunctionType_function, compiler->vm);
+    IntArray_push(&subcompiler.scope_stack, ScopeType_function);
     subcompiler.is_function_block = true;
     subcompiler.anonymous_count   = compiler->anonymous_count;
     subcompiler.type              = function_type;
@@ -352,6 +465,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             // jump @end
             // @else_branch
             // @end
+            IntArray_push(&compiler->scope_stack, ScopeType_if);
             DaiAstIfStatement* stmt = (DaiAstIfStatement*)node;
             DaiCompileError*   err  = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
             if (err != NULL) {
@@ -399,6 +513,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_patchJump(compiler, jump_array[i]);
             }
             FREE_ARRAY(int, jump_array, stmt->elif_branch_count + 1);
+            IntArray_pop(&compiler->scope_stack);
             break;
         }
         case DaiAstType_VarStatement: {
@@ -530,6 +645,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             break;
         }
         case DaiAstType_FunctionStatement: {
+            IntArray_push(&compiler->scope_stack, ScopeType_function);
             DaiAstFunctionStatement* stmt = (DaiAstFunctionStatement*)node;
             if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name)) {
                 return DaiCompileError_Newf(compiler->filename,
@@ -566,9 +682,11 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     break;
                 }
             }
+            IntArray_pop(&compiler->scope_stack);
             break;
         }
         case DaiAstType_ClassStatement: {
+            IntArray_push(&compiler->scope_stack, ScopeType_class);
             DaiAstClassStatement* stmt = (DaiAstClassStatement*)node;
             if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name)) {
                 return DaiCompileError_Newf(compiler->filename,
@@ -623,6 +741,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             DaiTable_reset(&compiler->propertys);   // 重置属性表
             // 弹出栈顶的类对象
             DaiCompiler_emit(compiler, DaiOpPop, stmt->start_line);
+            IntArray_pop(&compiler->scope_stack);
             break;
         }
         case DaiAstType_InsVarStatement: {
@@ -650,6 +769,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             break;
         }
         case DaiAstType_MethodStatement: {
+            IntArray_push(&compiler->scope_stack, ScopeType_method);
             DaiAstMethodStatement* stmt = (DaiAstMethodStatement*)node;
             DaiObjString* name = dai_copy_string(compiler->vm, stmt->name, strlen(stmt->name));
             if (DaiTable_has(&compiler->propertys, name)) {
@@ -666,6 +786,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
             int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpDefineMethod, index, stmt->start_line);
+            IntArray_pop(&compiler->scope_stack);
             break;
         }
         case DaiAstType_ClassVarStatement: {
@@ -689,6 +810,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             break;
         }
         case DaiAstType_ClassMethodStatement: {
+            IntArray_push(&compiler->scope_stack, ScopeType_method);
             DaiAstClassMethodStatement* stmt = (DaiAstClassMethodStatement*)node;
             DaiCompileError*            err  = DaiCompiler_compileFunction(compiler, node);
             if (err != NULL) {
@@ -697,6 +819,80 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             DaiObjString* name  = dai_copy_string(compiler->vm, stmt->name, strlen(stmt->name));
             int           index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpDefineClassMethod, index, stmt->start_line);
+            IntArray_pop(&compiler->scope_stack);
+            break;
+        }
+        case DaiAstType_WhileStatement: {
+            IntArray_push(&compiler->scope_stack, ScopeType_while);
+            IntArray_enter(&compiler->break_array);
+            IntArray_enter(&compiler->continue_array);
+            int                   while_start = compiler->function->chunk.count;
+            DaiAstWhileStatement* stmt        = (DaiAstWhileStatement*)node;
+            DaiCompileError*      err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
+            if (err != NULL) {
+                return err;
+            }
+            // 先发出虚假偏移量的跳转指令
+            int jump_if_false_offset =
+                DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, 9999, stmt->start_line);
+            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
+            if (err != NULL) {
+                return err;
+            }
+            {
+                int jump_back = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
+                DaiCompiler_patchJumpBack(compiler, jump_back, while_start);
+            }
+            DaiCompiler_patchJump(compiler, jump_if_false_offset);
+            // 更新 break 跳转指令的偏移量
+            {
+                int count = compiler->break_array.count;
+                for (int i = 0; i < count; i++) {
+                    int jump = IntArray_popCurrentLevel(&compiler->break_array);
+                    if (jump == -1) {
+                        break;
+                    }
+                    DaiCompiler_patchJump(compiler, jump);
+                }
+            }
+            // 更新 continue 跳转指令的偏移量
+            {
+                int count = compiler->continue_array.count;
+                for (int i = 0; i < count; i++) {
+                    int jump = IntArray_popCurrentLevel(&compiler->continue_array);
+                    if (jump == -1) {
+                        break;
+                    }
+                    DaiCompiler_patchJumpBack(compiler, jump, while_start);
+                }
+            }
+            IntArray_leave(&compiler->break_array);
+            IntArray_leave(&compiler->continue_array);
+            IntArray_pop(&compiler->scope_stack);
+            break;
+        }
+        case DaiAstType_BreakStatement: {
+            DaiAstBreakStatement* stmt = (DaiAstBreakStatement*)node;
+            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while)) {
+                return DaiCompileError_Newf(compiler->filename,
+                                            stmt->start_line,
+                                            stmt->start_column,
+                                            "cannot use 'break' outside of a while loop");
+            }
+            int jump = DaiCompiler_emit2(compiler, DaiOpJump, 9999, stmt->start_line);
+            IntArray_push(&compiler->break_array, jump);
+            break;
+        }
+        case DaiAstType_ContinueStatement: {
+            DaiAstContinueStatement* stmt = (DaiAstContinueStatement*)node;
+            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while)) {
+                return DaiCompileError_Newf(compiler->filename,
+                                            stmt->start_line,
+                                            stmt->start_column,
+                                            "cannot use 'continue' outside of a while loop");
+            }
+            int jump = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
+            IntArray_push(&compiler->continue_array, jump);
             break;
         }
         case DaiAstType_SelfExpression: {
@@ -899,10 +1095,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
     return NULL;
 }
 
-static void
-DaiCompiler_reset(DaiCompiler* compiler) {
-    DaiTable_reset(&compiler->propertys);
-}
 
 static int
 DaiCompiler_addConstant(DaiCompiler* compiler, DaiValue value) {
@@ -954,11 +1146,27 @@ DaiCompiler_patchJump(DaiCompiler* compiler, int offset) {
     chunk->code[offset + 2] = (uint8_t)(jump & 0xff);
 }
 
+static void
+DaiCompiler_patchJumpBack(DaiCompiler* compiler, int offset, int dst) {
+    DaiChunk* chunk = &(compiler->function->chunk);
+    // 减去3是因为 jump 指令占用3个字节
+    int jump = offset - dst + 3;
+
+    if (jump > UINT16_MAX) {
+        fprintf(stderr, "too much code to jump over\n");
+        abort();
+    }
+
+    chunk->code[offset + 1] = (uint8_t)((jump >> 8) & 0xff);
+    chunk->code[offset + 2] = (uint8_t)(jump & 0xff);
+}
+
 DaiCompileError*
 dai_compile(DaiAstProgram* program, DaiObjFunction* function, DaiVM* vm) {
     vm->state = VMState_compiling;
     DaiCompiler compiler;
     DaiCompiler_init(&compiler, function, vm->globalSymbolTable, FunctionType_script, vm);
+    IntArray_push(&compiler.scope_stack, ScopeType_script);
     DaiCompileError* err = NULL;
     err                  = DaiCompiler_extractSymbol(&compiler, (DaiAstBase*)program);
     if (err != NULL) {

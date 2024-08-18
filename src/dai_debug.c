@@ -32,6 +32,13 @@ jump_instruction(const char* name, DaiChunk* chunk, int offset) {
 }
 
 static int
+jump_back_instruction(const char* name, DaiChunk* chunk, int offset) {
+    uint16_t jump_offset = DaiChunk_readu16(chunk, offset + 1);
+    printf("%-16s %4d -> %d\n", name, jump_offset, offset + 3 - jump_offset);
+    return offset + 3;
+}
+
+static int
 simple_instruction(const char* name, int offset) {
     printf("%s\n", name);
     return offset + 1;
@@ -133,6 +140,7 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
 
         case DaiOpJumpIfFalse: return jump_instruction("OP_JUMP_IF_FALSE", chunk, offset);
         case DaiOpJump: return jump_instruction("OP_JUMP", chunk, offset);
+        case DaiOpJumpBack: return jump_back_instruction("OP_JUMP_BACK", chunk, offset);
 
         case DaiOpPop: return simple_instruction("OP_POP", offset);
 

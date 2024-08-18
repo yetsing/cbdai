@@ -528,6 +528,347 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
 }
 
 static MunitResult
+test_while_statements(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void*                user_data) {
+    DaiCompilerTestCase tests[] = {
+        {
+            "while (false) { }",
+            7,
+            {
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                7,
+            },
+            {},
+        },
+        {
+            "while (false) { 1; }",
+            11,
+            {
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                7,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJumpBack,
+                0,
+                11,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (false) { 1; break; }",
+            14,
+            {
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                10,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                14,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (false) { 1; continue; }",
+            14,
+            {
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                10,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJumpBack,
+                0,
+                11,
+                DaiOpJumpBack,
+                0,
+                14,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (false) { break; 1; break; }",
+            17,
+            {
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                13,
+                DaiOpJump,
+                0,
+                10,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                17,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (false) { continue; 1; continue; }",
+            17,
+            {
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                13,
+                DaiOpJumpBack,
+                0,
+                7,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJumpBack,
+                0,
+                14,
+                DaiOpJumpBack,
+                0,
+                17,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (true) { while (false) { break; 1; break; } break; }",
+            27,
+            {
+                DaiOpTrue,
+                DaiOpJumpIfFalse,
+                0,
+                23,
+
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                13,
+                DaiOpJump,
+                0,
+                10,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                17,
+
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                27,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (true) {\n"
+            "  break;\n"
+            "  while (false) {\n"
+            "    break;"
+            "    1;"
+            "    break;\n"
+            "  }"
+            "  break;\n"
+            "}"
+            "",
+            30,
+            {
+                DaiOpTrue,
+                DaiOpJumpIfFalse,
+                0,
+                26,
+                DaiOpJump,
+                0,
+                23,
+
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                13,
+                DaiOpJump,
+                0,
+                10,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                17,
+
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                30,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (true) {\n"
+            "  break;\n"
+            "  continue;\n"
+            "  while (false) {\n"
+            "    break;"
+            "    1;"
+            "    break;\n"
+            "  }"
+            "  break;\n"
+            "}"
+            "",
+            33,
+            {
+                DaiOpTrue,
+                DaiOpJumpIfFalse,
+                0,
+                29,
+                DaiOpJump,
+                0,
+                26,
+                DaiOpJumpBack,
+                0,
+                10,
+
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                13,
+                DaiOpJump,
+                0,
+                10,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                17,
+
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                33,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "while (true) {\n"
+            "  break;\n"
+            "  continue;\n"
+            "  while (false) {\n"
+            "    continue;\n"
+            "    break;\n"
+            "    1;\n"
+            "    break;\n"
+            "  }"
+            "  break;\n"
+            "}"
+            "",
+            36,
+            {
+                DaiOpTrue,
+                DaiOpJumpIfFalse,
+                0,
+                32,
+                DaiOpJump,
+                0,
+                29,
+                DaiOpJumpBack,
+                0,
+                10,
+
+                DaiOpFalse,
+                DaiOpJumpIfFalse,
+                0,
+                16,
+                DaiOpJumpBack,
+                0,
+                7,
+                DaiOpJump,
+                0,
+                10,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                20,
+
+                DaiOpJump,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                36,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+    };
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
+static MunitResult
 test_global_var_statements(__attribute__((unused)) const MunitParameter params[],
                            __attribute__((unused)) void*                user_data) {
     DaiCompilerTestCase tests[] = {
@@ -2040,6 +2381,12 @@ MunitTest compile_tests[] = {
      MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_conditionals", test_conditionals, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_while_statements",
+     test_while_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {(char*)"/test_global_var_statements",
      test_global_var_statements,
      NULL,

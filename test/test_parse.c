@@ -407,6 +407,52 @@ test_if_elif_else_statements(__attribute__((unused)) const MunitParameter params
 }
 
 static MunitResult
+test_while_statements(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void*                user_data) {
+    const char*   input = "while (x < y) {\n"
+                          " x;\n"
+                          " continue;\n"
+                          " break;\n"
+                          "}";
+    DaiAstProgram prog;
+    DaiAstProgram_init(&prog);
+    DaiAstProgram* program = &prog;
+    parse_helper(input, program);
+
+    munit_assert_int(program->length, ==, 1);
+    munit_assert_int(program->statements[0]->type, ==, DaiAstType_WhileStatement);
+
+    DaiAstWhileStatement* while_stmt = (DaiAstWhileStatement*)program->statements[0];
+    {
+        munit_assert_int(while_stmt->start_line, ==, 1);
+        munit_assert_int(while_stmt->start_column, ==, 1);
+        munit_assert_int(while_stmt->end_line, ==, 5);
+        munit_assert_int(while_stmt->end_column, ==, 2);
+    }
+    check_infix_expression_string(while_stmt->condition, "x", "<", "y");
+
+    munit_assert_int(while_stmt->body->type, ==, DaiAstType_BlockStatement);
+    munit_assert_int(while_stmt->body->length, ==, 3);
+    {
+        DaiAstExpressionStatement* stmt =
+            (DaiAstExpressionStatement*)while_stmt->body->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        check_identifier(stmt->expression, "x");
+    }
+    {
+        DaiAstContinueStatement* stmt = (DaiAstContinueStatement*)while_stmt->body->statements[1];
+        munit_assert_int(stmt->type, ==, DaiAstType_ContinueStatement);
+    }
+    {
+        DaiAstBreakStatement* stmt = (DaiAstBreakStatement*)while_stmt->body->statements[2];
+        munit_assert_int(stmt->type, ==, DaiAstType_BreakStatement);
+    }
+
+    program->free_fn((DaiAstBase*)program, true);
+    return MUNIT_OK;
+}
+
+static MunitResult
 test_assign_statements(__attribute__((unused)) const MunitParameter params[],
                        __attribute__((unused)) void*                user_data) {
     {
@@ -1564,6 +1610,29 @@ recursive_string_and_free(DaiAstBase* ast) {
             statement->free_fn((DaiAstBase*)statement, false);
             break;
         }
+        case DaiAstType_BreakStatement: {
+            DaiAstBreakStatement* statement = (DaiAstBreakStatement*)ast;
+            char*                 s         = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
+        case DaiAstType_ContinueStatement: {
+            DaiAstContinueStatement* statement = (DaiAstContinueStatement*)ast;
+            char*                    s = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
+        case DaiAstType_WhileStatement: {
+            DaiAstWhileStatement* stmt = (DaiAstWhileStatement*)ast;
+            char*                 s    = stmt->string_fn((DaiAstBase*)stmt, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)stmt->condition);
+            recursive_string_and_free((DaiAstBase*)stmt->body);
+            stmt->free_fn((DaiAstBase*)stmt, false);
+            break;
+        }
         case DaiAstType_IntegerLiteral: {
             DaiAstIntegerLiteral* literal = (DaiAstIntegerLiteral*)ast;
             char*                 s       = literal->string_fn((DaiAstBase*)literal, false);
@@ -1739,6 +1808,12 @@ MunitTest parse_tests[] = {
      NULL},
     {(char*)"/test_if_elif_else_statements",
      test_if_elif_else_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_while_statements",
+     test_while_statements,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

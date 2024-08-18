@@ -60,12 +60,17 @@ static DaiToken keywords[] = {
     {DaiTokenType_true, "true"},
     {DaiTokenType_false, "false"},
     {DaiTokenType_if, "if"},
-    {DaiTokenType_else, "else"},
     {DaiTokenType_elif, "elif"},
+    {DaiTokenType_else, "else"},
     {DaiTokenType_return, "return"},
     {DaiTokenType_class, "class"},
     {DaiTokenType_self, "self"},
     {DaiTokenType_super, "super"},
+    {DaiTokenType_for, "for"},
+    {DaiTokenType_in, "in"},
+    {DaiTokenType_while, "while"},
+    {DaiTokenType_break, "break"},
+    {DaiTokenType_continue, "continue"},
 };
 
 void

@@ -394,6 +394,11 @@ DaiVM_dorun(DaiVM* vm) {
                 frame->ip += offset;
                 break;
             }
+            case DaiOpJumpBack: {
+                uint16_t offset = READ_UINT16();
+                frame->ip -= offset;
+                break;
+            }
 
             case DaiOpPop: {
                 DaiVM_pop(vm);

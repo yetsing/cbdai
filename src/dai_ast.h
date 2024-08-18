@@ -4,13 +4,16 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "dai_ast/dai_astBreakStatement.h"
 #include "dai_ast/dai_astClassMethodStatement.h"
 #include "dai_ast/dai_astClassVarStatement.h"
+#include "dai_ast/dai_astContinueStatement.h"
 #include "dai_ast/dai_astDotExpression.h"
 #include "dai_ast/dai_astFunctionStatement.h"
 #include "dai_ast/dai_astMethodStatement.h"
 #include "dai_ast/dai_astSelfExpression.h"
 #include "dai_ast/dai_astSuperExpression.h"
+#include "dai_ast/dai_astWhileStatement.h"
 #include "dai_ast/dai_astassignstatement.h"
 #include "dai_ast/dai_astbase.h"
 #include "dai_ast/dai_astblockstatement.h"

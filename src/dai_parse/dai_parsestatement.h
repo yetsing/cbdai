@@ -5,8 +5,11 @@
 #ifndef CBDAI_SRC_DAI_PARSER_DAI_PARSESTATEMENT_H_
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSESTATEMENT_H_
 
+#include "dai_parse/dai_parseBreakStatement.h"
+#include "dai_parse/dai_parseContinueStatement.h"
 #include "dai_parse/dai_parseExpressionOrAssignStatement.h"
 #include "dai_parse/dai_parseFunctionStatement.h"
+#include "dai_parse/dai_parseWhileStatement.h"
 #include "dai_parse/dai_parseassignstatement.h"
 #include "dai_parse/dai_parseblockstatement.h"
 #include "dai_parse/dai_parseclassstatement.h"
@@ -42,6 +45,18 @@ Parser_parseStatement(Parser* p) {
                 // function 语句
                 return (DaiAstStatement*)Parser_parseFunctionStatement(p);
             }
+        }
+        case DaiTokenType_break: {
+            // break 语句
+            return (DaiAstStatement*)Parser_parseBreakStatement(p);
+        }
+        case DaiTokenType_continue: {
+            // continue 语句
+            return (DaiAstStatement*)Parser_parseContinueStatement(p);
+        }
+        case DaiTokenType_while: {
+            // while 语句
+            return (DaiAstStatement*)Parser_parseWhileStatement(p);
         }
         case DaiTokenType_self:
         case DaiTokenType_super:

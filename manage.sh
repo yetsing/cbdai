@@ -127,6 +127,16 @@ function debug() {
 	esac
 }
 
+function fmt() {
+	clang_format_command=$(command -v clang-format)
+	"${clang_format_command}" -i --verbose *.c
+	"${clang_format_command}" -i --verbose atstr/*.c
+	"${clang_format_command}" -i --verbose test/*.c test/*.h
+	"${clang_format_command}" -i --verbose src/*.c src/*.h
+	"${clang_format_command}" -i --verbose src/dai_ast/*.c src/dai_ast/*.h
+	"${clang_format_command}" -i --verbose src/dai_parse/*.h
+}
+
 find_os_name
 find_cmake
 "$@"

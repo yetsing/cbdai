@@ -36,6 +36,7 @@ typedef enum __attribute__((__packed__)) {
     // jump 指令的操作数是相对偏移量
     DaiOpJumpIfFalse,
     DaiOpJump,
+    DaiOpJumpBack,   // 往前跳
 
     DaiOpPop,
 

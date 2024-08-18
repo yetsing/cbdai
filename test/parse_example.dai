@@ -74,3 +74,9 @@ if (x == 1) {
 } else {
     x;
 };
+
+while (x < 10) {
+    x = x + 1;
+    continue;
+    break;
+};

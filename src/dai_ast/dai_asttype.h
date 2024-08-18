@@ -18,6 +18,9 @@ typedef enum {
     DaiAstType_MethodStatement,
     DaiAstType_ClassVarStatement,
     DaiAstType_ClassMethodStatement,
+    DaiAstType_WhileStatement,
+    DaiAstType_ContinueStatement,
+    DaiAstType_BreakStatement,
     DaiAstType_StatementEnd,
     // #endregion
 

@@ -36,6 +36,7 @@ static DaiOpCodeDefinition definitions[] = {
 
     [DaiOpJumpIfFalse] = {.name = "DaiOpJumpIfFalse", .operand_bytes = 2},
     [DaiOpJump]        = {.name = "DaiOpJump", .operand_bytes = 2},
+    [DaiOpJumpBack]    = {.name = "DaiOpJumpBack", .operand_bytes = 2},
 
     [DaiOpPop] = {.name = "DaiOpPop", .operand_bytes = 0},
 

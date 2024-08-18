@@ -360,6 +360,52 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
 }
 
 static MunitResult
+test_while_statements(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void*                user_data) {
+    DaiVMTestCase tests[] = {
+        {"var a = 1; while (a < 10) { a = a + 1; }; a;", INTEGER_VAL(10)},
+        {"var a = 1; while (a < 10) { if (a < 5) { break; }; a = a + 1; }; a;", INTEGER_VAL(1)},
+        {
+            "var a = 1;\n"
+            "while (a < 10) {\n"
+            "  if (a < 5) {\n"
+            "    break;\n"
+            "  };\n"
+            "  a = a + 1;\n"
+            "}\n"
+            "a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var a = 1;\n"
+            "while (a < 10) {\n"
+            "  if (a > 5) {\n"
+            "    break;\n"
+            "  };\n"
+            "  a = a + 1;\n"
+            "}\n"
+            "a;",
+            INTEGER_VAL(6),
+        },
+        {
+            "var a = 1;\n"
+            "var i = 0;\n"
+            "while (i < 10) {\n"
+            "  i = i + 1;\n"
+            "  if (i > 4) {\n"
+            "    continue;\n"
+            "  };\n"
+            "  a = a + 1;\n"
+            "}\n"
+            "a;",
+            INTEGER_VAL(5),
+        }};
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
+
+static MunitResult
 test_global_var_statements(__attribute__((unused)) const MunitParameter params[],
                            __attribute__((unused)) void*                user_data) {
     DaiVMTestCase tests[] = {
@@ -946,6 +992,12 @@ MunitTest vm_tests[] = {
      MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_conditionals", test_conditionals, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_while_statements",
+     test_while_statements,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {(char*)"/test_global_var_statements",
      test_global_var_statements,
      NULL,
