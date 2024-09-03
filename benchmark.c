@@ -1,3 +1,4 @@
+#include "dai_assert.h"
 #include "dai_compile.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
@@ -16,6 +17,7 @@ main(int argc, char** argv) {
     }
     char* filename = argv[1];
     char* text     = dai_string_from_file(filename);
+    daiassert(text != NULL, "Failed to open %s\n", filename);
 
     // 时间记录
     TimeRecord start_time, end_time;

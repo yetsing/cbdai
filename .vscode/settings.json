@@ -17,7 +17,8 @@
         "tuple": "c",
         "typeinfo": "c",
         "variant": "c",
-        "iterator": "c"
+        "iterator": "c",
+        "sstream": "c"
     },
     "C_Cpp.clang_format_fallbackStyle": "Mozilla"
 }

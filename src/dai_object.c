@@ -247,6 +247,23 @@ DaiObjClass_get_bound_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, 
     assert(false);
     return NULL;
 }
+void
+DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString* name,
+                  DaiValue* method) {
+    if (IS_CLASS(receiver)) {
+        if (DaiObjClass_get_method(vm, klass, name, method)) {
+            return;
+        }
+    } else {
+        if (DaiObjInstance_get_method(vm, klass, name, method)) {
+            return;
+        }
+    }
+    // todo Exception 将错误也作为一种值返回
+    dai_error("PropertyError: 'super' object has no property '%s'", name->chars);
+    assert(false);
+    return;
+}
 // #endregion
 
 static DaiObjString*

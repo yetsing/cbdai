@@ -3,6 +3,7 @@
 #include "munit/munit.h"
 
 #include "dai_compile.h"
+#include "dai_debug.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_parse.h"
@@ -41,6 +42,7 @@ interpret(DaiVM* vm, const char* input) {
     // 运行
     err = DaiVM_run(vm, function);
     if (err) {
+        // DaiChunk_disassemble(&function->chunk, "<test>");
         DaiRuntimeError_pprint(err, input);
         munit_assert_null(err);
     }
@@ -754,7 +756,7 @@ test_class_instance(__attribute__((unused)) const MunitParameter params[],
             "  };\n"
             "  fn get() {\n"
             "    var ins = self;\n"
-            "    self.inc();"
+            "    self.inc();\n"
             "    return ins.a;\n"
             "  };\n"
             "};\n"

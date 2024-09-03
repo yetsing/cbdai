@@ -1024,6 +1024,71 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                             "too many arguments to call, got %zu",
                                             expr->arguments_count);
             }
+            switch (expr->function->type) {
+                case DaiAstType_DotExpression: {
+                    DaiAstDotExpression* dot = (DaiAstDotExpression*)expr->function;
+                    DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)dot->left);
+                    if (err != NULL) {
+                        return err;
+                    }
+                    for (int i = 0; i < expr->arguments_count; i++) {
+                        err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
+                        if (err != NULL) {
+                            return err;
+                        }
+                    }
+                    DaiObjString* name =
+                        dai_copy_string(compiler->vm, dot->name->value, strlen(dot->name->value));
+                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    DaiCompiler_emit3(
+                        compiler, DaiOpCallMethod, index, expr->arguments_count, expr->start_line);
+                    return NULL;
+                }
+                case DaiAstType_SelfExpression: {
+                    DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
+                    for (int i = 0; i < expr->arguments_count; i++) {
+                        DaiCompileError* err =
+                            DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
+                        if (err != NULL) {
+                            return err;
+                        }
+                    }
+                    DaiAstSelfExpression* selfexpr = (DaiAstSelfExpression*)expr->function;
+                    DaiObjString* name             = dai_copy_string(
+                        compiler->vm, selfexpr->name->value, strlen(selfexpr->name->value));
+                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    DaiCompiler_emit3(compiler,
+                                      DaiOpCallSelfMethod,
+                                      index,
+                                      expr->arguments_count,
+                                      expr->start_line);
+                    return NULL;
+                }
+                case DaiAstType_SuperExpression: {
+                    DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
+                    for (int i = 0; i < expr->arguments_count; i++) {
+                        DaiCompileError* err =
+                            DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
+                        if (err != NULL) {
+                            return err;
+                        }
+                    }
+                    DaiAstSelfExpression* superexpr = (DaiAstSelfExpression*)expr->function;
+                    DaiObjString* name              = dai_copy_string(
+                        compiler->vm, superexpr->name->value, strlen(superexpr->name->value));
+                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    DaiCompiler_emit3(compiler,
+                                      DaiOpCallSuperMethod,
+                                      index,
+                                      expr->arguments_count,
+                                      expr->start_line);
+                    return NULL;
+                }
+                default: {
+                    break;
+                }
+            }
+
             DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->function);
             if (err != NULL) {
                 return err;

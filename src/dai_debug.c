@@ -113,6 +113,16 @@ property_instruction(const char* name, DaiChunk* chunk, int offset) {
     return offset + 3;
 }
 
+static int
+call_method_instruction(const char* name, DaiChunk* chunk, int offset) {
+    uint16_t constant = DaiChunk_readu16(chunk, offset + 1);
+    int argCount      = DaiChunk_read(chunk, offset + 1);
+    printf("%-16s %4d %d '", name, constant, argCount);
+    dai_print_value(chunk->constants.values[constant]);
+    printf("'\n");
+    return offset + 4;
+}
+
 int
 DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
     printf("%04d ", offset);
@@ -177,6 +187,11 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpGetSuperProperty:
             return property_instruction("OP_GET_SUPER_PROPERTY", chunk, offset);
         case DaiOpInherit: return simple_instruction("OP_INHERIT", offset);
+        case DaiOpCallMethod: return call_method_instruction("OP_CALL_METHOD", chunk, offset);
+        case DaiOpCallSelfMethod:
+            return call_method_instruction("OP_CALL_SELF_METHOD", chunk, offset);
+        case DaiOpCallSuperMethod:
+            return call_method_instruction("OP_CALL_SUPER_METHOD", chunk, offset);
     }
     return offset + 1;
 }

@@ -79,6 +79,12 @@ static DaiOpCodeDefinition definitions[] = {
     // 操作数：属性名的常量索引
     [DaiOpGetSuperProperty] = {.name = "DaiOpGetSuperProperty", .operand_bytes = 2},
     [DaiOpInherit]          = {.name = "DaiOpInherit", .operand_bytes = 0},
+    // 操作数：方法名的常量索引、参数个数
+    [DaiOpCallMethod] = {.name = "DaiOpCallMethod", .operand_bytes = 3},
+    // 操作数：方法名的常量索引
+    [DaiOpCallSelfMethod] = {.name = "DaiOpCallSelfMethod", .operand_bytes = 2},
+    // 操作数：方法名的常量索引
+    [DaiOpCallSuperMethod] = {.name = "DaiOpCallSuperMethod", .operand_bytes = 2},
 };
 
 DaiOpCodeDefinition*

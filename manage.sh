@@ -46,8 +46,7 @@ function clean() {
 
 function compile() {
 	local target="${1}"
-	local option1="${2}"
-	"${cmake_command}" ${option1} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM="${ninja_command}" -G Ninja -S . -B cmake-build-debug
+	"${cmake_command}" ${@:2} -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM="${ninja_command}" -G Ninja -S . -B cmake-build-debug
 	"${cmake_command}" --build cmake-build-debug --target "${target}" -j 9
 }
 
@@ -79,6 +78,16 @@ function benchmark() {
 	compile "benchmark"
 	./cmake-build-debug/benchmark "$@"
 	# gprof ./cmake-build-debug/benchmark gmon.out > benchmark.txt
+}
+
+function benchmark_profile() {
+	compile "benchmark_profile"
+	# compile "benchmark_profile" -DCMAKE_C_COMPILER="${llvm_binpath}/clang"
+	./cmake-build-debug/benchmark_profile "$@"
+	gprof ./cmake-build-debug/benchmark_profile gmon.out > benchmark.txt
+	# "${llvm_binpath}/llvm-profdata" merge *.profraw -output=code.profdata
+	# "${llvm_binpath}/llvm-profdata" show code.profdata > zzz_benchmark.txt
+	# rm *.profraw code.profdata
 }
 
 function mem() {

@@ -68,6 +68,9 @@ typedef enum __attribute__((__packed__)) {
     DaiOpSetSelfProperty,
     DaiOpGetSuperProperty,
     DaiOpInherit,
+    DaiOpCallMethod,
+    DaiOpCallSelfMethod,
+    DaiOpCallSuperMethod,
 } DaiOpCode;
 
 DaiOpCodeDefinition*

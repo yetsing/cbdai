@@ -66,10 +66,6 @@ void
 DaiVM_resetStack(DaiVM* vm);
 DaiRuntimeError*
 DaiVM_run(DaiVM* vm, DaiObjFunction* function);
-void
-DaiVM_push(DaiVM* vm, DaiValue value);
-DaiValue
-DaiVM_pop(DaiVM* vm);
 
 DaiValue
 DaiVM_stackTop(DaiVM* vm);

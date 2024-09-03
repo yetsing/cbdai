@@ -105,6 +105,9 @@ DaiObjBoundMethod*
 DaiObjBoundMethod_New(DaiVM* vm, DaiValue receiver, DaiValue method);
 DaiObjBoundMethod*
 DaiObjClass_get_bound_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver);
+void
+DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString* name,
+                  DaiValue* method);
 
 typedef struct {
     DaiObj obj;

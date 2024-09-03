@@ -28,10 +28,12 @@ class Zoo {
 
 var zoo = Zoo();
 var sum = 0;
-sum = sum + zoo.ant()
-        + zoo.banana()
-        + zoo.tuna()
-        + zoo.hay()
-        + zoo.grass()
-        + zoo.mouse();
+while (sum < 100000000) {
+    sum = sum + zoo.ant()
+            + zoo.banana()
+            + zoo.tuna()
+            + zoo.hay()
+            + zoo.grass()
+            + zoo.mouse();
+}
 print(sum);

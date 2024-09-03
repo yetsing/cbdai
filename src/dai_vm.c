@@ -10,10 +10,15 @@
 
 #define CURRENT_FRAME &(vm->frames[vm->frameCount - 1])
 
+static void
+DaiVM_push(DaiVM* vm, DaiValue value);
+static DaiValue
+DaiVM_pop(DaiVM* vm);
+
 DaiValue dai_true  = {.type = DaiValueType_bool, .as.boolean = true};
 DaiValue dai_false = {.type = DaiValueType_bool, .as.boolean = false};
 
-bool
+static bool
 dai_value_is_truthy(DaiValue value) {
     switch (value.type) {
         case DaiValueType_nil: return false;
@@ -633,6 +638,80 @@ DaiVM_dorun(DaiVM* vm) {
                 DaiVM_push(vm, OBJ_VAL(bound_method));
                 break;
             }
+            case DaiOpCallMethod: {
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                int argCount        = READ_BYTE();
+                DaiValue receiver   = DaiVM_peek(vm, argCount);
+                DaiObjClass* klass  = NULL;
+                if (IS_CLASS(receiver)) {
+                    klass = AS_CLASS(receiver);
+                } else if (IS_INSTANCE(receiver)) {
+                    klass = AS_INSTANCE(receiver)->klass;
+                } else {
+                    return DaiRuntimeError_Newf(
+                        chunk->filename,
+                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
+                        0,
+                        "'%s' object is not class or instance",
+                        dai_value_ts(receiver));
+                }
+                DaiValue method;
+                DaiObj_get_method(vm, klass, receiver, name, &method);
+                DaiRuntimeError* err = DaiVM_callValue(vm, method, argCount);
+                if (err != NULL) {
+                    return err;
+                }
+                frame           = CURRENT_FRAME;
+                frame->slots[0] = receiver;
+                chunk           = &frame->function->chunk;
+                break;
+            }
+            case DaiOpCallSelfMethod: {
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                int argCount        = READ_BYTE();
+                DaiValue receiver   = frame->slots[0];
+                DaiObjClass* klass  = NULL;
+                if (IS_CLASS(receiver)) {
+                    klass = AS_CLASS(receiver);
+                } else if (IS_INSTANCE(receiver)) {
+                    klass = AS_INSTANCE(receiver)->klass;
+                } else {
+                    return DaiRuntimeError_Newf(
+                        chunk->filename,
+                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
+                        0,
+                        "'%s' object is not class or instance",
+                        dai_value_ts(receiver));
+                }
+                DaiValue method;
+                DaiObj_get_method(vm, klass, receiver, name, &method);
+                DaiRuntimeError* err = DaiVM_callValue(vm, method, argCount);
+                if (err != NULL) {
+                    return err;
+                }
+                frame           = CURRENT_FRAME;
+                frame->slots[0] = receiver;
+                chunk           = &frame->function->chunk;
+                break;
+            }
+            case DaiOpCallSuperMethod: {
+                uint16_t name_index = READ_UINT16();
+                DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
+                int argCount        = READ_BYTE();
+                DaiValue receiver   = frame->slots[0];
+                DaiValue method;
+                DaiObj_get_method(vm, frame->function->superclass, receiver, name, &method);
+                DaiRuntimeError* err = DaiVM_callValue(vm, method, argCount);
+                if (err != NULL) {
+                    return err;
+                }
+                frame           = CURRENT_FRAME;
+                frame->slots[0] = receiver;
+                chunk           = &frame->function->chunk;
+                break;
+            }
 
             default: {
                 return DaiRuntimeError_Newf(chunk->filename,
@@ -660,13 +739,13 @@ DaiVM_run(DaiVM* vm, DaiObjFunction* function) {
     return DaiVM_dorun(vm);
 }
 
-void
+static void
 DaiVM_push(DaiVM* vm, DaiValue value) {
     *vm->stack_top = value;
     vm->stack_top++;
     assert(vm->stack_top <= vm->stack + STACK_MAX);
 }
-DaiValue
+static DaiValue
 DaiVM_pop(DaiVM* vm) {
     vm->stack_top--;
     return *vm->stack_top;
