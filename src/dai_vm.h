@@ -68,13 +68,13 @@ DaiRuntimeError*
 DaiVM_run(DaiVM* vm, DaiObjFunction* function);
 
 DaiValue
-DaiVM_stackTop(DaiVM* vm);
+DaiVM_stackTop(const DaiVM* vm);
 
 // #region 用于测试的函数
 DaiValue
-DaiVM_lastPopedStackElem(DaiVM* vm);
+DaiVM_lastPopedStackElem(const DaiVM* vm);
 bool
-DaiVM_isEmptyStack(DaiVM* vm);
+DaiVM_isEmptyStack(const DaiVM* vm);
 
 
 // #endregion

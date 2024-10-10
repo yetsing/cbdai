@@ -109,6 +109,8 @@ Parser_parseIdentifier(Parser* p);
 static DaiAstExpression*
 Parser_parseBoolean(Parser* p);
 static DaiAstExpression*
+Parser_parseNil(Parser* p);
+static DaiAstExpression*
 Parser_parsePrefixExpression(Parser* p);
 static DaiAstExpression*
 Parser_parseInfixExpression(Parser* p, DaiAstExpression* left);

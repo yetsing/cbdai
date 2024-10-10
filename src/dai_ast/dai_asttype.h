@@ -28,6 +28,7 @@ typedef enum {
     DaiAstType_ExpressionStart,
     DaiAstType_IntegerLiteral,
     DaiAstType_Boolean,
+    DaiAstType_Nil,
     DaiAstType_Identifier,
     DaiAstType_PrefixExpression,
     DaiAstType_InfixExpression,

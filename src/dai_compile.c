@@ -7,7 +7,6 @@
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_parse.h"
-#include "dai_tokenize.h"
 
 typedef struct {
     int level;
@@ -1150,6 +1149,11 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             } else {
                 DaiCompiler_emit(compiler, DaiOpFalse, lit->start_line);
             }
+            break;
+        }
+        case DaiAstType_Nil: {
+            DaiAstNil* lit = (DaiAstNil*)node;
+            DaiCompiler_emit(compiler, DaiOpNil, lit->start_line);
             break;
         }
         default: {

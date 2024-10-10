@@ -87,7 +87,7 @@ DaiVM_reset(DaiVM* vm) {
 }
 
 static DaiValue
-DaiVM_peek(DaiVM* vm, int distance) {
+DaiVM_peek(const DaiVM* vm, int distance) {
     return vm->stack_top[-1 - distance];
 }
 
@@ -230,7 +230,7 @@ DaiVM_dorun(DaiVM* vm) {
 #ifdef DEBUG_TRACE_EXECUTION
     const char* name = NULL;
 #endif
-    for (; frame->ip < chunk->code + chunk->count;) {
+    while (frame->ip < chunk->code + chunk->count) {
 #ifdef DEBUG_TRACE_EXECUTION
         const char* funcname = DaiObjFunction_name(frame->function);
         if (name != funcname) {
@@ -261,7 +261,7 @@ DaiVM_dorun(DaiVM* vm) {
                     concatenate_string(vm, a, b);
                     break;
                 }
-                if (!IS_INTEGER(a) || !IS_INTEGER(b)) {
+                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
@@ -278,7 +278,7 @@ DaiVM_dorun(DaiVM* vm) {
             case DaiOpSub: {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
-                if (!IS_INTEGER(a) || !IS_INTEGER(b)) {
+                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
@@ -293,7 +293,7 @@ DaiVM_dorun(DaiVM* vm) {
             case DaiOpMul: {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
-                if (!IS_INTEGER(a) || !IS_INTEGER(b)) {
+                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
@@ -308,7 +308,7 @@ DaiVM_dorun(DaiVM* vm) {
             case DaiOpDiv: {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
-                if (!IS_INTEGER(a) || !IS_INTEGER(b)) {
+                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
@@ -353,7 +353,7 @@ DaiVM_dorun(DaiVM* vm) {
             case DaiOpGreaterThan: {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
-                if (!IS_INTEGER(a) || !IS_INTEGER(b)) {
+                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
@@ -369,7 +369,7 @@ DaiVM_dorun(DaiVM* vm) {
 
             case DaiOpMinus: {
                 DaiValue a = DaiVM_pop(vm);
-                if (!IS_INTEGER(a)) {
+                if (IS_NOT_INTEGER(a)) {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
@@ -751,17 +751,17 @@ DaiVM_pop(DaiVM* vm) {
     return *vm->stack_top;
 }
 DaiValue
-DaiVM_stackTop(DaiVM* vm) {
+DaiVM_stackTop(const DaiVM* vm) {
     return vm->stack_top[-1];
 }
 
 // #region 用于测试的函数
 DaiValue
-DaiVM_lastPopedStackElem(DaiVM* vm) {
+DaiVM_lastPopedStackElem(const DaiVM* vm) {
     return *vm->stack_top;
 }
 bool
-DaiVM_isEmptyStack(DaiVM* vm) {
+DaiVM_isEmptyStack(const DaiVM* vm) {
     // 栈里面会留下一个脚本对应的函数
     return vm->stack_top == vm->stack + 1;
 }

@@ -23,6 +23,7 @@ typedef enum {
     DaiTokenType_var,        // "var"
     DaiTokenType_true,       // "true"
     DaiTokenType_false,      // "false"
+    DaiTokenType_nil,        // "nil"
     DaiTokenType_if,         // "if"
     DaiTokenType_elif,       // "elif"
     DaiTokenType_else,       // "else"

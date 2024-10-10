@@ -145,12 +145,15 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         {"(1 < 2) == false;", dai_false},
         {"(1 > 2) == true;", dai_false},
         {"(1 > 2) == false;", dai_true},
+        {"nil == nil;", dai_true},
+        {"nil == true;", dai_false},
         {"!true;", dai_false},
         {"!false;", dai_true},
         {"!5;", dai_false},
         {"!!true;", dai_true},
         {"!!false;", dai_false},
         {"!!5;", dai_true},
+        {"!nil;", dai_true},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

@@ -28,6 +28,7 @@
 #include "dai_ast/dai_astinfixexpression.h"
 #include "dai_ast/dai_astinsvarstatement.h"
 #include "dai_ast/dai_astintegerliteral.h"
+#include "dai_ast/dai_astnil.h"
 #include "dai_ast/dai_astprefixexpression.h"
 #include "dai_ast/dai_astprogram.h"
 #include "dai_ast/dai_astreturnstatement.h"

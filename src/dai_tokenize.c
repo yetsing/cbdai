@@ -16,22 +16,19 @@
 #include "dai_tokenize.h"
 
 static const char* DaiTokenTypeStrings[] = {
-    "DaiTokenType_illegal",  "DaiTokenType_eof",     "DaiTokenType_ident",
-    "DaiTokenType_int",      "DaiTokenType_comment", "DaiTokenType_str",
-    "DaiTokenType_function", "DaiTokenType_var",     "DaiTokenType_true",
-    "DaiTokenType_false",    "DaiTokenType_if",      "DaiTokenType_elif",
-    "DaiTokenType_else",     "DaiTokenType_return",  "DaiTokenType_class",
-    "DaiTokenType_self",     "DaiTokenType_super",   "DaiTokenType_for",
-    "DaiTokenType_in",       "DaiTokenType_while",   "DaiTokenType_break",
-    "DaiTokenType_continue", "DaiTokenType_auto",    "DaiTokenType_assign",
-    "DaiTokenType_plus",     "DaiTokenType_minus",   "DaiTokenType_bang",
-    "DaiTokenType_asterisk", "DaiTokenType_slash",   "DaiTokenType_lt",
-    "DaiTokenType_gt",       "DaiTokenType_eq",      "DaiTokenType_not_eq",
-    "DaiTokenType_dot",      "DaiTokenType_comma",   "DaiTokenType_semicolon",
-    "DaiTokenType_lparen",   "DaiTokenType_rparen",  "DaiTokenType_lbrace",
-    "DaiTokenType_rbrace",   "DaiTokenType_end",
-
+    "DaiTokenType_illegal",   "DaiTokenType_eof",    "DaiTokenType_ident",    "DaiTokenType_int",
+    "DaiTokenType_comment",   "DaiTokenType_str",    "DaiTokenType_function", "DaiTokenType_var",
+    "DaiTokenType_true",      "DaiTokenType_false",  "DaiTokenType_nil",      "DaiTokenType_if",
+    "DaiTokenType_elif",      "DaiTokenType_else",   "DaiTokenType_return",   "DaiTokenType_class",
+    "DaiTokenType_self",      "DaiTokenType_super",  "DaiTokenType_for",      "DaiTokenType_in",
+    "DaiTokenType_while",     "DaiTokenType_break",  "DaiTokenType_continue", "DaiTokenType_auto",
+    "DaiTokenType_assign",    "DaiTokenType_plus",   "DaiTokenType_minus",    "DaiTokenType_bang",
+    "DaiTokenType_asterisk",  "DaiTokenType_slash",  "DaiTokenType_lt",       "DaiTokenType_gt",
+    "DaiTokenType_eq",        "DaiTokenType_not_eq", "DaiTokenType_dot",      "DaiTokenType_comma",
+    "DaiTokenType_semicolon", "DaiTokenType_lparen", "DaiTokenType_rparen",   "DaiTokenType_lbrace",
+    "DaiTokenType_rbrace",    "DaiTokenType_end",
 };
+
 
 __attribute__((unused)) const char*
 DaiTokenType_string(DaiTokenType type) {
@@ -59,6 +56,7 @@ static DaiToken keywords[] = {
     {DaiTokenType_var, "var"},
     {DaiTokenType_true, "true"},
     {DaiTokenType_false, "false"},
+    {DaiTokenType_nil, "nil"},
     {DaiTokenType_if, "if"},
     {DaiTokenType_elif, "elif"},
     {DaiTokenType_else, "else"},

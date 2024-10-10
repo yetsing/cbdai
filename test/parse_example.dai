@@ -80,3 +80,5 @@ while (x < 10) {
     continue;
     break;
 };
+
+var mynil = nil;

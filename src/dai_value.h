@@ -34,6 +34,7 @@ dai_value_ts(DaiValue value);
 #define IS_BOOL(value) ((value).type == DaiValueType_bool)
 #define IS_NIL(value) ((value).type == DaiValueType_nil)
 #define IS_INTEGER(value) ((value).type == DaiValueType_int)
+#define IS_NOT_INTEGER(value) ((value).type != DaiValueType_int)
 #define IS_OBJ(value) ((value).type == DaiValueType_obj)
 
 #define AS_BOOL(value) ((value).as.boolean)

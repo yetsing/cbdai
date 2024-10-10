@@ -650,8 +650,8 @@ test_identifier_expression(__attribute__((unused)) const MunitParameter params[]
 }
 
 static MunitResult
-test_integer_literal_expiression(__attribute__((unused)) const MunitParameter params[],
-                                 __attribute__((unused)) void* user_data) {
+test_integer_literal_expression(__attribute__((unused)) const MunitParameter params[],
+                                __attribute__((unused)) void* user_data) {
     {
         const char* input = "5;";
         DaiAstProgram prog;
@@ -1262,6 +1262,35 @@ test_boolean_expression(__attribute__((unused)) const MunitParameter params[],
 }
 
 static MunitResult
+test_nil_expression(__attribute__((unused)) const MunitParameter params[],
+                    __attribute__((unused)) void* user_data) {
+    struct {
+        const char* input;
+        bool expected;
+    } tests[] = {
+        {
+            "nil;",
+            true,
+        },
+    };
+    for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(tests[i].input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstExpressionStatement* stmt = (DaiAstExpressionStatement*)program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        DaiAstExpression* expr = stmt->expression;
+        munit_assert_int(expr->type, ==, DaiAstType_Nil);
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    return MUNIT_OK;
+}
+
+
+static MunitResult
 test_syntax_error(__attribute__((unused)) const MunitParameter params[],
                   __attribute__((unused)) void* user_data) {
     struct {
@@ -1647,6 +1676,13 @@ recursive_string_and_free(DaiAstBase* ast) {
             literal->free_fn((DaiAstBase*)literal, false);
             break;
         }
+        case DaiAstType_Nil: {
+            DaiAstNil* literal = (DaiAstNil*)ast;
+            char* s            = literal->string_fn((DaiAstBase*)literal, false);
+            free(s);
+            literal->free_fn((DaiAstBase*)literal, false);
+            break;
+        }
         case DaiAstType_Identifier: {
             DaiAstIdentifier* identifier = (DaiAstIdentifier*)ast;
             char* s                      = identifier->string_fn((DaiAstBase*)identifier, false);
@@ -1830,8 +1866,8 @@ MunitTest parse_tests[] = {
      NULL,
      MUNIT_TEST_OPTION_NONE,
      NULL},
-    {(char*)"/test_integer_literal_expiression",
-     test_integer_literal_expiression,
+    {(char*)"/test_integer_literal_expression",
+     test_integer_literal_expression,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,
@@ -1891,6 +1927,7 @@ MunitTest parse_tests[] = {
      NULL,
      MUNIT_TEST_OPTION_NONE,
      NULL},
+    {(char*)"/test_nil_expressions", test_nil_expression, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_function_statements",
      test_function_statements,
      NULL,

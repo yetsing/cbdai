@@ -64,7 +64,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
                         "`  a  b  \n`\n"
                         "class Foo {};\n"
                         "self.a = 3;\n"
-                        "super.b elif\n";
+                        "super.b elif nil\n";
 
     DaiToken tests[] = {
         {
@@ -248,6 +248,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_dot, ".", 31, 6, 31, 7},
         {DaiTokenType_ident, "b", 31, 7, 31, 8},
         {DaiTokenType_elif, "elif", 31, 9, 31, 13},
+        {DaiTokenType_nil, "nil", 31, 14, 31, 17},
 
         {DaiTokenType_eof, "", 32, 1},
     };

@@ -250,6 +250,15 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
             },
         },
         {
+            "nil;",
+            2,
+            {
+                DaiOpNil,
+                DaiOpPop,
+            },
+        },
+
+        {
             "1 > 2;",
             8,
             {
@@ -350,6 +359,26 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 DaiOpPop,
             },
         },
+        {
+            "nil != nil;",
+            4,
+            {
+                DaiOpNil,
+                DaiOpNil,
+                DaiOpNotEqual,
+                DaiOpPop,
+            },
+        },
+        {
+            "!nil;",
+            3,
+            {
+                DaiOpNil,
+                DaiOpBang,
+                DaiOpPop,
+            },
+        },
+
     };
     run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

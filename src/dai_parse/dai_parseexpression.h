@@ -6,6 +6,7 @@
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSION_H_
 
 #include "dai_parse/dai_parseDotExpression.h"
+#include "dai_parse/dai_parseNil.h"
 #include "dai_parse/dai_parseSelfExpression.h"
 #include "dai_parse/dai_parseSuperExpression.h"
 #include "dai_parse/dai_parseboolean.h"
