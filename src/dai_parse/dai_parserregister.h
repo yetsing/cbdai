@@ -15,6 +15,7 @@ Parser_register(Parser* p) {
     {
         Parser_registerPrefix(p, DaiTokenType_ident, Parser_parseIdentifier);
         Parser_registerPrefix(p, DaiTokenType_int, Parser_parseInteger);
+        Parser_registerPrefix(p, DaiTokenType_float, Parser_parseFloat);
         Parser_registerPrefix(p, DaiTokenType_bang, Parser_parsePrefixExpression);
         Parser_registerPrefix(p, DaiTokenType_minus, Parser_parsePrefixExpression);
         Parser_registerPrefix(p, DaiTokenType_true, Parser_parseBoolean);

@@ -101,25 +101,40 @@ run_vm_tests(DaiVMTestCase* tests, size_t count) {
 }
 
 static MunitResult
-test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
-                        __attribute__((unused)) void* user_data) {
-    DaiVMTestCase tests[] = {{"1;", INTEGER_VAL(1)},
-                             {"2;", INTEGER_VAL(2)},
-                             {"1 + 2;", INTEGER_VAL(3)},
-                             {"1 - 2;", INTEGER_VAL(-1)},
-                             {"1 * 2;", INTEGER_VAL(2)},
-                             {"4 / 2;", INTEGER_VAL(2)},
-                             {"50 / 2 * 2 + 10 - 5;", INTEGER_VAL(55)},
-                             {"5 + 5 + 5 + 5 - 10;", INTEGER_VAL(10)},
-                             {"2 * 2 * 2 * 2 * 2;", INTEGER_VAL(32)},
-                             {"5 * 2 + 10;", INTEGER_VAL(20)},
-                             {"5 + 2 * 10;", INTEGER_VAL(25)},
-                             {"5 * (2 + 10);", INTEGER_VAL(60)},
-                             {"-5;", INTEGER_VAL(-5)},
-                             {"--5;", INTEGER_VAL(5)},
-                             {"-10;", INTEGER_VAL(-10)},
-                             {"-50 + 100 + -50;", INTEGER_VAL(0)},
-                             {"(5 + 10 * 2 + 15 / 3) * 2 + -10;", INTEGER_VAL(50)}};
+test_number_arithmetic(__attribute__((unused)) const MunitParameter params[],
+                       __attribute__((unused)) void* user_data) {
+    DaiVMTestCase tests[] = {
+        {"1;", INTEGER_VAL(1)},
+        {"2;", INTEGER_VAL(2)},
+        {"1 + 2;", INTEGER_VAL(3)},
+        {"1 - 2;", INTEGER_VAL(-1)},
+        {"1 * 2;", INTEGER_VAL(2)},
+        {"4 / 2;", INTEGER_VAL(2)},
+        {"50 / 2 * 2 + 10 - 5;", INTEGER_VAL(55)},
+        {"5 + 5 + 5 + 5 - 10;", INTEGER_VAL(10)},
+        {"2 * 2 * 2 * 2 * 2;", INTEGER_VAL(32)},
+        {"5 * 2 + 10;", INTEGER_VAL(20)},
+        {"5 + 2 * 10;", INTEGER_VAL(25)},
+        {"5 * (2 + 10);", INTEGER_VAL(60)},
+        {"-5;", INTEGER_VAL(-5)},
+        {"--5;", INTEGER_VAL(5)},
+        {"-10;", INTEGER_VAL(-10)},
+        {"-50 + 100 + -50;", INTEGER_VAL(0)},
+        {"(5 + 10 * 2 + 15 / 3) * 2 + -10;", INTEGER_VAL(50)},
+        {"3.4;", FLOAT_VAL(3.4)},
+        {"1 + 3.4;", FLOAT_VAL(4.4)},
+        {"1.4 + 3;", FLOAT_VAL(4.4)},
+        {"1.4 + 3.0;", FLOAT_VAL(4.4)},
+        {"3.4 - 1;", FLOAT_VAL(2.4)},
+        {"3 - 0.6;", FLOAT_VAL(2.4)},
+        {"3.4 - 1.0;", FLOAT_VAL(2.4)},
+        {"3.4 * 1;", FLOAT_VAL(3.4)},
+        {"3 * 0.6;", FLOAT_VAL(1.8)},
+        {"3.4 * 1.0;", FLOAT_VAL(3.4)},
+        {"3.4 / 1;", FLOAT_VAL(3.4)},
+        {"3 / 0.6;", FLOAT_VAL(5)},
+        {"3.4 / 1.0;", FLOAT_VAL(3.4)},
+    };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
@@ -984,8 +999,8 @@ test_fibonacci(__attribute__((unused)) const MunitParameter params[],
 }
 
 MunitTest vm_tests[] = {
-    {(char*)"/test_integer_arithmetic",
-     test_integer_arithmetic,
+    {(char*)"/test_number_arithmetic",
+     test_number_arithmetic,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

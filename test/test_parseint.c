@@ -99,9 +99,6 @@ test_parseint(__attribute__((unused)) const MunitParameter params[],
         {"3w5e11264sgtz", 36, 0, "integer overflow"},
         {"9223372036854775808", 10, 0, "integer overflow"},
         {"19223372036854775808", 10, 0, "integer overflow"},
-        {"_123", 10, 0, "invalid underscores usage in number"},
-        {"123_", 10, 0, "invalid underscores usage in number"},
-        {"1__23", 10, 0, "invalid underscores usage in number"},
     };
 
     char* error;

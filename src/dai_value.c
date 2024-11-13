@@ -8,12 +8,15 @@
 #include "dai_object.h"
 #include "dai_value.h"
 
+#include <math.h>
+
 const char*
 dai_value_ts(DaiValue value) {
     switch (value.type) {
         case DaiValueType_undefined: return "undefined";
         case DaiValueType_nil: return "nil";
         case DaiValueType_int: return "int";
+        case DaiValueType_float: return "float";
         case DaiValueType_bool: return "bool";
         case DaiValueType_obj: return dai_object_ts(value);
         default: return "unknown";
@@ -26,6 +29,7 @@ dai_print_value(DaiValue value) {
         case DaiValueType_undefined: dai_log("undefined"); break;
         case DaiValueType_nil: dai_log("nil"); break;
         case DaiValueType_int: dai_log("%" PRId64, value.as.intval); break;
+        case DaiValueType_float: dai_log("%f", value.as.floatval); break;
         case DaiValueType_bool:
             if (AS_BOOL(value)) {
                 dai_log("true");
@@ -42,6 +46,12 @@ dai_print_value(DaiValue value) {
     }
 }
 
+static bool
+float_equals(double a, double b) {
+    double epsilon = 1e-10;
+    return fabs(a - b) < epsilon;
+}
+
 bool
 dai_value_equal(DaiValue a, DaiValue b) {
     if (a.type != b.type) {
@@ -50,6 +60,7 @@ dai_value_equal(DaiValue a, DaiValue b) {
     switch (a.type) {
         case DaiValueType_nil: return true;
         case DaiValueType_int: return AS_INTEGER(a) == AS_INTEGER(b);
+        case DaiValueType_float: return float_equals(AS_FLOAT(a), AS_FLOAT(b));
         case DaiValueType_bool: return AS_BOOL(a) == AS_BOOL(b);
         case DaiValueType_obj: return AS_OBJ(a) == AS_OBJ(b);
         default: return true;

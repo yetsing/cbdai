@@ -9,6 +9,7 @@
 #include "dai_ast/dai_astClassVarStatement.h"
 #include "dai_ast/dai_astContinueStatement.h"
 #include "dai_ast/dai_astDotExpression.h"
+#include "dai_ast/dai_astFloatLiteral.h"
 #include "dai_ast/dai_astFunctionStatement.h"
 #include "dai_ast/dai_astMethodStatement.h"
 #include "dai_ast/dai_astSelfExpression.h"

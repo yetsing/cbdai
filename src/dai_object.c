@@ -72,7 +72,8 @@ DaiObjClosure_name(DaiObjClosure* closure) {
 
 // #region 类与实例
 static DaiValue
-DaiObjInstance_init(DaiValue receiver, int argc, DaiValue* argv) {
+DaiObjInstance_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                    DaiValue* argv) {
     DaiObjInstance* instance = AS_INSTANCE(receiver);
     // todo Exception 将错误也作为一种值返回
     DaiValueArray* field_names = &(instance->klass->field_names);
@@ -368,7 +369,8 @@ dai_object_ts(DaiValue value) {
 
 // #region 内置函数
 static DaiValue
-builtin_print(__attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
+builtin_print(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+              int argc, DaiValue* argv) {
     for (int i = 0; i < argc; i++) {
         dai_print_value(argv[i]);
         dai_log(" ");
@@ -378,13 +380,14 @@ builtin_print(__attribute__((unused)) DaiValue receiver, int argc, DaiValue* arg
 }
 
 static DaiValue
-builtin_len(__attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
+builtin_len(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+            DaiValue* argv) {
     if (argc != 1) {
         // todo 将错误也作为一种值
         dai_error("wrong number of arguments. got=%d, want=1\n", argc);
         assert(false);
     }
-    DaiValue arg = argv[0];
+    const DaiValue arg = argv[0];
     if (IS_STRING(arg)) {
         return INTEGER_VAL(AS_STRING(arg)->length);
     } else {
@@ -393,6 +396,19 @@ builtin_len(__attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv)
         assert(false);
     }
     return NIL_VAL;
+}
+
+static DaiValue
+builtin_type(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+             DaiValue* argv) {
+    if (argc != 1) {
+        // todo 将错误也作为一种值
+        dai_error("wrong number of arguments. got=%d, want=1\n", argc);
+        assert(false);
+    }
+    const DaiValue arg = argv[0];
+    const char* s      = dai_value_ts(arg);
+    return OBJ_VAL(dai_copy_string(vm, s, strlen(s)));
 }
 
 DaiObjBuiltinFunction builtin_funcs[256] = {
@@ -405,6 +421,11 @@ DaiObjBuiltinFunction builtin_funcs[256] = {
         {.type = DaiObjType_builtinFn},
         .name     = "len",
         .function = builtin_len,
+    },
+    {
+        {.type = DaiObjType_builtinFn},
+        .name     = "type",
+        .function = builtin_type,
     },
 
     {

@@ -22,6 +22,7 @@ static const unsigned char table[] = {
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 };
 
+// ** 规则变动，下面的检查函数已经没用 **
 // 代码思路参照
 // https://cs.opensource.google/go/go/+/refs/tags/go1.22.3:src/strconv/atoi.go
 // 检查数字字符串中的下划线是否满足要求
@@ -29,8 +30,8 @@ static const unsigned char table[] = {
 //    下划线不能出现在开头或结尾，例如 "_1" "1_" 不行
 //    下划线前后必须是数字，例如 "1__2" 不行
 //    下划线前面可以是进制的表示，例如 "0x_123" 是可以的
-static bool
-dai_underscore_ok(const char* str, size_t len) {
+__attribute__((unused)) static bool
+dai_underscore_ok(const char* str, const size_t len) {
     // saw 追踪我们看到的最后一个字符
     // ^ 表示开始
     // 0 表示数字或者进制前缀
@@ -80,11 +81,11 @@ dai_underscore_ok(const char* str, size_t len) {
 // https://cs.opensource.google/go/go/+/refs/tags/go1.22.3:src/strconv/atoi.go
 // 解析 uint64 数字字符串，不支持 + - 符号前缀
 static uint64_t
-dai_parseuint(const char* str, int base, char** error) {
+dai_parseuint(const char* str, const int base, char** error) {
     daiassert(str != NULL, "str is NULL");
     *error = NULL;
     // 保存一份，用于后面检查
-    const char* str0 = str;
+    // const char* str0 = str;
 
     // 检查 base
     if (base < 2 || base > 36) {
@@ -151,12 +152,12 @@ dai_parseuint(const char* str, int base, char** error) {
     }
 
     // 解析字符串
-    bool underscores = false;   // 是否包含下划线 _
-    uint64_t n       = 0;
+    // bool underscores = false;   // 是否包含下划线 _
+    uint64_t n = 0;
     for (; *str != 0; str++) {
         char c = *str;
         if (c == '_') {
-            underscores = true;
+            // underscores = true;
             continue;
         }
         unsigned char d = val[(int)c];
@@ -180,10 +181,11 @@ dai_parseuint(const char* str, int base, char** error) {
         n = n1;
     }
 
-    if (underscores && !dai_underscore_ok(str0, slen)) {
-        *error = "invalid underscores usage in number";
-        return 0;
-    }
+    // 词法分析已经检查完整数格式
+    // if (underscores && !dai_underscore_ok(str0, slen)) {
+    //     *error = "invalid underscores usage in number";
+    //     return 0;
+    // }
 
     return n;
 }

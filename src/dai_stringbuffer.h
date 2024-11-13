@@ -20,6 +20,8 @@ DaiStringBuffer_writeInt(DaiStringBuffer* sb, int n);
 void
 DaiStringBuffer_writeInt64(DaiStringBuffer* sb, int64_t n);
 void
+DaiStringBuffer_writeDouble(DaiStringBuffer* sb, double n);
+void
 DaiStringBuffer_writePointer(DaiStringBuffer* sb, void* ptr);
 size_t
 DaiStringBuffer_length(DaiStringBuffer* sb);

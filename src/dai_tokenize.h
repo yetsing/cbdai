@@ -15,6 +15,7 @@ typedef enum {
     DaiTokenType_eof,           // "eof"
     DaiTokenType_ident,         // "ident"
     DaiTokenType_int,           // "int"
+    DaiTokenType_float,         // "float"
     DaiTokenType_comment,       // "comment"
     DaiTokenType_str,           // "string"
 
@@ -102,7 +103,7 @@ DaiTokenList_reset(DaiTokenList* list);
 DaiToken*
 DaiTokenList_next(DaiTokenList* list);
 size_t
-DaiTokenList_length(DaiTokenList* list);
+DaiTokenList_length(const DaiTokenList* list);
 
 // #endregion
 

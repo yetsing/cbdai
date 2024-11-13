@@ -64,7 +64,15 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
                         "`  a  b  \n`\n"
                         "class Foo {};\n"
                         "self.a = 3;\n"
-                        "super.b elif nil\n";
+                        "super.b elif nil\n"
+                        "0 "
+                        "3.4 "
+                        "0.1 "
+                        "0.0 "
+                        "1.0 "
+                        "3.1416 "
+                        "1.234E+10 "
+                        "1.234E-10\n";
 
     DaiToken tests[] = {
         {
@@ -250,7 +258,16 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_elif, "elif", 31, 9, 31, 13},
         {DaiTokenType_nil, "nil", 31, 14, 31, 17},
 
-        {DaiTokenType_eof, "", 32, 1},
+        {DaiTokenType_int, "0", 32, 1, 32, 2},
+        {DaiTokenType_float, "3.4", 32, 3, 32, 6},
+        {DaiTokenType_float, "0.1", 32, 7, 32, 10},
+        {DaiTokenType_float, "0.0", 32, 11, 32, 14},
+        {DaiTokenType_float, "1.0", 32, 15, 32, 18},
+        {DaiTokenType_float, "3.1416", 32, 19, 32, 25},
+        {DaiTokenType_float, "1.234E+10", 32, 26, 32, 35},
+        {DaiTokenType_float, "1.234E-10", 32, 36, 32, 45},
+
+        {DaiTokenType_eof, "", 33, 1},
     };
 
     DaiTokenList list;
@@ -321,6 +338,156 @@ test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+
+static MunitResult
+test_tokenize_integer(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void* user_data) {
+    const char* tests[] = {
+        "0",
+
+        "1",
+        "12",
+        "123",
+        "12___3",
+        "1234567890",
+        "1_2_3_4_5_6_7_8",
+        "1_____________2",
+
+        "0b0",
+        "0b0101010",
+        "0b_0_1_01010",
+        "0b____0___1_01010",
+        "0B0",
+        "0B0101010",
+        "0B_0_1_01010",
+        "0B____0___1_01010",
+
+        "0o0",
+        "0o01234567",
+        "0o_0_1_2_3_4_5_6_7",
+        "0o__________0_1_2_3_4_5_6___7",
+        "0O0",
+        "0O01234567",
+        "0O_0_1_2_3_4_5_6_7",
+        "0O__________0_1_2_3_4_5_6_7",
+
+        "0x0",
+        "0x0123456789abcdefABCDEF",
+        "0x_0_1_23456789_abcdef_ABCDEF",
+        "0x___0_1_23456____789_ab_c__def_ABCDEF",
+        "0X0",
+        "0X0123456789abcdefABCDEF",
+        "0X_0_1_23456789_abcdef_ABCDEF",
+        "0X___0_1_23456____789_ab_c__def_ABCDEF",
+    };
+    for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
+        const char* input = tests[i];
+        DaiTokenList list;
+        DaiTokenList_init(&list);
+        DaiSyntaxError* err = dai_tokenize_string(input, &list);
+        if (err) {
+            printf("input: \"%s\"\n", input);
+            DaiSyntaxError_setFilename(err, "<test>");
+            DaiSyntaxError_pprint(err, input);
+        }
+        if (2 != DaiTokenList_length(&list)) {
+            printf("input: \"%s\"\n", input);
+            for (int j = 0; j < DaiTokenList_length(&list); j++) {
+                const DaiToken* tok = DaiTokenList_next(&list);
+                printf("token: \"%s\"\n", tok->literal);
+            }
+        }
+        munit_assert_int(2, ==, DaiTokenList_length(&list));
+        {
+            DaiToken* tok = DaiTokenList_next(&list);
+            munit_assert_int(DaiTokenType_int, ==, tok->type);
+            munit_assert_string_equal(input, tok->literal);
+        }
+        {
+            DaiToken* tok = DaiTokenList_next(&list);
+            munit_assert_int(DaiTokenType_eof, ==, tok->type);
+        }
+        munit_assert_null(err);
+        DaiTokenList_reset(&list);
+    }
+    return MUNIT_OK;
+}
+
+static MunitResult
+test_tokenize_float(__attribute__((unused)) const MunitParameter params[],
+                    __attribute__((unused)) void* user_data) {
+    const char* tests[] = {
+        "0.0",
+        "0.00",
+        "0.0____0",
+        "0.0123456789",
+        "0.0_1_2_3_4_5_6_7_8_9",
+        "0.0_1_____2_____3_____4_5_67_8_____9",
+
+        "1.0",
+        "1.00",
+        "1.0____0",
+        "1.0123456789",
+        "1.0_1_2_3_4_5_6_7_8_9",
+        "1.0_1_____2_____3_____4_5_67_8_____9",
+
+        "10.0",
+        "20.00",
+        "30.0____0",
+        "40.0123456789",
+        "50.0_1_2_3_4_5_6_7_8_9",
+        "60.0_1_____2_____3_____4_5_67_8_____9",
+        "70.0_1_____2_____3_____4_5_67_8_____9",
+        "80.0_1_____2_____3_____4_5_67_8_____9",
+        "90.0_1_____2_____3_____4_5_67_8_____9",
+
+        "100.0",
+        "1_2_3.4_5_6_7_8",
+
+        "1.234E+10",
+        "1.234E-10",
+
+        "1.0000000000000002",
+        "4.9406564584124654e-324",
+        "2.2250738585072009e-308",
+        "2.2250738585072014e-308",
+        "1.7976931348623157e+308",
+    };
+    for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
+        const char* input = tests[i];
+        DaiTokenList list;
+        DaiTokenList_init(&list);
+        DaiSyntaxError* err = dai_tokenize_string(input, &list);
+        if (err) {
+            printf("input: \"%s\"\n", input);
+            DaiSyntaxError_setFilename(err, "<test>");
+            DaiSyntaxError_pprint(err, input);
+        }
+        if (2 != DaiTokenList_length(&list)) {
+            printf("input: \"%s\"\n", input);
+            for (int j = 0; j < DaiTokenList_length(&list); j++) {
+                const DaiToken* tok = DaiTokenList_next(&list);
+                printf("token: \"%s\"\n", tok->literal);
+            }
+        }
+        munit_assert_int(2, ==, DaiTokenList_length(&list));
+        {
+            DaiToken* tok = DaiTokenList_next(&list);
+            munit_assert_int(DaiTokenType_float, ==, tok->type);
+            munit_assert_string_equal(input, tok->literal);
+        }
+        {
+            DaiToken* tok = DaiTokenList_next(&list);
+            munit_assert_int(DaiTokenType_eof, ==, tok->type);
+        }
+        munit_assert_null(err);
+        DaiTokenList_reset(&list);
+    }
+    return MUNIT_OK;
+}
+
+
+
 static MunitResult
 test_illegal_token(__attribute__((unused)) const MunitParameter params[],
                    __attribute__((unused)) void* user_data) {
@@ -331,10 +498,27 @@ test_illegal_token(__attribute__((unused)) const MunitParameter params[],
         {"$$$", "SyntaxError: illegal character '$' in <stdin>:1:1"},
         {"\xbf", "SyntaxError: invalid utf8 encoding character in <stdin>:1:1"},
         {"'a\n'", "SyntaxError: unclosed string literal in <stdin>:1:3"},
+        {"01",
+         "SyntaxError: leading zeros in decimal integer literals are not permitted in <stdin>:1:1"},
+        {".01",
+         "SyntaxError: leading zeros in decimal integer literals are not permitted in <stdin>:1:2"},
+        {"0b2", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0B2", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0o8", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0O8", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0xg", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0Xg", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"1_", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0.", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"1.", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0.1E", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0.1E+", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"0.1E-", "SyntaxError: invalid number in <stdin>:1:1"},
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
         const char* input = tests[i].input;
         DaiTokenList list;
+        DaiTokenList_init(&list);
         DaiSyntaxError* err = dai_tokenize_string(input, &list);
         DaiSyntaxError_setFilename(err, "<stdin>");
         munit_assert_not_null(err);
@@ -352,6 +536,13 @@ test_illegal_token(__attribute__((unused)) const MunitParameter params[],
 MunitTest tokenize_suite_tests[] = {
     {(char*)"/test_next_token", test_next_token, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_tokenize_file", test_tokenize_file, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_tokenize_integer",
+     test_tokenize_integer,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_tokenize_float", test_tokenize_float, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_illegal_token", test_illegal_token, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

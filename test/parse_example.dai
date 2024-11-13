@@ -82,3 +82,4 @@ while (x < 10) {
 };
 
 var mynil = nil;
+x = 3.1415926;

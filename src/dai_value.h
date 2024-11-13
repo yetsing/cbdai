@@ -14,6 +14,7 @@ typedef enum {
     DaiValueType_nil,
     DaiValueType_bool,
     DaiValueType_int,
+    DaiValueType_float,
     DaiValueType_obj,
 } DaiValueType;
 
@@ -21,6 +22,7 @@ typedef struct {
     DaiValueType type;
     union {
         int64_t intval;
+        double floatval;
         bool boolean;
         DaiObj* obj;
     } as;
@@ -35,16 +37,19 @@ dai_value_ts(DaiValue value);
 #define IS_NIL(value) ((value).type == DaiValueType_nil)
 #define IS_INTEGER(value) ((value).type == DaiValueType_int)
 #define IS_NOT_INTEGER(value) ((value).type != DaiValueType_int)
+#define IS_FLOAT(value) ((value).type == DaiValueType_float)
 #define IS_OBJ(value) ((value).type == DaiValueType_obj)
 
 #define AS_BOOL(value) ((value).as.boolean)
 #define AS_INTEGER(value) ((value).as.intval)
+#define AS_FLOAT(value) ((value).as.floatval)
 #define AS_OBJ(value) ((value).as.obj)
 
 #define UNDEFINED_VAL ((DaiValue){DaiValueType_undefined, {.intval = 0}})
 #define BOOL_VAL(value) ((DaiValue){DaiValueType_bool, {.boolean = value}})
 #define NIL_VAL ((DaiValue){DaiValueType_nil, {.intval = 0}})
 #define INTEGER_VAL(value) ((DaiValue){DaiValueType_int, {.intval = value}})
+#define FLOAT_VAL(value) ((DaiValue){DaiValueType_float, {.floatval = value}})
 #define OBJ_VAL(object) ((DaiValue){DaiValueType_obj, {.obj = (DaiObj*)object}})
 
 void

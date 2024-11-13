@@ -10,7 +10,7 @@
 #define dai_log(...) printf(__VA_ARGS__)
 #define dai_error(...) fprintf(stderr, __VA_ARGS__)
 
-#if (!defined TEST) && (!defined BENCHMARK) && (!defined BENCHMARK_PROFILE)
+#ifdef DAI_DEBUG
 #    define DEBUG_TRACE_EXECUTION
 // 反汇编展示变量名
 #    define DISASSEMBLE_VARIABLE_NAME

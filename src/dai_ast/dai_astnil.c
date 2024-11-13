@@ -9,7 +9,6 @@
 static char*
 DaiAstNil_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_Nil);
-    DaiAstNil* boolean  = (DaiAstNil*)base;
     DaiStringBuffer* sb = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
@@ -25,8 +24,8 @@ DaiAstNil_string(DaiAstBase* base, bool recursive) {
 static void
 DaiAstNil_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_Nil);
-    DaiAstNil* boolean = (DaiAstNil*)base;
-    dai_free(boolean);
+    DaiAstNil* lit = (DaiAstNil*)base;
+    dai_free(lit);
 }
 
 static char*

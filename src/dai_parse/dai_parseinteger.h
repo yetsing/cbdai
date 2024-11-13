@@ -5,6 +5,9 @@
 #ifndef CBDAI_SRC_DAI_PARSER_DAI_PARSEINTEGER_H_
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSEINTEGER_H_
 
+#include <errno.h>
+#include <stdlib.h>
+
 #include "dai_parseint.h"
 
 // 解析整数字面量
@@ -43,6 +46,46 @@ Parser_parseInteger(Parser* p) {
     // 创建整数节点
     DaiAstIntegerLiteral* num = DaiAstIntegerLiteral_New(p->cur_token);
     num->value                = n;
+    return (DaiAstExpression*)num;
+}
+
+// 解析浮点数字面量
+static DaiAstExpression*
+Parser_parseFloat(Parser* p) {
+    daiassert(p->cur_token->type == DaiTokenType_float,
+              "not an float: %s",
+              DaiTokenType_string(p->cur_token->type));
+
+    // 去除字面量中的下划线
+    char* numbuf      = dai_malloc(strlen(p->cur_token->literal) + 1);
+    char* numbuf_curr = numbuf;
+    char* curr        = p->cur_token->literal;
+    while (*curr != '\0') {
+        if (*curr == '_') {
+            curr++;
+        } else {
+            *numbuf_curr++ = *curr++;
+        }
+    }
+    *numbuf_curr = '\0';
+
+    char* end;
+    const double value = strtod(numbuf, &end);
+    dai_free(numbuf);
+    if (errno == ERANGE) {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Out of range \"%s\"", p->cur_token->literal);
+        int line   = p->cur_token->start_line;
+        int column = p->cur_token->start_column;
+        if (p->cur_token->type == DaiTokenType_eof) {
+            line   = p->prev_token->end_line;
+            column = p->prev_token->end_column;
+        }
+        p->syntax_error = DaiSyntaxError_New(buf, line, column);
+        return NULL;
+    }
+    DaiAstFloatLiteral* num = DaiAstFloatLiteral_New(p->cur_token);
+    num->value              = value;
     return (DaiAstExpression*)num;
 }
 

@@ -27,6 +27,7 @@ typedef enum {
     // #region expression
     DaiAstType_ExpressionStart,
     DaiAstType_IntegerLiteral,
+    DaiAstType_FloatLiteral,
     DaiAstType_Boolean,
     DaiAstType_Nil,
     DaiAstType_Identifier,

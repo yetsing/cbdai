@@ -716,6 +716,44 @@ test_integer_literal_expression(__attribute__((unused)) const MunitParameter par
 }
 
 static MunitResult
+test_float_literal_expression(__attribute__((unused)) const MunitParameter params[],
+                              __attribute__((unused)) void* user_data) {
+    struct {
+        const char* input;
+        double value;
+        int end_column;
+    } tests[] = {
+        {"5.0;", 5, 4},
+        {"15.0;", 15, 5},
+        {"3.1415926;", 3.1415926, 10},
+    };
+
+    for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
+        const char* input = tests[i].input;
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        DaiAstExpression* expr = ((DaiAstExpressionStatement*)stmt)->expression;
+        munit_assert_int(expr->type, ==, DaiAstType_FloatLiteral);
+        DaiAstFloatLiteral* num = (DaiAstFloatLiteral*)expr;
+        munit_assert_double(num->value, ==, tests[i].value);
+        {
+            munit_assert_int(num->start_line, ==, 1);
+            munit_assert_int(num->start_column, ==, 1);
+            munit_assert_int(num->end_line, ==, 1);
+            munit_assert_int(num->end_column, ==, tests[i].end_column);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    return MUNIT_OK;
+}
+
+static MunitResult
 test_function_literal_parsing(__attribute__((unused)) const MunitParameter params[],
                               __attribute__((unused)) void* user_data) {
     const char* input = "fn(x, y) {x + y;};";
@@ -1323,9 +1361,34 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
             "found in <stdin>:1:1",
         },
         {
-            "05;",
-            "SyntaxError: invalid base prefix \"05\" in <stdin>:1:1",
-
+            "0b12;",
+            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
+            "\"DaiTokenType_int\" in <stdin>:1:4",
+        },
+        {
+            "0B12;",
+            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
+            "\"DaiTokenType_int\" in <stdin>:1:4",
+        },
+        {
+            "0o18;",
+            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
+            "\"DaiTokenType_int\" in <stdin>:1:4",
+        },
+        {
+            "0O18;",
+            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
+            "\"DaiTokenType_int\" in <stdin>:1:4",
+        },
+        {
+            "0x1g;",
+            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
+            "\"DaiTokenType_ident\" in <stdin>:1:4",
+        },
+        {
+            "0X1g;",
+            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
+            "\"DaiTokenType_ident\" in <stdin>:1:4",
         },
         {
             "1 + 2",
@@ -1669,6 +1732,13 @@ recursive_string_and_free(DaiAstBase* ast) {
             literal->free_fn((DaiAstBase*)literal, false);
             break;
         }
+        case DaiAstType_FloatLiteral: {
+            DaiAstFloatLiteral* literal = (DaiAstFloatLiteral*)ast;
+            char* s                     = literal->string_fn((DaiAstBase*)literal, false);
+            free(s);
+            literal->free_fn((DaiAstBase*)literal, false);
+            break;
+        }
         case DaiAstType_Boolean: {
             DaiAstBoolean* literal = (DaiAstBoolean*)ast;
             char* s                = literal->string_fn((DaiAstBase*)literal, false);
@@ -1868,6 +1938,12 @@ MunitTest parse_tests[] = {
      NULL},
     {(char*)"/test_integer_literal_expression",
      test_integer_literal_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_float_literal_expression",
+     test_float_literal_expression,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

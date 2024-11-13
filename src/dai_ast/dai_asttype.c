@@ -23,6 +23,7 @@ static const char* AstTypeStrings[] = {
     "DaiAstType_StatementEnd",
     "DaiAstType_ExpressionStart",
     "DaiAstType_IntegerLiteral",
+    "DaiAstType_FloatLiteral",
     "DaiAstType_Boolean",
     "DaiAstType_Nil",
     "DaiAstType_Identifier",

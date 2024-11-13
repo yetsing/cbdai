@@ -90,14 +90,21 @@ DaiStringBuffer_writeWithLinePrefix(DaiStringBuffer* sb, char* str, const char* 
 void
 DaiStringBuffer_writeInt(DaiStringBuffer* sb, int n) {
     char buffer[32];
-    int len = snprintf(buffer, 32, "%d", n);
+    int len = snprintf(buffer, sizeof(buffer), "%d", n);
     DaiStringBuffer_writen(sb, buffer, len);
 }
 
 void
 DaiStringBuffer_writeInt64(DaiStringBuffer* sb, int64_t n) {
     char buffer[32];
-    int len = snprintf(buffer, 32, "%" PRId64, n);
+    int len = snprintf(buffer, sizeof(buffer), "%" PRId64, n);
+    DaiStringBuffer_writen(sb, buffer, len);
+}
+
+void
+DaiStringBuffer_writeDouble(DaiStringBuffer* sb, double n) {
+    char buffer[32];
+    int len = snprintf(buffer, sizeof(buffer), "%f", n);
     DaiStringBuffer_writen(sb, buffer, len);
 }
 

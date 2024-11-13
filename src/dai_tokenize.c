@@ -16,17 +16,21 @@
 #include "dai_tokenize.h"
 
 static const char* DaiTokenTypeStrings[] = {
-    "DaiTokenType_illegal",   "DaiTokenType_eof",    "DaiTokenType_ident",    "DaiTokenType_int",
-    "DaiTokenType_comment",   "DaiTokenType_str",    "DaiTokenType_function", "DaiTokenType_var",
-    "DaiTokenType_true",      "DaiTokenType_false",  "DaiTokenType_nil",      "DaiTokenType_if",
-    "DaiTokenType_elif",      "DaiTokenType_else",   "DaiTokenType_return",   "DaiTokenType_class",
-    "DaiTokenType_self",      "DaiTokenType_super",  "DaiTokenType_for",      "DaiTokenType_in",
-    "DaiTokenType_while",     "DaiTokenType_break",  "DaiTokenType_continue", "DaiTokenType_auto",
-    "DaiTokenType_assign",    "DaiTokenType_plus",   "DaiTokenType_minus",    "DaiTokenType_bang",
-    "DaiTokenType_asterisk",  "DaiTokenType_slash",  "DaiTokenType_lt",       "DaiTokenType_gt",
-    "DaiTokenType_eq",        "DaiTokenType_not_eq", "DaiTokenType_dot",      "DaiTokenType_comma",
-    "DaiTokenType_semicolon", "DaiTokenType_lparen", "DaiTokenType_rparen",   "DaiTokenType_lbrace",
-    "DaiTokenType_rbrace",    "DaiTokenType_end",
+    "DaiTokenType_illegal", "DaiTokenType_eof",       "DaiTokenType_ident",
+    "DaiTokenType_int",     "DaiTokenType_float",     "DaiTokenType_comment",
+    "DaiTokenType_str",     "DaiTokenType_function",  "DaiTokenType_var",
+    "DaiTokenType_true",    "DaiTokenType_false",     "DaiTokenType_nil",
+    "DaiTokenType_if",      "DaiTokenType_elif",      "DaiTokenType_else",
+    "DaiTokenType_return",  "DaiTokenType_class",     "DaiTokenType_self",
+    "DaiTokenType_super",   "DaiTokenType_for",       "DaiTokenType_in",
+    "DaiTokenType_while",   "DaiTokenType_break",     "DaiTokenType_continue",
+    "DaiTokenType_auto",    "DaiTokenType_assign",    "DaiTokenType_plus",
+    "DaiTokenType_minus",   "DaiTokenType_bang",      "DaiTokenType_asterisk",
+    "DaiTokenType_slash",   "DaiTokenType_lt",        "DaiTokenType_gt",
+    "DaiTokenType_eq",      "DaiTokenType_not_eq",    "DaiTokenType_dot",
+    "DaiTokenType_comma",   "DaiTokenType_semicolon", "DaiTokenType_lparen",
+    "DaiTokenType_rparen",  "DaiTokenType_lbrace",    "DaiTokenType_rbrace",
+    "DaiTokenType_end",
 };
 
 
@@ -103,7 +107,7 @@ DaiTokenList_next(DaiTokenList* list) {
 }
 
 size_t
-DaiTokenList_length(DaiTokenList* list) {
+DaiTokenList_length(const DaiTokenList* list) {
     return list->length;
 }
 
@@ -261,32 +265,177 @@ Tokenizer_buildToken(Tokenizer* tker, DaiTokenType type) {
 
 // #region token 解析逻辑
 static bool
-is_digit(char c) {
+is_digit(const dai_rune_t c) {
     return '0' <= c && c <= '9';
 }
 
-// 整数里面可以使用的字符为 0-9 a-f A-F _
 static bool
-is_digital_char(char c) {
-    return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F') || c == '_';
+is_bindigit(const dai_rune_t c) {
+    return c == '0' || c == '1';
 }
 
+static bool
+is_octdigit(const dai_rune_t c) {
+    return '0' <= c && c <= '7';
+}
+
+static bool
+is_hexdigit(const dai_rune_t c) {
+    return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
+}
+
+// 解析小数点后面部分
 static DaiToken*
-Tokenizer_readInteger(Tokenizer* tker) {
-    // 词法分析不判断整数是否有效，交由语法分析器进行判断
+Tokenizer_readFloatAfterDot(Tokenizer* tker) {
     Tokenizer_readChar(tker);
-    if (tker->ch == 'b' || tker->ch == 'B' || tker->ch == 'o' || tker->ch == 'O' ||
-        tker->ch == 'x' || tker->ch == 'X') {
+    // fraction 部分
+    if (!is_digit(tker->ch)) {
+        tker->has_error_msg = true;
+        snprintf(tker->error_msg, sizeof(tker->error_msg), "invalid number");
+        return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+    }
+    Tokenizer_readChar(tker);
+    while (is_digit(tker->ch) || tker->ch == '_') {
+        while (tker->ch == '_') {
+            Tokenizer_readChar(tker);
+        }
+        if (!is_digit(tker->ch)) {
+            tker->has_error_msg = true;
+            snprintf(tker->error_msg, sizeof(tker->error_msg), "invalid number");
+            return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+        }
         Tokenizer_readChar(tker);
     }
-    while (is_digital_char(tker->ch)) {
+    if (tker->ch == 'e' || tker->ch == 'E') {
+        // exp 部分
         Tokenizer_readChar(tker);
+        if (tker->ch == '+' || tker->ch == '-') {
+            Tokenizer_readChar(tker);
+        }
+        do {
+            if (!is_digit(tker->ch)) {
+                tker->has_error_msg = true;
+                snprintf(tker->error_msg, sizeof(tker->error_msg), "invalid number");
+                return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+            }
+            Tokenizer_readChar(tker);
+        } while (is_digit(tker->ch));
+    }
+    return Tokenizer_buildToken(tker, DaiTokenType_float);
+}
+
+// 数字字面量语法
+// 参考： https://docs.python.org/3/reference/lexical_analysis.html#integer-literals
+// number     ::= zero | decinteger | bininteger | octinteger | hexinteger | float
+// zero       ::= "0"
+// decinteger ::= nonzerodigit ( ("_")* digit)*
+// bininteger ::= "0" ("b" | "B") ( ("_")* bindigit)+
+// octinteger ::= "0" ("o" | "O") ( ("_")* octdigit)+
+// hexinteger ::= "0" ("x" | "X") ( ("_")* hexdigit)+
+// float      ::= ("0" | decinteger) "." fraction [ exp ]
+
+// fraction     ::= digit ( ("_")* digit)*
+// exp          ::= ("e" | "E") [ "-" | "+" ] (digit)+
+// nonzerodigit ::=  "1"..."9"
+// digit        ::=  "0"..."9"
+// bindigit     ::=  "0" | "1"
+// octdigit     ::=  "0"..."7"
+// hexdigit     ::=  digit | "a"..."f" | "A"..."F"
+static DaiToken*
+Tokenizer_readNumber(Tokenizer* tker) {
+    if (tker->ch == '0') {
+        // zero | bininteger | octinteger | hexinteger | float
+        Tokenizer_readChar(tker);
+        switch (tker->ch) {
+            case 'b':
+            case 'B': {
+                Tokenizer_readChar(tker);
+                do {
+                    while (tker->ch == '_') {
+                        Tokenizer_readChar(tker);
+                    }
+                    if (!is_bindigit(tker->ch)) {
+                        tker->has_error_msg = true;
+                        snprintf(tker->error_msg, sizeof(tker->error_msg), "invalid number");
+                        return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+                    }
+                    Tokenizer_readChar(tker);
+                } while (is_bindigit(tker->ch) || tker->ch == '_');
+                break;
+            }
+            case 'o':
+            case 'O': {
+                Tokenizer_readChar(tker);
+                do {
+                    while (tker->ch == '_') {
+                        Tokenizer_readChar(tker);
+                    }
+                    if (!is_octdigit(tker->ch)) {
+                        tker->has_error_msg = true;
+                        snprintf(tker->error_msg, sizeof(tker->error_msg), "invalid number");
+                        return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+                    }
+                    Tokenizer_readChar(tker);
+                } while (is_octdigit(tker->ch) || tker->ch == '_');
+                break;
+            }
+            case 'x':
+            case 'X': {
+                Tokenizer_readChar(tker);
+                do {
+                    while (tker->ch == '_') {
+                        Tokenizer_readChar(tker);
+                    }
+                    if (!is_hexdigit(tker->ch)) {
+                        tker->has_error_msg = true;
+                        snprintf(tker->error_msg, sizeof(tker->error_msg), "invalid number");
+                        return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+                    }
+                    Tokenizer_readChar(tker);
+                } while (is_hexdigit(tker->ch) || tker->ch == '_');
+                break;
+            }
+            case '.': {
+                // float 情况
+                return Tokenizer_readFloatAfterDot(tker);
+                break;
+            }
+            default: {
+                if (is_digit(tker->ch) || tker->ch == '_') {
+                    tker->has_error_msg = true;
+                    snprintf(tker->error_msg,
+                             sizeof(tker->error_msg),
+                             "leading zeros in decimal integer literals are not permitted");
+                    return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+                }
+                break;
+            }
+        }
+        return Tokenizer_buildToken(tker, DaiTokenType_int);
+    }
+
+    // decinteger | float
+    Tokenizer_readChar(tker);
+    while (is_digit(tker->ch) || tker->ch == '_') {
+        while (tker->ch == '_') {
+            Tokenizer_readChar(tker);
+        }
+        if (!is_digit(tker->ch)) {
+            tker->has_error_msg = true;
+            snprintf(tker->error_msg, sizeof(tker->error_msg), "invalid number");
+            return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+        }
+        Tokenizer_readChar(tker);
+    }
+    if (tker->ch == '.') {
+        // float 情况
+        return Tokenizer_readFloatAfterDot(tker);
     }
     return Tokenizer_buildToken(tker, DaiTokenType_int);
 }
 
 __attribute__((unused)) static bool
-is_letter(char c) {
+is_letter(const dai_rune_t c) {
     return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_';
 }
 
@@ -363,7 +512,7 @@ Tokenizer_readComment(Tokenizer* tker) {
 }
 
 static DaiToken*
-Tokenizer_readString(Tokenizer* tker, char quote) {
+Tokenizer_readString(Tokenizer* tker, const dai_rune_t quote) {
     bool multiline = quote == '`';
     while (tker->ch != quote && tker->ch != 0 && (tker->ch != '\n' || multiline)) {
         // TODO 处理转义字符
@@ -448,7 +597,7 @@ Tokenizer_nextToken(Tokenizer* tker) {
             if (is_identifier_start(ch)) {
                 return Tokenizer_readIdentifier(tker);
             } else if (is_digit(ch)) {
-                return Tokenizer_readInteger(tker);
+                return Tokenizer_readNumber(tker);
             } else {
                 Tokenizer_readChar(tker);
                 return Tokenizer_buildToken(tker, DaiTokenType_illegal);

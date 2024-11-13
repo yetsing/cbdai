@@ -76,7 +76,7 @@ typedef struct {
 
 // 将嵌套的常量展开
 static void
-flat_constants(DaiValueArray* target, DaiValueArray* source) {
+flat_constants(DaiValueArray* target, const DaiValueArray* source) {
     for (int i = 0; i < source->count; i++) {
         if (IS_FUNCTION(source->values[i])) {
             flat_constants(target, &(AS_FUNCTION(source->values[i])->chunk.constants));
@@ -86,7 +86,7 @@ flat_constants(DaiValueArray* target, DaiValueArray* source) {
 }
 
 static void
-run_compiler_tests(DaiCompilerTestCase* tests, size_t count) {
+run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
     for (size_t i = 0; i < count; i++) {
         DaiVM vm;
         DaiVM_init(&vm);
@@ -224,6 +224,34 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 INTEGER_VAL(1),
             },
         },
+        {
+            "-1.0;",
+            5,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpMinus,
+                DaiOpPop,
+            },
+            {
+                FLOAT_VAL(1.0),
+            },
+        },
+        {
+            "3.1415926;",
+            4,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+            },
+            {
+                FLOAT_VAL(3.1415926),
+            },
+        },
+
     };
     run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

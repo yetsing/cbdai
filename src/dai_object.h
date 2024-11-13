@@ -38,7 +38,7 @@ typedef enum {
     DaiObjType_boundMethod,
 } DaiObjType;
 
-typedef DaiValue (*BuiltinFn)(DaiValue receiver, int argc, DaiValue* argv);
+typedef DaiValue (*BuiltinFn)(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);
 typedef DaiValue (*GetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name);
 typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
 

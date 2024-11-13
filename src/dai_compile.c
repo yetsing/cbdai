@@ -1131,6 +1131,13 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                               lit->start_line);
             break;
         }
+        case DaiAstType_FloatLiteral: {
+            DaiAstFloatLiteral* lit = (DaiAstFloatLiteral*)node;
+            DaiValue num            = FLOAT_VAL(lit->value);
+            DaiCompiler_emit2(
+                compiler, DaiOpConstant, DaiCompiler_addConstant(compiler, num), lit->start_line);
+            break;
+        }
         case DaiAstType_StringLiteral: {
             DaiAstStringLiteral* lit = (DaiAstStringLiteral*)node;
             // +1 -2 是为了去掉字符串前后的引号

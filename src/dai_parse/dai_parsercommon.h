@@ -105,6 +105,8 @@ Parser_registerInfix(Parser* p, DaiTokenType type, infixParseFn fn);
 static DaiAstExpression*
 Parser_parseInteger(Parser* p);
 static DaiAstExpression*
+Parser_parseFloat(Parser* p);
+static DaiAstExpression*
 Parser_parseIdentifier(Parser* p);
 static DaiAstExpression*
 Parser_parseBoolean(Parser* p);
