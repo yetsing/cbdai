@@ -8,7 +8,7 @@ include_directories(src)
 # include_directories(src/utils)
 include_directories(test)
 
-add_compile_options(-g -Wall)
+add_compile_options(-g -Werror -Wall)
 
 file(GLOB_RECURSE MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c)
@@ -44,3 +44,5 @@ target_compile_definitions(benchmark_profile PRIVATE BENCHMARK_PROFILE)
 
 add_executable(benchmark benchmark.c ${MAIN_SRC})
 target_compile_definitions(benchmark PRIVATE BENCHMARK)
+
+add_executable(runfile runfile.c ${MAIN_SRC})
