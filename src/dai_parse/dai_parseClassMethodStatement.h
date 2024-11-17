@@ -1,7 +1,7 @@
 #ifndef B6AEA5F3_A8A5_48BB_B2C0_DED5180BBDD1
 #define B6AEA5F3_A8A5_48BB_B2C0_DED5180BBDD1
 
-#include "dai_parse/dai_parsefunctionliteral.h"
+#include "dai_parse/dai_parseFunctionLiteral.h"
 
 DaiAstClassMethodStatement*
 Parser_parseClassMethodStatement(Parser* p) {

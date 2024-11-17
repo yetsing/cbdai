@@ -1,7 +1,7 @@
 #ifndef DB5BBC74_AA02_4C1C_BFE0_FBEAF87FA59C
 #define DB5BBC74_AA02_4C1C_BFE0_FBEAF87FA59C
 
-#include "dai_parse/dai_parsefunctionliteral.h"
+#include "dai_parse/dai_parseFunctionLiteral.h"
 
 DaiAstMethodStatement*
 Parser_parseMethodStatement(Parser* p) {

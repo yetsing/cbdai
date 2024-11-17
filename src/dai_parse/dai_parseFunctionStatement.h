@@ -1,7 +1,7 @@
 #ifndef A853B09F_7EC9_48F2_A4CA_4CCCA21C7592
 #define A853B09F_7EC9_48F2_A4CA_4CCCA21C7592
 
-#include "dai_parse/dai_parsefunctionliteral.h"
+#include "dai_parse/dai_parseFunctionLiteral.h"
 
 DaiAstFunctionStatement*
 Parser_parseFunctionStatement(Parser* p) {

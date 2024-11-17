@@ -2,8 +2,6 @@
 #ifndef CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSIONORASSIGNSTATEMENT_H
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSIONORASSIGNSTATEMENT_H
 
-#include "dai_parse/dai_parseexpression.h"
-
 // 解析表达式语句或者赋值语句
 static DaiAstStatement*
 Parser_parseExpressionOrAssignStatement(Parser* p) {

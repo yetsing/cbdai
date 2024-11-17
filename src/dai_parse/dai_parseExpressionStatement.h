@@ -5,7 +5,7 @@
 #ifndef CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSIONSTATEMENT_H_
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSIONSTATEMENT_H_
 
-#include "dai_parse/dai_parseexpression.h"
+#include "dai_parse/dai_parseExpression.h"
 
 // 解析表达式语句
 static DaiAstExpressionStatement*

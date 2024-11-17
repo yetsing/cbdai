@@ -1,7 +1,8 @@
 //
-// Created by on 2024/6/5.
+// Created by yeqing on 24-11-17.
 //
 
+// ReSharper disable CppUnusedIncludeDirective
 #ifndef CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSION_H_
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSION_H_
 
@@ -9,18 +10,17 @@
 #include "dai_parse/dai_parseNil.h"
 #include "dai_parse/dai_parseSelfExpression.h"
 #include "dai_parse/dai_parseSuperExpression.h"
-#include "dai_parse/dai_parseboolean.h"
-#include "dai_parse/dai_parsecallexpression.h"
-#include "dai_parse/dai_parsefunctionliteral.h"
-#include "dai_parse/dai_parsegroupedexpression.h"
-#include "dai_parse/dai_parseidentifier.h"
-#include "dai_parse/dai_parseinfixexpression.h"
-#include "dai_parse/dai_parseinteger.h"
-#include "dai_parse/dai_parseprefixexpression.h"
-#include "dai_parse/dai_parsercommon.h"
-#include "dai_parse/dai_parsestringliteral.h"
+#include "dai_parse/dai_parseBoolean.h"
+#include "dai_parse/dai_parseCallExpression.h"
+#include "dai_parse/dai_parseFunctionLiteral.h"
+#include "dai_parse/dai_parseGroupedExpression.h"
+#include "dai_parse/dai_parseIdentifier.h"
+#include "dai_parse/dai_parseInfixExpression.h"
+#include "dai_parse/dai_parseInteger.h"
+#include "dai_parse/dai_parsePrefixExpression.h"
+#include "dai_parse/dai_parseStringLiteral.h"
 
-// 解析表达式
+
 static DaiAstExpression*
 Parser_parseExpression(Parser* p, Precedence precedence) {
     DaiAstExpression* left_exp = NULL;
@@ -55,4 +55,4 @@ Parser_parseExpression(Parser* p, Precedence precedence) {
     return left_exp;
 }
 
-#endif   // CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSION_H_
+#endif //CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSION_H_
