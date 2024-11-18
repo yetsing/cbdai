@@ -135,6 +135,7 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpSub: return simple_instruction("OP_SUB", offset);
         case DaiOpMul: return simple_instruction("OP_MUL", offset);
         case DaiOpDiv: return simple_instruction("OP_DIV", offset);
+        case DaiOpMod: return simple_instruction("OP_MOD", offset);
 
         case DaiOpTrue: return simple_instruction("OP_TRUE", offset);
         case DaiOpFalse: return simple_instruction("OP_FALSE", offset);

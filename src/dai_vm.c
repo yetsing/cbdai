@@ -222,27 +222,28 @@ DaiVM_dorun(DaiVM* vm) {
     CallFrame* frame = &vm->frames[vm->frameCount - 1];
     DaiChunk* chunk  = &frame->function->chunk;
 
-#define ARITHMETIC_OPERATION(op)                                               \
-    do {                                                                       \
-        DaiValue b = DaiVM_pop(vm);                                            \
-        DaiValue a = DaiVM_pop(vm);                                            \
-        if (IS_INTEGER(a) && IS_INTEGER(b)) {                                  \
-            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) op AS_INTEGER(b)));       \
-        } else if (IS_FLOAT(a) && IS_INTEGER(b)) {                             \
-            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op(double) AS_INTEGER(b)));   \
-        } else if (IS_INTEGER(a) && IS_FLOAT(b)) {                             \
-            DaiVM_push(vm, FLOAT_VAL((double)AS_INTEGER(a) op AS_FLOAT(b)));   \
-        } else if (IS_FLOAT(a) && IS_FLOAT(b)) {                               \
-            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op AS_FLOAT(b)));             \
-        } else {                                                               \
-            return DaiRuntimeError_Newf(                                       \
-                chunk->filename,                                               \
-                DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),       \
-                0,                                                             \
-                "TypeError: unsupported operand type(s) for +: '%s' and '%s'", \
-                dai_value_ts(a),                                               \
-                dai_value_ts(b));                                              \
-        }                                                                      \
+#define ARITHMETIC_OPERATION(op)                                                \
+    do {                                                                        \
+        DaiValue b = DaiVM_pop(vm);                                             \
+        DaiValue a = DaiVM_pop(vm);                                             \
+        if (IS_INTEGER(a) && IS_INTEGER(b)) {                                   \
+            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) op AS_INTEGER(b)));        \
+        } else if (IS_FLOAT(a) && IS_INTEGER(b)) {                              \
+            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op(double) AS_INTEGER(b)));    \
+        } else if (IS_INTEGER(a) && IS_FLOAT(b)) {                              \
+            DaiVM_push(vm, FLOAT_VAL((double)AS_INTEGER(a) op AS_FLOAT(b)));    \
+        } else if (IS_FLOAT(a) && IS_FLOAT(b)) {                                \
+            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op AS_FLOAT(b)));              \
+        } else {                                                                \
+            return DaiRuntimeError_Newf(                                        \
+                chunk->filename,                                                \
+                DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),        \
+                0,                                                              \
+                "TypeError: unsupported operand type(s) for %s: '%s' and '%s'", \
+                #op,                                                            \
+                dai_value_ts(a),                                                \
+                dai_value_ts(b));                                               \
+        }                                                                       \
     } while (0)
 
     // 先取值，再自增
@@ -298,6 +299,22 @@ DaiVM_dorun(DaiVM* vm) {
             }
             case DaiOpDiv: {
                 ARITHMETIC_OPERATION(/);
+                break;
+            }
+            case DaiOpMod: {
+                DaiValue b = DaiVM_pop(vm);
+                DaiValue a = DaiVM_pop(vm);
+                if (IS_INTEGER(a) && IS_INTEGER(b)) {
+                    DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) % AS_INTEGER(b)));
+                } else {
+                    return DaiRuntimeError_Newf(
+                        chunk->filename,
+                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
+                        0,
+                        "TypeError: unsupported operand type(s) for %%: '%s' and '%s'",
+                        dai_value_ts(a),
+                        dai_value_ts(b));
+                }
                 break;
             }
             case DaiOpTrue: {

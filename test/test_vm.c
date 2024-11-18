@@ -134,6 +134,8 @@ test_number_arithmetic(__attribute__((unused)) const MunitParameter params[],
         {"3.4 / 1;", FLOAT_VAL(3.4)},
         {"3 / 0.6;", FLOAT_VAL(5)},
         {"3.4 / 1.0;", FLOAT_VAL(3.4)},
+        {"2 % 1;", INTEGER_VAL(0)},
+        {"1 % 2;", INTEGER_VAL(1)},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

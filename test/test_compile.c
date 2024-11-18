@@ -211,6 +211,25 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
             },
         },
         {
+            "2 % 1;",
+            8,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpMod,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(2),
+                INTEGER_VAL(1),
+            },
+        },
+
+        {
             "-1;",
             5,
             {

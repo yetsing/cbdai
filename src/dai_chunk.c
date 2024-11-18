@@ -21,6 +21,7 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpSub] = {.name = "DaiOpSub", .operand_bytes = 0},
     [DaiOpMul] = {.name = "DaiOpMul", .operand_bytes = 0},
     [DaiOpDiv] = {.name = "DaiOpDiv", .operand_bytes = 0},
+    [DaiOpMod] = {.name = "DaiOpMod", .operand_bytes = 0},
 
     [DaiOpTrue]      = {.name = "DaiOpTrue", .operand_bytes = 0},
     [DaiOpFalse]     = {.name = "DaiOpFalse", .operand_bytes = 0},

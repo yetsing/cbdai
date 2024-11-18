@@ -48,6 +48,7 @@ typedef enum {
     DaiTokenType_bang,       // "bang!"
     DaiTokenType_asterisk,   // "asterisk*"
     DaiTokenType_slash,      // "slash/"
+    DaiTokenType_percent,    // "percent%"
 
     DaiTokenType_lt,   // "lt<"
     DaiTokenType_gt,   // "gt>"

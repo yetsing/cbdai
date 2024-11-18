@@ -72,7 +72,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
                         "1.0 "
                         "3.1416 "
                         "1.234E+10 "
-                        "1.234E-10\n";
+                        "1.234E-10 % \n";
 
     DaiToken tests[] = {
         {
@@ -266,6 +266,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_float, "3.1416", 32, 19, 32, 25},
         {DaiTokenType_float, "1.234E+10", 32, 26, 32, 35},
         {DaiTokenType_float, "1.234E-10", 32, 36, 32, 45},
+        {DaiTokenType_percent, "%", 32, 46, 32, 47},
 
         {DaiTokenType_eof, "", 33, 1},
     };

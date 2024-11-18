@@ -984,6 +984,7 @@ test_parsing_infix_expressions(__attribute__((unused)) const MunitParameter para
         {"5 < 5;", 5, "<", 5, 6},
         {"5 == 5;", 5, "==", 5, 7},
         {"5 != 5;", 5, "!=", 5, 7},
+        {"5 % 5;", 5, "%", 5, 6},
     };
     for (int i = 0; i < sizeof(infix_tests) / sizeof(infix_tests[0]); i++) {
         DaiAstProgram prog;
@@ -1246,6 +1247,19 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
             "self.a * 3 + super.b;",
             "(((self.a) * 3) + (super.b))",
         },
+        {
+            "5 + 5 % 2;",
+            "(5 + (5 % 2))",
+        },
+        {
+            "(5 + 5) % 2;",
+            "((5 + 5) % 2)",
+        },
+        {
+            "5 * 5 / 2 % 2;",
+            "(((5 * 5) / 2) % 2)",
+        }
+
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;

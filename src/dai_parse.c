@@ -30,7 +30,7 @@ typedef enum {
     Precedence_Equals,        // ==
     Precedence_LessGreater,   // > or <
     Precedence_Sum,           // +
-    Precedence_Product,       // *
+    Precedence_Product,       // * / %
     Precedence_Prefix,        // -X or !X
     Precedence_Call,          // myFunction(X)
     // 优先级最高
@@ -41,13 +41,14 @@ typedef enum {
 static Precedence
 token_precedences(const DaiTokenType type) {
     switch (type) {
-        case DaiTokenType_eq: return Precedence_Equals;
+        case DaiTokenType_eq:
         case DaiTokenType_not_eq: return Precedence_Equals;
-        case DaiTokenType_lt: return Precedence_LessGreater;
+        case DaiTokenType_lt:
         case DaiTokenType_gt: return Precedence_LessGreater;
-        case DaiTokenType_minus: return Precedence_Sum;
+        case DaiTokenType_minus:
         case DaiTokenType_plus: return Precedence_Sum;
-        case DaiTokenType_slash: return Precedence_Product;
+        case DaiTokenType_percent:
+        case DaiTokenType_slash:
         case DaiTokenType_asterisk: return Precedence_Product;
         case DaiTokenType_lparen:
         case DaiTokenType_dot: return Precedence_Call;
@@ -272,6 +273,7 @@ Parser_register(Parser* p) {
         Parser_registerInfix(p, DaiTokenType_minus, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_slash, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_asterisk, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_percent, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_eq, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_not_eq, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_lt, Parser_parseInfixExpression);

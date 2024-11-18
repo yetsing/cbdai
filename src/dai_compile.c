@@ -986,10 +986,12 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_emit(compiler, DaiOpEqual, expr->start_line);
             } else if (strcmp(expr->operator, "!=") == 0) {
                 DaiCompiler_emit(compiler, DaiOpNotEqual, expr->start_line);
+            } else if (strcmp(expr->operator, "%") == 0) {
+                DaiCompiler_emit(compiler, DaiOpMod, expr->start_line);
             } else {
                 return DaiCompileError_Newf(compiler->filename,
-                                            expr->start_line,
-                                            expr->start_column,
+                                            expr->left->end_line,
+                                            expr->left->end_column + 1,
                                             "unknown operator: '%s'",
                                             expr->operator);
             }
