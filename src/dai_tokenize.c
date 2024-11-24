@@ -15,27 +15,61 @@
 #include "dai_malloc.h"
 #include "dai_tokenize.h"
 
-static const char* DaiTokenTypeStrings[] = {
-    "DaiTokenType_illegal", "DaiTokenType_eof",      "DaiTokenType_ident",
-    "DaiTokenType_int",     "DaiTokenType_float",    "DaiTokenType_comment",
-    "DaiTokenType_str",     "DaiTokenType_function", "DaiTokenType_var",
-    "DaiTokenType_true",    "DaiTokenType_false",    "DaiTokenType_nil",
-    "DaiTokenType_if",      "DaiTokenType_elif",     "DaiTokenType_else",
-    "DaiTokenType_return",  "DaiTokenType_class",    "DaiTokenType_self",
-    "DaiTokenType_super",   "DaiTokenType_for",      "DaiTokenType_in",
-    "DaiTokenType_while",   "DaiTokenType_break",    "DaiTokenType_continue",
-    "DaiTokenType_auto",    "DaiTokenType_assign",   "DaiTokenType_plus",
-    "DaiTokenType_minus",   "DaiTokenType_bang",     "DaiTokenType_asterisk",
-    "DaiTokenType_slash",   "DaiTokenType_percent",  "DaiTokenType_lt",
-    "DaiTokenType_gt",      "DaiTokenType_eq",       "DaiTokenType_not_eq",
-    "DaiTokenType_dot",     "DaiTokenType_comma",    "DaiTokenType_semicolon",
-    "DaiTokenType_lparen",  "DaiTokenType_rparen",   "DaiTokenType_lbrace",
-    "DaiTokenType_rbrace",  "DaiTokenType_end",
+static const char *DaiTokenTypeStrings[] = {
+    "DaiTokenType_illegal",
+    "DaiTokenType_eof",
+    "DaiTokenType_ident",
+    "DaiTokenType_int",
+    "DaiTokenType_float",
+    "DaiTokenType_comment",
+    "DaiTokenType_str",
+    "DaiTokenType_function",
+    "DaiTokenType_var",
+    "DaiTokenType_true",
+    "DaiTokenType_false",
+    "DaiTokenType_nil",
+    "DaiTokenType_if",
+    "DaiTokenType_elif",
+    "DaiTokenType_else",
+    "DaiTokenType_return",
+    "DaiTokenType_class",
+    "DaiTokenType_self",
+    "DaiTokenType_super",
+    "DaiTokenType_for",
+    "DaiTokenType_in",
+    "DaiTokenType_while",
+    "DaiTokenType_break",
+    "DaiTokenType_continue",
+    "DaiTokenType_and",
+    "DaiTokenType_or",
+    "DaiTokenType_not",
+    "DaiTokenType_auto",
+    "DaiTokenType_assign",
+    "DaiTokenType_plus",
+    "DaiTokenType_minus",
+    "DaiTokenType_bang",
+    "DaiTokenType_asterisk",
+    "DaiTokenType_slash",
+    "DaiTokenType_percent",
+    "DaiTokenType_lt",
+    "DaiTokenType_gt",
+    "DaiTokenType_lte",
+    "DaiTokenType_gte",
+    "DaiTokenType_eq",
+    "DaiTokenType_not_eq",
+    "DaiTokenType_dot",
+    "DaiTokenType_comma",
+    "DaiTokenType_semicolon",
+    "DaiTokenType_lparen",
+    "DaiTokenType_rparen",
+    "DaiTokenType_lbrace",
+    "DaiTokenType_rbrace",
+    "DaiTokenType_end",
 };
 
 
 __attribute__((unused)) const char*
-DaiTokenType_string(DaiTokenType type) {
+DaiTokenType_string(const DaiTokenType type) {
     return DaiTokenTypeStrings[type];
 }
 
@@ -74,6 +108,9 @@ static DaiToken keywords[] = {
     {DaiTokenType_while, "while"},
     {DaiTokenType_break, "break"},
     {DaiTokenType_continue, "continue"},
+    {DaiTokenType_and, "and"},
+    {DaiTokenType_or, "or"},
+    {DaiTokenType_not, "not"},
 };
 
 void
@@ -576,10 +613,20 @@ Tokenizer_nextToken(Tokenizer* tker) {
             }
         }
         case '<': {
+            if (Tokenizer_peekChar(tker) == '=') {
+                Tokenizer_readChar(tker);
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_lte);
+            }
             Tokenizer_readChar(tker);
             return Tokenizer_buildToken(tker, DaiTokenType_lt);
         }
         case '>': {
+            if (Tokenizer_peekChar(tker) == '=') {
+                Tokenizer_readChar(tker);
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_gte);
+            }
             Tokenizer_readChar(tker);
             return Tokenizer_buildToken(tker, DaiTokenType_gt);
         }

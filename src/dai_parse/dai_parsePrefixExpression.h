@@ -8,9 +8,6 @@
 // 解析前缀表达式，如 "-1" "!3"
 static DaiAstExpression*
 Parser_parsePrefixExpression(Parser* p) {
-    daiassert(p->cur_token->type == DaiTokenType_bang || p->cur_token->type == DaiTokenType_minus,
-              "not a prefix expression: %s",
-              DaiTokenType_string(p->cur_token->type));
     DaiAstPrefixExpression* prefix =
         (DaiAstPrefixExpression*)DaiAstPrefixExpression_New(p->cur_token, NULL);
     Parser_nextToken(p);

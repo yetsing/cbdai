@@ -9,7 +9,7 @@
 
 #include "dai_ast.h"
 
-typedef struct _Parser Parser; // NOLINT(*-reserved-identifier)
+typedef struct _Parser Parser;   // NOLINT(*-reserved-identifier)
 
 // 解析函数需要遵循一个约定
 // 函数在开始解析表达式时， cur_token 必须是当前所关联的 token 类型，
@@ -27,12 +27,14 @@ typedef enum {
     Precedence_none = 0,
     // 优先级最低
     Precedence_Lowest,
-    Precedence_Equals,        // ==
-    Precedence_LessGreater,   // > or <
-    Precedence_Sum,           // +
-    Precedence_Product,       // * / %
-    Precedence_Prefix,        // -X or !X
-    Precedence_Call,          // myFunction(X)
+    Precedence_Or,        // or
+    Precedence_And,       // and
+    Precedence_Not,       // not
+    Precedence_Compare,   // > or <
+    Precedence_Sum,       // +
+    Precedence_Product,   // * / %
+    Precedence_Prefix,    // -X or !X
+    Precedence_Call,      // myFunction(X)
     // 优先级最高
     Precedence_Highest,
 
@@ -41,10 +43,15 @@ typedef enum {
 static Precedence
 token_precedences(const DaiTokenType type) {
     switch (type) {
+        case DaiTokenType_or: return Precedence_Or;
+        case DaiTokenType_and: return Precedence_And;
+        case DaiTokenType_not: return Precedence_Not;
         case DaiTokenType_eq:
-        case DaiTokenType_not_eq: return Precedence_Equals;
+        case DaiTokenType_not_eq:
+        case DaiTokenType_lte:
+        case DaiTokenType_gte:
         case DaiTokenType_lt:
-        case DaiTokenType_gt: return Precedence_LessGreater;
+        case DaiTokenType_gt: return Precedence_Compare;
         case DaiTokenType_minus:
         case DaiTokenType_plus: return Precedence_Sum;
         case DaiTokenType_percent:
@@ -184,7 +191,7 @@ Parser_curTokenIs(const Parser* p, const DaiTokenType type) {
 
 // 判断下一个 token 是否为期望的 token 类型
 static bool
-Parser_peekTokenIs(const Parser* p, DaiTokenType type) {
+Parser_peekTokenIs(const Parser* p, const DaiTokenType type) {
     return p->peek_token->type == type;
 }
 
@@ -257,6 +264,7 @@ Parser_register(Parser* p) {
         Parser_registerPrefix(p, DaiTokenType_float, Parser_parseFloat);
         Parser_registerPrefix(p, DaiTokenType_bang, Parser_parsePrefixExpression);
         Parser_registerPrefix(p, DaiTokenType_minus, Parser_parsePrefixExpression);
+        Parser_registerPrefix(p, DaiTokenType_not, Parser_parsePrefixExpression);
         Parser_registerPrefix(p, DaiTokenType_true, Parser_parseBoolean);
         Parser_registerPrefix(p, DaiTokenType_false, Parser_parseBoolean);
         Parser_registerPrefix(p, DaiTokenType_nil, Parser_parseNil);
@@ -278,6 +286,10 @@ Parser_register(Parser* p) {
         Parser_registerInfix(p, DaiTokenType_not_eq, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_lt, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_gt, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_lte, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_gte, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_and, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_or, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_lparen, Parser_parseCallExpression);
         Parser_registerInfix(p, DaiTokenType_dot, Parser_parseDotExpression);
     }
@@ -286,15 +298,15 @@ Parser_register(Parser* p) {
 // #region 解析方法
 
 #include "dai_parse/dai_parseBreakStatement.h"
+#include "dai_parse/dai_parseClassStatement.h"
 #include "dai_parse/dai_parseContinueStatement.h"
 #include "dai_parse/dai_parseExpressionOrAssignStatement.h"
-#include "dai_parse/dai_parseFunctionStatement.h"
-#include "dai_parse/dai_parseWhileStatement.h"
-#include "dai_parse/dai_parseClassStatement.h"
 #include "dai_parse/dai_parseExpressionStatement.h"
+#include "dai_parse/dai_parseFunctionStatement.h"
 #include "dai_parse/dai_parseIfStatement.h"
 #include "dai_parse/dai_parseReturnStatement.h"
 #include "dai_parse/dai_parseVarStatement.h"
+#include "dai_parse/dai_parseWhileStatement.h"
 
 static DaiAstBlockStatement*
 Parser_parseBlockStatement(Parser* p) {
@@ -376,8 +388,8 @@ Parser_parseStatement(Parser* p) {
             return (DaiAstStatement*)Parser_parseExpressionStatement(p);
         }
     }
-    return NULL;
 }
+
 static DaiSyntaxError*
 Parser_parseProgram(Parser* p, DaiAstProgram* program) {
 

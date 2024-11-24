@@ -5,7 +5,6 @@
 #define A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0
 
 #include "dai_common.h"
-#include "dai_symboltable.h"
 #include "dai_value.h"
 
 typedef struct {
@@ -30,6 +29,11 @@ typedef enum __attribute__((__packed__)) {
     DaiOpEqual,
     DaiOpNotEqual,
     DaiOpGreaterThan,
+    DaiOpGreaterEqualThan,
+
+    DaiOpNot,  // not
+    DaiOpAnd,  // and
+    DaiOpOr,  // or
 
     DaiOpMinus,   // example: -1
     DaiOpBang,    // example: !true
@@ -75,10 +79,10 @@ typedef enum __attribute__((__packed__)) {
 } DaiOpCode;
 
 DaiOpCodeDefinition*
-dai_opcode_lookup(DaiOpCode op);
+dai_opcode_lookup(const DaiOpCode op);
 
 const char*
-dai_opcode_name(DaiOpCode op);
+dai_opcode_name(const DaiOpCode op);
 
 typedef struct {
     // filename 不归 DaiChunk 所有
@@ -109,12 +113,12 @@ int
 DaiChunk_addConstant(DaiChunk* chunk, DaiValue value);
 
 uint8_t
-DaiChunk_read(DaiChunk* chunk, int offset);
+DaiChunk_read(const DaiChunk* chunk, int offset);
 uint16_t
-DaiChunk_readu16(DaiChunk* chunk, int offset);
+DaiChunk_readu16(const DaiChunk* chunk, int offset);
 
 int
-DaiChunk_getLine(DaiChunk* chunk, int offset);
+DaiChunk_getLine(const DaiChunk* chunk, int offset);
 
 #ifdef DISASSEMBLE_VARIABLE_NAME
 void

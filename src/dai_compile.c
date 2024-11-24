@@ -75,7 +75,7 @@ IntArray_leave(IntArray* array) {
 }
 
 bool
-IntArray_contains(IntArray* array, int value) {
+IntArray_contains(const IntArray* array, const int value) {
     for (int i = 0; i < array->count; i++) {
         if (array->values[i].value == value) {
             return true;
@@ -85,7 +85,7 @@ IntArray_contains(IntArray* array, int value) {
 }
 
 void
-IntArray_show(IntArray* array) {
+IntArray_show(const IntArray* array) {
     dai_log("IntArray level=%d, count=%d [\n", array->level, array->count);
     for (int i = 0; i < array->count; i++) {
         dai_log("    level=%d, value=%d\n", array->values[i].level, array->values[i].value);
@@ -167,27 +167,27 @@ DaiCompiler_addName(DaiCompiler* compiler, const char* name, int back) {
 #endif
 
 static int
-DaiCompiler_addConstant(DaiCompiler* compiler, DaiValue value);
+DaiCompiler_addConstant(const DaiCompiler* compiler, DaiValue value);
 static int
-DaiCompiler_emit(DaiCompiler* compiler, DaiOpCode op, int line);
+DaiCompiler_emit(const DaiCompiler* compiler, DaiOpCode op, int line);
 static int
-DaiCompiler_emit1(DaiCompiler* compiler, DaiOpCode op, uint8_t operand, int line);
+DaiCompiler_emit1(const DaiCompiler* compiler, DaiOpCode op, uint8_t operand, int line);
 static int
-DaiCompiler_emit2(DaiCompiler* compiler, DaiOpCode op, uint16_t operand, int line);
+DaiCompiler_emit2(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand, int line);
 static int
-DaiCompiler_emit3(DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_t operand2,
+DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_t operand2,
                   int line);
 static void
-DaiCompiler_patchJump(DaiCompiler* compiler, int offset);
+DaiCompiler_patchJump(const DaiCompiler* compiler, int offset);
 static void
-DaiCompiler_patchJumpBack(DaiCompiler* compiler, int offset, int dst);
+DaiCompiler_patchJumpBack(const DaiCompiler* compiler, int offset, int dst);
 static void
 DaiCompiler_reset(DaiCompiler* compiler);
 static DaiCompileError*
 DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node);
 
 static DaiCompileError*
-DaiCompiler_loadSymbol(DaiCompiler* compiler, DaiSymbol* symbol, int start_line) {
+DaiCompiler_loadSymbol(const DaiCompiler* compiler, const DaiSymbol* symbol, int start_line) {
     switch (symbol->type) {
         case DaiSymbolType_builtin: {
             DaiCompiler_emit1(compiler, DaiOpGetBuiltin, symbol->index, start_line);
@@ -221,7 +221,6 @@ DaiCompiler_loadSymbol(DaiCompiler* compiler, DaiSymbol* symbol, int start_line)
         default: {
             dai_error("Unknown symbol type: %d\n", symbol->type);
             unreachable();
-            break;
         }
     }
     return NULL;
@@ -306,7 +305,6 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
         default: {
             dai_error("Unknown function type: %d\n", node->type);
             unreachable();
-            break;
         }
     }
 
@@ -343,9 +341,9 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     {
         DaiSymbol* free_symbols = DaiSymbolTable_getFreeSymbols(functable, &num_free);
         for (int i = 0; i < num_free; i++) {
-            DaiCompileError* err = DaiCompiler_loadSymbol(compiler, &free_symbols[i], start_line);
-            if (err != NULL) {
-                return err;
+            DaiCompileError* err2 = DaiCompiler_loadSymbol(compiler, &free_symbols[i], start_line);
+            if (err2 != NULL) {
+                return err2;
             }
         }
     }
@@ -549,7 +547,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 default: {
                     unreachable();
-                    break;
                 }
             }
             break;
@@ -590,7 +587,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
 
                         default: {
                             unreachable();
-                            break;
                         }
                     }
 
@@ -598,9 +594,9 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 case DaiAstType_DotExpression: {
                     DaiAstDotExpression* expr = (DaiAstDotExpression*)stmt->left;
-                    DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
-                    if (err != NULL) {
-                        return err;
+                    DaiCompileError* err2 = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+                    if (err2 != NULL) {
+                        return err2;
                     }
                     DaiObjString* name =
                         dai_copy_string(compiler->vm, expr->name->value, strlen(expr->name->value));
@@ -618,7 +614,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 default: {
                     unreachable();
-                    break;
                 }
             }
             break;
@@ -678,7 +673,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 default: {
                     unreachable();
-                    break;
                 }
             }
             IntArray_pop(&compiler->scope_stack);
@@ -725,7 +719,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 default: {
                     unreachable();
-                    break;
                 }
             }
             // 加载类对象到栈顶
@@ -964,6 +957,20 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_emit(compiler, DaiOpGreaterThan, expr->start_line);
                 return NULL;
             }
+            if (strcmp(expr->operator, "<=") == 0) {
+                // 交换左右两边
+                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+                if (err != NULL) {
+                    return err;
+                }
+                err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+                if (err != NULL) {
+                    return err;
+                }
+                DaiCompiler_emit(compiler, DaiOpGreaterEqualThan, expr->start_line);
+                return NULL;
+            }
+
             DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
             if (err != NULL) {
                 return err;
@@ -982,17 +989,23 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_emit(compiler, DaiOpDiv, expr->start_line);
             } else if (strcmp(expr->operator, ">") == 0) {
                 DaiCompiler_emit(compiler, DaiOpGreaterThan, expr->start_line);
+            } else if (strcmp(expr->operator, ">=") == 0) {
+                DaiCompiler_emit(compiler, DaiOpGreaterEqualThan, expr->start_line);
             } else if (strcmp(expr->operator, "==") == 0) {
                 DaiCompiler_emit(compiler, DaiOpEqual, expr->start_line);
             } else if (strcmp(expr->operator, "!=") == 0) {
                 DaiCompiler_emit(compiler, DaiOpNotEqual, expr->start_line);
             } else if (strcmp(expr->operator, "%") == 0) {
                 DaiCompiler_emit(compiler, DaiOpMod, expr->start_line);
+            } else if (strcmp(expr->operator, "and") == 0) {
+                DaiCompiler_emit(compiler, DaiOpAnd, expr->start_line);
+            } else if (strcmp(expr->operator, "or") == 0) {
+                DaiCompiler_emit(compiler, DaiOpOr, expr->start_line);
             } else {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->left->end_line,
                                             expr->left->end_column + 1,
-                                            "unknown operator: '%s'",
+                                            "unknown infix operator: '%s'",
                                             expr->operator);
             }
             break;
@@ -1007,11 +1020,13 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_emit(compiler, DaiOpMinus, expr->start_line);
             } else if (strcmp(expr->operator, "!") == 0) {
                 DaiCompiler_emit(compiler, DaiOpBang, expr->start_line);
+            } else if (strcmp(expr->operator, "not") == 0) {
+                DaiCompiler_emit(compiler, DaiOpNot, expr->start_line);
             } else {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->start_line,
                                             expr->start_column,
-                                            "unknown operator: '%s'",
+                                            "unknown prefix operator: '%s'",
                                             expr->operator);
             }
             return NULL;
@@ -1175,33 +1190,33 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
 
 
 static int
-DaiCompiler_addConstant(DaiCompiler* compiler, DaiValue value) {
+DaiCompiler_addConstant(const DaiCompiler* compiler, DaiValue value) {
     DaiChunk* chunk = &(compiler->function->chunk);
     return DaiChunk_addConstant(chunk, value);
 }
 
 static int
-DaiCompiler_emit(DaiCompiler* compiler, DaiOpCode op, int line) {
+DaiCompiler_emit(const DaiCompiler* compiler, DaiOpCode op, int line) {
     DaiChunk* chunk = &(compiler->function->chunk);
     DaiChunk_write(chunk, (uint8_t)op, line);
     return chunk->count - 1;
 }
 
 static int
-DaiCompiler_emit1(DaiCompiler* compiler, DaiOpCode op, uint8_t operand, int line) {
+DaiCompiler_emit1(const DaiCompiler* compiler, DaiOpCode op, uint8_t operand, int line) {
     DaiChunk* chunk = &(compiler->function->chunk);
     DaiChunk_write(chunk, (uint8_t)op, line);
     DaiChunk_write(chunk, operand, line);
     return chunk->count - 2;
 }
 static int
-DaiCompiler_emit2(DaiCompiler* compiler, DaiOpCode op, uint16_t operand, int line) {
+DaiCompiler_emit2(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand, int line) {
     DaiChunk* chunk = &(compiler->function->chunk);
     DaiChunk_writeu16(chunk, op, operand, line);
     return chunk->count - 3;
 }
 static int
-DaiCompiler_emit3(DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_t operand2,
+DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_t operand2,
                   int line) {
     DaiChunk* chunk = &(compiler->function->chunk);
     DaiChunk_writeu16(chunk, op, operand1, line);
@@ -1210,7 +1225,7 @@ DaiCompiler_emit3(DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_
 }
 
 static void
-DaiCompiler_patchJump(DaiCompiler* compiler, int offset) {
+DaiCompiler_patchJump(const DaiCompiler* compiler, int offset) {
     DaiChunk* chunk = &(compiler->function->chunk);
     // 减去3是因为 jump 指令占用3个字节
     int jump = chunk->count - offset - 3;
@@ -1225,7 +1240,7 @@ DaiCompiler_patchJump(DaiCompiler* compiler, int offset) {
 }
 
 static void
-DaiCompiler_patchJumpBack(DaiCompiler* compiler, int offset, int dst) {
+DaiCompiler_patchJumpBack(const DaiCompiler* compiler, int offset, int dst) {
     DaiChunk* chunk = &(compiler->function->chunk);
     // 减去3是因为 jump 指令占用3个字节
     int jump = offset - dst + 3;

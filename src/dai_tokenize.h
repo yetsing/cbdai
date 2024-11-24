@@ -37,6 +37,9 @@ typedef enum {
     DaiTokenType_while,      // "while"
     DaiTokenType_break,      // "break"
     DaiTokenType_continue,   // "continue"
+    DaiTokenType_and,        // "and"
+    DaiTokenType_or,         // "or"
+    DaiTokenType_not,        // "not"
     // #endregion
 
     // #region 符号，自动类型，会根据字面量自动转换成对应类型
@@ -50,8 +53,10 @@ typedef enum {
     DaiTokenType_slash,      // "slash/"
     DaiTokenType_percent,    // "percent%"
 
-    DaiTokenType_lt,   // "lt<"
-    DaiTokenType_gt,   // "gt>"
+    DaiTokenType_lt,    // "lt<"
+    DaiTokenType_gt,    // "gt>"
+    DaiTokenType_lte,   // "lte<="
+    DaiTokenType_gte,   // "gte>="
 
     DaiTokenType_eq,       // "eq=="
     DaiTokenType_not_eq,   // "not_eq!="
@@ -73,7 +78,7 @@ typedef enum {
 } DaiTokenType;
 
 __attribute__((unused)) const char*
-DaiTokenType_string(DaiTokenType type);
+DaiTokenType_string(const DaiTokenType type);
 
 typedef struct {
     DaiTokenType type;

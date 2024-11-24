@@ -19,7 +19,7 @@ DaiValue dai_true  = {.type = DaiValueType_bool, .as.boolean = true};
 DaiValue dai_false = {.type = DaiValueType_bool, .as.boolean = false};
 
 static bool
-dai_value_is_truthy(DaiValue value) {
+dai_value_is_truthy(const DaiValue value) {
     switch (value.type) {
         case DaiValueType_nil: return false;
         case DaiValueType_bool: return AS_BOOL(value);
@@ -355,12 +355,55 @@ DaiVM_dorun(DaiVM* vm) {
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                         0,
-                        "TypeError: unsupported operand type(s) for >: '%s' and '%s'",
+                        "TypeError: unsupported operand type(s) for >/<: '%s' and '%s'",
                         dai_value_ts(a),
                         dai_value_ts(b));
                 }
                 DaiValue res = BOOL_VAL(AS_INTEGER(a) > AS_INTEGER(b));
                 DaiVM_push(vm, res);
+                break;
+            }
+            case DaiOpGreaterEqualThan: {
+                DaiValue b = DaiVM_pop(vm);
+                DaiValue a = DaiVM_pop(vm);
+                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
+                    return DaiRuntimeError_Newf(
+                        chunk->filename,
+                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
+                        0,
+                        "TypeError: unsupported operand type(s) for >=/<=: '%s' and '%s'",
+                        dai_value_ts(a),
+                        dai_value_ts(b));
+                }
+                DaiValue res = BOOL_VAL(AS_INTEGER(a) >= AS_INTEGER(b));
+                DaiVM_push(vm, res);
+                break;
+            }
+
+            case DaiOpNot: {
+                DaiValue a   = DaiVM_pop(vm);
+                DaiValue res = BOOL_VAL(!dai_value_is_truthy(a));
+                DaiVM_push(vm, res);
+                break;
+            }
+            case DaiOpAnd: {
+                DaiValue b = DaiVM_pop(vm);
+                DaiValue a = DaiVM_pop(vm);
+                if (!dai_value_is_truthy(a)) {
+                    DaiVM_push(vm, a);
+                } else {
+                    DaiVM_push(vm, b);
+                }
+                break;
+            }
+            case DaiOpOr: {
+                DaiValue b = DaiVM_pop(vm);
+                DaiValue a = DaiVM_pop(vm);
+                if (dai_value_is_truthy(a)) {
+                    DaiVM_push(vm, a);
+                } else {
+                    DaiVM_push(vm, b);
+                }
                 break;
             }
 

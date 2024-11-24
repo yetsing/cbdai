@@ -14,7 +14,7 @@
 static char*
 DaiAstPrefixExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_PrefixExpression);
-    DaiAstPrefixExpression* expr = (DaiAstPrefixExpression*)base;
+    const DaiAstPrefixExpression* expr = (DaiAstPrefixExpression*)base;
     DaiStringBuffer* sb          = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
@@ -53,16 +53,16 @@ DaiAstPrefixExpression_free(DaiAstBase* base, bool recursive) {
 static char*
 DaiAstPrefixExpression_literal(DaiAstExpression* expr) {
     assert(expr->type == DaiAstType_PrefixExpression);
-    DaiAstPrefixExpression* prefix = (DaiAstPrefixExpression*)expr;
+    const DaiAstPrefixExpression* prefix = (DaiAstPrefixExpression*)expr;
     char buf[256];
     char* expr_str = prefix->right->literal_fn(prefix->right);
-    snprintf(buf, 256, "(%s%s)", prefix->operator, expr_str);
+    snprintf(buf, 256, "(%s %s)", prefix->operator, expr_str);
     dai_free(expr_str);
     return strdup(buf);
 }
 
 DaiAstPrefixExpression*
-DaiAstPrefixExpression_New(DaiToken* operator, DaiAstExpression * right) {
+DaiAstPrefixExpression_New(const DaiToken* operator, DaiAstExpression * right) {
     DaiAstPrefixExpression* expr = dai_malloc(sizeof(DaiAstPrefixExpression));
     {
         expr->type       = DaiAstType_PrefixExpression;
@@ -70,7 +70,7 @@ DaiAstPrefixExpression_New(DaiToken* operator, DaiAstExpression * right) {
         expr->free_fn    = DaiAstPrefixExpression_free;
         expr->literal_fn = DaiAstPrefixExpression_literal;
     }
-    DaiToken* token = operator;
+    const DaiToken* token = operator;
     expr->operator= strdup(token->literal);
     expr->right        = right;
     expr->start_line   = token->start_line;

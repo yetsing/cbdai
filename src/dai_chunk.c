@@ -31,6 +31,11 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpEqual]       = {.name = "DaiOpEqual", .operand_bytes = 0},
     [DaiOpNotEqual]    = {.name = "DaiOpNotEqual", .operand_bytes = 0},
     [DaiOpGreaterThan] = {.name = "DaiOpGreaterThan", .operand_bytes = 0},
+    [DaiOpGreaterEqualThan] = {.name = "DaiOpGreaterEqualThan", .operand_bytes = 0},
+
+    [DaiOpNot] = {.name = "DaiOpNot", .operand_bytes = 0},
+    [DaiOpAnd] = {.name = "DaiOpAnd", .operand_bytes = 0},
+    [DaiOpOr] = {.name = "DaiOpOr", .operand_bytes = 0},
 
     [DaiOpMinus] = {.name = "DaiOpMinus", .operand_bytes = 0},
     [DaiOpBang]  = {.name = "DaiOpBang", .operand_bytes = 0},
@@ -89,7 +94,7 @@ static DaiOpCodeDefinition definitions[] = {
 };
 
 DaiOpCodeDefinition*
-dai_opcode_lookup(DaiOpCode op) {
+dai_opcode_lookup(const DaiOpCode op) {
     if (op >= 0 && op < sizeof(definitions) / sizeof(definitions[0])) {
         return &definitions[op];
     }
@@ -97,8 +102,8 @@ dai_opcode_lookup(DaiOpCode op) {
 }
 
 const char*
-dai_opcode_name(DaiOpCode op) {
-    DaiOpCodeDefinition* def = dai_opcode_lookup(op);
+dai_opcode_name(const DaiOpCode op) {
+    const DaiOpCodeDefinition* def = dai_opcode_lookup(op);
     if (def) {
         return def->name;
     }
@@ -172,18 +177,18 @@ DaiChunk_addConstant(DaiChunk* chunk, DaiValue value) {
 }
 
 uint8_t
-DaiChunk_read(DaiChunk* chunk, int offset) {
+DaiChunk_read(const DaiChunk* chunk, int offset) {
     return chunk->code[offset];
 }
 
 uint16_t
-DaiChunk_readu16(DaiChunk* chunk, int offset) {
+DaiChunk_readu16(const DaiChunk* chunk, int offset) {
     uint16_t value = (chunk->code[offset] << 8) | chunk->code[offset + 1];
     return value;
 }
 
 int
-DaiChunk_getLine(DaiChunk* chunk, int offset) {
+DaiChunk_getLine(const DaiChunk* chunk, int offset) {
     return chunk->lines[offset];
 }
 

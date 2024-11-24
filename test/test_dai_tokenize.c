@@ -72,7 +72,8 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
                         "1.0 "
                         "3.1416 "
                         "1.234E+10 "
-                        "1.234E-10 % \n";
+                        "1.234E-10 % \n"
+                        "== != < > <= >= and or not\n";
 
     DaiToken tests[] = {
         {
@@ -268,7 +269,17 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_float, "1.234E-10", 32, 36, 32, 45},
         {DaiTokenType_percent, "%", 32, 46, 32, 47},
 
-        {DaiTokenType_eof, "", 33, 1},
+        {DaiTokenType_eq, "==", 33, 1, 33, 3},
+        {DaiTokenType_not_eq, "!=", 33, 4, 33, 6},
+        {DaiTokenType_lt, "<", 33, 7, 33, 8},
+        {DaiTokenType_gt, ">", 33, 9, 33, 10},
+        {DaiTokenType_lte, "<=", 33, 11, 33, 13},
+        {DaiTokenType_gte, ">=", 33, 14, 33, 16},
+        {DaiTokenType_and, "and", 33, 17, 33, 20},
+        {DaiTokenType_or, "or", 33, 21, 33, 23},
+        {DaiTokenType_not, "not", 33, 24, 33, 27},
+
+        {DaiTokenType_eof, "", 34, 1},
     };
 
     DaiTokenList list;
@@ -280,8 +291,9 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
     }
     munit_assert_null(err);
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
-        DaiToken expect = tests[i];
-        DaiToken* tok   = DaiTokenList_next(&list);
+        const DaiToken expect = tests[i];
+        const DaiToken* tok   = DaiTokenList_next(&list);
+        munit_assert_string_equal(DaiTokenType_string(expect.type), DaiTokenType_string(tok->type));
         munit_assert_int(expect.type, ==, tok->type);
         munit_assert_string_equal(expect.literal, tok->literal);
         munit_assert_int(expect.start_line, ==, tok->start_line);
@@ -534,6 +546,33 @@ test_illegal_token(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+bool
+assert_string_starts_with(const char* s, const char* prefix) {
+    const size_t prefix_length = strlen(prefix);
+    const size_t slen          = strlen(s);
+    if (slen < prefix_length) {
+        return false;
+    }
+    for (size_t i = 0; i < prefix_length; ++i) {
+        if (s[i] != prefix[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static MunitResult
+test_token_type_string(__attribute__((unused)) const MunitParameter params[],
+                       __attribute__((unused)) void* user_data) {
+    for (int i = 0; i < DaiTokenType_end; ++i) {
+        const char* s = DaiTokenType_string(i);
+        munit_assert_true(assert_string_starts_with(s, "DaiTokenType_"));
+        munit_assert_string_not_equal(s, "DaiTokenType_end");
+    }
+    const char* s = DaiTokenType_string(DaiTokenType_end);
+    munit_assert_string_equal(s, "DaiTokenType_end");
+    return MUNIT_OK;
+}
 MunitTest tokenize_suite_tests[] = {
     {(char*)"/test_next_token", test_next_token, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_tokenize_file", test_tokenize_file, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
@@ -545,5 +584,11 @@ MunitTest tokenize_suite_tests[] = {
      NULL},
     {(char*)"/test_tokenize_float", test_tokenize_float, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_illegal_token", test_illegal_token, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_token_type_string",
+     test_token_type_string,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

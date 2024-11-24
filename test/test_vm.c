@@ -3,7 +3,6 @@
 #include "munit/munit.h"
 
 #include "dai_compile.h"
-#include "dai_debug.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_parse.h"
@@ -13,10 +12,9 @@
 static void
 interpret(DaiVM* vm, const char* input) {
     const char* filename = "<test>";
-    DaiError* err;
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
-    err                 = dai_tokenize_string(input, tlist);
+    DaiError* err       = dai_tokenize_string(input, tlist);
     if (err) {
         DaiSyntaxError_setFilename(err, filename);
         DaiSyntaxError_pprint(err, input);
@@ -57,7 +55,7 @@ void
 dai_assert_value_equal(DaiValue actual, DaiValue expected);
 
 static void
-run_vm_tests(DaiVMTestCase* tests, size_t count) {
+run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
     for (int i = 0; i < count; i++) {
         DaiVM vm;
         DaiVM_init(&vm);
@@ -160,8 +158,12 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         {"false != true;", dai_true},
         {"(1 < 2) == true;", dai_true},
         {"(1 < 2) == false;", dai_false},
+        {"(1 <= 2) == true;", dai_true},
+        {"(2 <= 2) == true;", dai_true},
         {"(1 > 2) == true;", dai_false},
         {"(1 > 2) == false;", dai_true},
+        {"(2 >= 2) == true;", dai_true},
+        {"(1 >= 2) == false;", dai_true},
         {"nil == nil;", dai_true},
         {"nil == true;", dai_false},
         {"!true;", dai_false},
@@ -171,6 +173,28 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         {"!!false;", dai_false},
         {"!!5;", dai_true},
         {"!nil;", dai_true},
+        {"not nil;", dai_true},
+        {"not false;", dai_true},
+        {"not true;", dai_false},
+        {"not 1;", dai_false},
+        {"true and true;", dai_true},
+        {"true and false;", dai_false},
+        {"false and true;", dai_false},
+        {"false and false;", dai_false},
+        {"true or true;", dai_true},
+        {"true or false;", dai_true},
+        {"false or true;", dai_true},
+        {"false or false;", dai_false},
+        // 测试 and or 运算结果
+        {"true and 1;", INTEGER_VAL(1)},
+        {"0 and 1;", INTEGER_VAL(0)},
+        {"false and 1;", dai_false},
+        {"1 or false;", INTEGER_VAL(1)},
+        {"1 or true;", INTEGER_VAL(1)},
+        {"1.0 or true;", FLOAT_VAL(1.0)},
+        {"0 or true;", dai_true},
+        {"0 or 2;", INTEGER_VAL(2)},
+        {"0 or 2.0;", FLOAT_VAL(2.0)},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

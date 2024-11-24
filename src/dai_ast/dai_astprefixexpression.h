@@ -15,5 +15,5 @@ typedef struct {
 } DaiAstPrefixExpression;
 
 DaiAstPrefixExpression*
-DaiAstPrefixExpression_New(DaiToken* operator, DaiAstExpression * right);
+DaiAstPrefixExpression_New(const DaiToken* operator, DaiAstExpression * right);
 #endif   // CBDAI_SRC_DAI_AST_DAI_ASTPREFIXEXPRESSION_H_

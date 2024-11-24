@@ -12,10 +12,9 @@ dai_assert_value_equal(DaiValue actual, DaiValue expected);
 
 static void
 compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
-    DaiError* err;
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
-    err                 = dai_tokenize_string(input, tlist);
+    DaiError* err       = dai_tokenize_string(input, tlist);
     if (err) {
         DaiSyntaxError_setFilename(err, "<stdin>");
         DaiSyntaxError_pprint(err, input);
@@ -44,10 +43,9 @@ compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
 
 static DaiCompileError*
 compile_error_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
-    DaiError* err;
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
-    err                 = dai_tokenize_string(input, tlist);
+    DaiError* err       = dai_tokenize_string(input, tlist);
     if (err) {
         DaiSyntaxError_setFilename(err, "<stdin>");
         DaiSyntaxError_pprint(err, input);
@@ -279,7 +277,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
 static MunitResult
 test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                          __attribute__((unused)) void* user_data) {
-    DaiCompilerTestCase tests[] = {
+    const DaiCompilerTestCase tests[] = {
         {
             "true;",
             2,
@@ -334,6 +332,42 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 0,
                 1,
                 DaiOpGreaterThan,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(2),
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "1 >= 2;",
+            8,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpGreaterEqualThan,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+            },
+        },
+        {
+            "1 <= 2;",
+            8,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpGreaterEqualThan,
                 DaiOpPop,
             },
             {
@@ -422,6 +456,35 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
             {
                 DaiOpNil,
                 DaiOpBang,
+                DaiOpPop,
+            },
+        },
+        {
+            "not nil;",
+            3,
+            {
+                DaiOpNil,
+                DaiOpNot,
+                DaiOpPop,
+            },
+        },
+        {
+            "nil and nil;",
+            4,
+            {
+                DaiOpNil,
+                DaiOpNil,
+                DaiOpAnd,
+                DaiOpPop,
+            },
+        },
+        {
+            "nil or nil;",
+            4,
+            {
+                DaiOpNil,
+                DaiOpNil,
+                DaiOpOr,
                 DaiOpPop,
             },
         },

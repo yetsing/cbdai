@@ -145,6 +145,11 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpEqual: return simple_instruction("OP_EQUAL", offset);
         case DaiOpNotEqual: return simple_instruction("OP_NOT_EQUAL", offset);
         case DaiOpGreaterThan: return simple_instruction("OP_GREATER_THAN", offset);
+        case DaiOpGreaterEqualThan: return simple_instruction("OP_GREATER_EQUAL_THAN", offset);
+
+        case DaiOpNot: return simple_instruction("OP_NOT", offset);
+        case DaiOpAnd: return simple_instruction("OP_AND", offset);
+        case DaiOpOr: return simple_instruction("OP_OR", offset);
 
         case DaiOpMinus: return simple_instruction("OP_MINUS", offset);
         case DaiOpBang: return simple_instruction("OP_BANG", offset);

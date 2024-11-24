@@ -1145,11 +1145,11 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
     } tests[] = {
         {
             "-a * b;",
-            "((-a) * b)",
+            "((- a) * b)",
         },
         {
             "!-a;",
-            "(!(-a))",
+            "(! (- a))",
         },
         {
             "a + b + c;",
@@ -1177,11 +1177,11 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
         },
         {
             "5 > 4 == 3 < 4;",
-            "((5 > 4) == (3 < 4))",
+            "(((5 > 4) == 3) < 4)",
         },
         {
             "5 < 4 != 3 > 4;",
-            "((5 < 4) != (3 > 4))",
+            "(((5 < 4) != 3) > 4)",
         },
         {
             "3 + 4 * 5 == 3 * 1 + 4 * 5;",
@@ -1200,8 +1200,20 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
             "((3 > 5) == false)",
         },
         {
+            "3 >= 5;",
+            "(3 >= 5)",
+        },
+        {
+            "3 >= 5 == false;",
+            "((3 >= 5) == false)",
+        },
+        {
             "3 < 5 == true;",
             "((3 < 5) == true)",
+        },
+        {
+            "3 <= 5 == true;",
+            "((3 <= 5) == true)",
         },
         {
             "1 + (2 + 3) + 4;",
@@ -1221,11 +1233,11 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
         },
         {
             "-(5 + 5);",
-            "(-(5 + 5))",
+            "(- (5 + 5))",
         },
         {
             "!(true == true);",
-            "(!(true == true))",
+            "(! (true == true))",
         },
         {
             "a + add(b * c) + d;",
@@ -1258,8 +1270,23 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
         {
             "5 * 5 / 2 % 2;",
             "(((5 * 5) / 2) % 2)",
-        }
-
+        },
+        {
+            "1 == 1 and 2 == 2;",
+            "((1 == 1) and (2 == 2))",
+        },
+        {
+            "1 == 1 or 2 == 2;",
+            "((1 == 1) or (2 == 2))",
+        },
+        {
+            "true and false or true;",
+            "((true and false) or true)",
+        },
+        {
+            "not true;",
+            "(not true)",
+        },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
