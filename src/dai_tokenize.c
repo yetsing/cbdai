@@ -15,58 +15,27 @@
 #include "dai_malloc.h"
 #include "dai_tokenize.h"
 
-static const char *DaiTokenTypeStrings[] = {
-    "DaiTokenType_illegal",
-    "DaiTokenType_eof",
-    "DaiTokenType_ident",
-    "DaiTokenType_int",
-    "DaiTokenType_float",
-    "DaiTokenType_comment",
-    "DaiTokenType_str",
-    "DaiTokenType_function",
-    "DaiTokenType_var",
-    "DaiTokenType_true",
-    "DaiTokenType_false",
-    "DaiTokenType_nil",
-    "DaiTokenType_if",
-    "DaiTokenType_elif",
-    "DaiTokenType_else",
-    "DaiTokenType_return",
-    "DaiTokenType_class",
-    "DaiTokenType_self",
-    "DaiTokenType_super",
-    "DaiTokenType_for",
-    "DaiTokenType_in",
-    "DaiTokenType_while",
-    "DaiTokenType_break",
-    "DaiTokenType_continue",
-    "DaiTokenType_and",
-    "DaiTokenType_or",
-    "DaiTokenType_not",
-    "DaiTokenType_auto",
-    "DaiTokenType_assign",
-    "DaiTokenType_plus",
-    "DaiTokenType_minus",
-    "DaiTokenType_bang",
-    "DaiTokenType_asterisk",
-    "DaiTokenType_slash",
-    "DaiTokenType_percent",
-    "DaiTokenType_lt",
-    "DaiTokenType_gt",
-    "DaiTokenType_lte",
-    "DaiTokenType_gte",
-    "DaiTokenType_eq",
-    "DaiTokenType_not_eq",
-    "DaiTokenType_dot",
-    "DaiTokenType_comma",
-    "DaiTokenType_semicolon",
-    "DaiTokenType_lparen",
-    "DaiTokenType_rparen",
-    "DaiTokenType_lbrace",
-    "DaiTokenType_rbrace",
+static const char* DaiTokenTypeStrings[] = {
+    "DaiTokenType_illegal",     "DaiTokenType_eof",         "DaiTokenType_ident",
+    "DaiTokenType_int",         "DaiTokenType_float",       "DaiTokenType_comment",
+    "DaiTokenType_str",         "DaiTokenType_function",    "DaiTokenType_var",
+    "DaiTokenType_true",        "DaiTokenType_false",       "DaiTokenType_nil",
+    "DaiTokenType_if",          "DaiTokenType_elif",        "DaiTokenType_else",
+    "DaiTokenType_return",      "DaiTokenType_class",       "DaiTokenType_self",
+    "DaiTokenType_super",       "DaiTokenType_for",         "DaiTokenType_in",
+    "DaiTokenType_while",       "DaiTokenType_break",       "DaiTokenType_continue",
+    "DaiTokenType_and",         "DaiTokenType_or",          "DaiTokenType_not",
+    "DaiTokenType_auto",        "DaiTokenType_assign",      "DaiTokenType_plus",
+    "DaiTokenType_minus",       "DaiTokenType_bang",        "DaiTokenType_asterisk",
+    "DaiTokenType_slash",       "DaiTokenType_percent",     "DaiTokenType_left_shift",
+    "DaiTokenType_right_shift", "DaiTokenType_bitwise_and", "DaiTokenType_bitwise_xor",
+    "DaiTokenType_bitwise_or",  "DaiTokenType_bitwise_not", "DaiTokenType_lt",
+    "DaiTokenType_gt",          "DaiTokenType_lte",         "DaiTokenType_gte",
+    "DaiTokenType_eq",          "DaiTokenType_not_eq",      "DaiTokenType_dot",
+    "DaiTokenType_comma",       "DaiTokenType_semicolon",   "DaiTokenType_lparen",
+    "DaiTokenType_rparen",      "DaiTokenType_lbrace",      "DaiTokenType_rbrace",
     "DaiTokenType_end",
 };
-
 
 __attribute__((unused)) const char*
 DaiTokenType_string(const DaiTokenType type) {
@@ -74,20 +43,17 @@ DaiTokenType_string(const DaiTokenType type) {
 }
 
 static DaiToken autos[] = {
-    {DaiTokenType_assign, "="},
-    {DaiTokenType_plus, "+"},
-    {DaiTokenType_minus, "-"},
-    {DaiTokenType_asterisk, "*"},
-    {DaiTokenType_slash, "/"},
-    {DaiTokenType_comma, ","},
-    {DaiTokenType_semicolon, ";"},
-    {DaiTokenType_lparen, "("},
-    {DaiTokenType_rparen, ")"},
-    {DaiTokenType_lbrace, "{"},
-    {DaiTokenType_rbrace, "}"},
-    {DaiTokenType_bang, "!"},
-    {DaiTokenType_dot, "."},
-    {DaiTokenType_percent, "%"},
+    {DaiTokenType_assign, "="},       {DaiTokenType_plus, "+"},
+    {DaiTokenType_minus, "-"},        {DaiTokenType_asterisk, "*"},
+    {DaiTokenType_slash, "/"},        {DaiTokenType_comma, ","},
+    {DaiTokenType_semicolon, ";"},    {DaiTokenType_lparen, "("},
+    {DaiTokenType_rparen, ")"},       {DaiTokenType_lbrace, "{"},
+    {DaiTokenType_rbrace, "}"},       {DaiTokenType_bang, "!"},
+    {DaiTokenType_dot, "."},          {DaiTokenType_percent, "%"},
+    {DaiTokenType_bitwise_and, "&"},  {DaiTokenType_bitwise_or, "|"},
+    {DaiTokenType_bitwise_not, "~"},  {DaiTokenType_left_shift, "<<"},
+    {DaiTokenType_right_shift, ">>"}, {DaiTokenType_bitwise_xor, "^"},
+
 };
 
 static DaiToken keywords[] = {
@@ -573,6 +539,10 @@ Tokenizer_nextToken(Tokenizer* tker) {
     Tokenizer_mark(tker);
     dai_rune_t ch = tker->ch;
     switch (ch) {
+        case '^':
+        case '&':
+        case '|':
+        case '~':
         case '.':
         case ',':
         case ';':
@@ -583,7 +553,10 @@ Tokenizer_nextToken(Tokenizer* tker) {
         case '+':
         case '-':
         case '*':
-        case '%':
+        case '%': {
+            Tokenizer_readChar(tker);
+            return Tokenizer_buildToken(tker, DaiTokenType_auto);
+        }
         case '/': {
             if (ch == '/' && Tokenizer_peekChar(tker) == '/') {
                 return Tokenizer_readComment(tker);
@@ -617,6 +590,10 @@ Tokenizer_nextToken(Tokenizer* tker) {
                 Tokenizer_readChar(tker);
                 Tokenizer_readChar(tker);
                 return Tokenizer_buildToken(tker, DaiTokenType_lte);
+            } else if (Tokenizer_peekChar(tker) == '<') {
+                Tokenizer_readChar(tker);
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_left_shift);
             }
             Tokenizer_readChar(tker);
             return Tokenizer_buildToken(tker, DaiTokenType_lt);
@@ -626,6 +603,10 @@ Tokenizer_nextToken(Tokenizer* tker) {
                 Tokenizer_readChar(tker);
                 Tokenizer_readChar(tker);
                 return Tokenizer_buildToken(tker, DaiTokenType_gte);
+            } else if (Tokenizer_peekChar(tker) == '>') {
+                Tokenizer_readChar(tker);
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_right_shift);
             }
             Tokenizer_readChar(tker);
             return Tokenizer_buildToken(tker, DaiTokenType_gt);

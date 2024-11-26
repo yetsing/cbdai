@@ -35,47 +35,47 @@ dai_tokenize_file(const char* filename) {
 static MunitResult
 test_next_token(__attribute__((unused)) const MunitParameter params[],
                 __attribute__((unused)) void* user_data) {
-    const char* input = "=+(){},;\n"
-                        "var five = 5;\n"
-                        "var ten = 10;\n"
-                        "\n"
-                        "var add = fn(x, y) {\n"
-                        "   x + y;\n"
-                        "};\n"
-                        "\n"
-                        "var result = add(five, ten);\n"
-                        "!-/*5;\n"
-                        "5 < 10 > 5;\n"
-                        "\n"
-                        "if (5 < 10) {\n"
-                        "     return true;\n"
-                        "} else {\n"
-                        "     return false;\n"
-                        "}\n"
-                        "\n"
-                        "10 == 10;\n"
-                        "10 != 9; # 123\n"
-                        "//456\n"
-                        "#中文注释123\n"
-                        "var 中文 = 123;\n"
-                        "\"\" \"a\" \"abcd\" \"中文\";\n"
-                        "'' 'a' 'abcd' '中文';\n"
-                        "'  a  b  '\n"
-                        "`  a  b  \n`\n"
-                        "class Foo {};\n"
-                        "self.a = 3;\n"
-                        "super.b elif nil\n"
-                        "0 "
-                        "3.4 "
-                        "0.1 "
-                        "0.0 "
-                        "1.0 "
-                        "3.1416 "
-                        "1.234E+10 "
-                        "1.234E-10 % \n"
-                        "== != < > <= >= and or not\n";
-
-    DaiToken tests[] = {
+    const char* input      = "=+(){},;\n"
+                             "var five = 5;\n"
+                             "var ten = 10;\n"
+                             "\n"
+                             "var add = fn(x, y) {\n"
+                             "   x + y;\n"
+                             "};\n"
+                             "\n"
+                             "var result = add(five, ten);\n"
+                             "!-/*5;\n"
+                             "5 < 10 > 5;\n"
+                             "\n"
+                             "if (5 < 10) {\n"
+                             "     return true;\n"
+                             "} else {\n"
+                             "     return false;\n"
+                             "}\n"
+                             "\n"
+                             "10 == 10;\n"
+                             "10 != 9; # 123\n"
+                             "//456\n"
+                             "#中文注释123\n"
+                             "var 中文 = 123;\n"
+                             "\"\" \"a\" \"abcd\" \"中文\";\n"
+                             "'' 'a' 'abcd' '中文';\n"
+                             "'  a  b  '\n"
+                             "`  a  b  \n`\n"
+                             "class Foo {};\n"
+                             "self.a = 3;\n"
+                             "super.b elif nil\n"
+                             "0 "
+                             "3.4 "
+                             "0.1 "
+                             "0.0 "
+                             "1.0 "
+                             "3.1416 "
+                             "1.234E+10 "
+                             "1.234E-10 % \n"
+                             "== != < > <= >= and or not\n"
+                             "& | ~ << >> ^\n";
+    const DaiToken tests[] = {
         {
             DaiTokenType_assign,
             "=",
@@ -279,7 +279,14 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_or, "or", 33, 21, 33, 23},
         {DaiTokenType_not, "not", 33, 24, 33, 27},
 
-        {DaiTokenType_eof, "", 34, 1},
+        {DaiTokenType_bitwise_and, "&", 34, 1, 34, 2},
+        {DaiTokenType_bitwise_or, "|", 34, 3, 34, 4},
+        {DaiTokenType_bitwise_not, "~", 34, 5, 34, 6},
+        {DaiTokenType_left_shift, "<<", 34, 7, 34, 9},
+        {DaiTokenType_right_shift, ">>", 34, 10, 34, 12},
+        {DaiTokenType_bitwise_xor, "^", 34, 13, 34, 14},
+
+        {DaiTokenType_eof, "", 35, 1},
     };
 
     DaiTokenList list;

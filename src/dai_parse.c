@@ -27,14 +27,18 @@ typedef enum {
     Precedence_none = 0,
     // 优先级最低
     Precedence_Lowest,
-    Precedence_Or,        // or
-    Precedence_And,       // and
-    Precedence_Not,       // not
-    Precedence_Compare,   // > or <
-    Precedence_Sum,       // +
-    Precedence_Product,   // * / %
-    Precedence_Prefix,    // -X or !X
-    Precedence_Call,      // myFunction(X)
+    Precedence_Or,            // or
+    Precedence_And,           // and
+    Precedence_Not,           // not
+    Precedence_Compare,       // <, <=, >, >=, !=, ==
+    Precedence_Bitwise_Or,    // |
+    Precedence_Bitwise_Xor,   // ^
+    Precedence_Bitwise_And,   // &
+    Precedence_Shift,         // <<, >>
+    Precedence_Sum,           // +, -
+    Precedence_Product,       // *, /, %
+    Precedence_Prefix,        // -X, !X, ~X
+    Precedence_Call,          // myFunction(X)
     // 优先级最高
     Precedence_Highest,
 
@@ -52,6 +56,11 @@ token_precedences(const DaiTokenType type) {
         case DaiTokenType_gte:
         case DaiTokenType_lt:
         case DaiTokenType_gt: return Precedence_Compare;
+        case DaiTokenType_bitwise_or: return Precedence_Bitwise_Or;
+        case DaiTokenType_bitwise_xor: return Precedence_Bitwise_Xor;
+        case DaiTokenType_bitwise_and: return Precedence_Bitwise_And;
+        case DaiTokenType_right_shift:
+        case DaiTokenType_left_shift: return Precedence_Shift;
         case DaiTokenType_minus:
         case DaiTokenType_plus: return Precedence_Sum;
         case DaiTokenType_percent:
@@ -265,6 +274,7 @@ Parser_register(Parser* p) {
         Parser_registerPrefix(p, DaiTokenType_bang, Parser_parsePrefixExpression);
         Parser_registerPrefix(p, DaiTokenType_minus, Parser_parsePrefixExpression);
         Parser_registerPrefix(p, DaiTokenType_not, Parser_parsePrefixExpression);
+        Parser_registerPrefix(p, DaiTokenType_bitwise_not, Parser_parsePrefixExpression);
         Parser_registerPrefix(p, DaiTokenType_true, Parser_parseBoolean);
         Parser_registerPrefix(p, DaiTokenType_false, Parser_parseBoolean);
         Parser_registerPrefix(p, DaiTokenType_nil, Parser_parseNil);
@@ -277,6 +287,11 @@ Parser_register(Parser* p) {
 
     // 注册中缀表达式解析函数
     {
+        Parser_registerInfix(p, DaiTokenType_bitwise_and, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_bitwise_xor, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_bitwise_or, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_left_shift, Parser_parseInfixExpression);
+        Parser_registerInfix(p, DaiTokenType_right_shift, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_plus, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_minus, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_slash, Parser_parseInfixExpression);

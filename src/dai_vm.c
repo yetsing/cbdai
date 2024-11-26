@@ -172,7 +172,7 @@ DaiVM_callClass(DaiVM* vm, DaiObjClass* klass, int argCount) {
 }
 
 static DaiRuntimeError*
-DaiVM_callValue(DaiVM* vm, DaiValue callee, int argCount) {
+DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
             case DaiObjType_boundMethod: {
@@ -215,6 +215,34 @@ DaiVM_callValue(DaiVM* vm, DaiValue callee, int argCount) {
                                 0,
                                 "'%s' object is not callable",
                                 dai_value_ts(callee));
+}
+
+static bool
+DaiVM_executeIntBinary(DaiVM* vm, const DaiBinaryOpType opType, const DaiValue a,
+                       const DaiValue b) {
+    switch (opType) {
+        case BinaryOpLeftShift: {
+            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) << AS_INTEGER(b)));
+            return true;
+        }
+        case BinaryOpRightShift: {
+            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) >> AS_INTEGER(b)));
+            return true;
+        }
+        case BinaryOpBitwiseAnd: {
+            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) & AS_INTEGER(b)));
+            return true;
+        }
+        case BinaryOpBitwiseOr: {
+            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) | AS_INTEGER(b)));
+            return true;
+        }
+        case BinaryOpBitwiseXor: {
+            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) ^ AS_INTEGER(b)));
+            return true;
+        }
+        default: return false;
+    }
 }
 
 static DaiRuntimeError*
@@ -312,6 +340,25 @@ DaiVM_dorun(DaiVM* vm) {
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                         0,
                         "TypeError: unsupported operand type(s) for %%: '%s' and '%s'",
+                        dai_value_ts(a),
+                        dai_value_ts(b));
+                }
+                break;
+            }
+            case DaiOpBinary: {
+                DaiBinaryOpType opType = READ_BYTE();
+                DaiValue b             = DaiVM_pop(vm);
+                DaiValue a             = DaiVM_pop(vm);
+                if (IS_INTEGER(a) && IS_INTEGER(b)) {
+                    DaiVM_executeIntBinary(vm, opType, a, b);
+                    break;
+                } else {
+                    return DaiRuntimeError_Newf(
+                        chunk->filename,
+                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
+                        0,
+                        "TypeError: unsupported operand type(s) for %s: '%s' and '%s'",
+                        DaiBinaryOpTypeToString(opType),
                         dai_value_ts(a),
                         dai_value_ts(b));
                 }
@@ -424,6 +471,20 @@ DaiVM_dorun(DaiVM* vm) {
                 DaiValue a   = DaiVM_pop(vm);
                 DaiValue res = BOOL_VAL(!dai_value_is_truthy(a));
                 DaiVM_push(vm, res);
+                break;
+            }
+            case DaiOpBitwiseNot: {
+                DaiValue a = DaiVM_pop(vm);
+                if (IS_INTEGER(a)) {
+                    DaiVM_push(vm, INTEGER_VAL(~AS_INTEGER(a)));
+                } else {
+                    return DaiRuntimeError_Newf(
+                        chunk->filename,
+                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
+                        0,
+                        "TypeError: unsupported operand type(s) for ~: '%s'",
+                        dai_value_ts(a));
+                }
                 break;
             }
 

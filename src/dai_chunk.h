@@ -7,6 +7,25 @@
 #include "dai_common.h"
 #include "dai_value.h"
 
+// 二元操作类型，比如加减乘除
+typedef enum {
+    BinaryOpAdd,
+    BinaryOpSub,
+    BinaryOpMul,
+    BinaryOpDiv,
+    BinaryOpMod,
+
+    BinaryOpLeftShift,
+    BinaryOpRightShift,
+    BinaryOpBitwiseAnd,
+    BinaryOpBitwiseXor,
+    BinaryOpBitwiseOr,
+
+} DaiBinaryOpType;
+
+const char*
+DaiBinaryOpTypeToString(DaiBinaryOpType op);
+
 typedef struct {
     const char* name;
     int operand_bytes;   // 操作数的字节数
@@ -20,6 +39,7 @@ typedef enum __attribute__((__packed__)) {
     DaiOpMul,
     DaiOpDiv,
     DaiOpMod,
+    DaiOpBinary,
 
     DaiOpTrue,
     DaiOpFalse,
@@ -31,12 +51,13 @@ typedef enum __attribute__((__packed__)) {
     DaiOpGreaterThan,
     DaiOpGreaterEqualThan,
 
-    DaiOpNot,  // not
-    DaiOpAnd,  // and
-    DaiOpOr,  // or
+    DaiOpNot,   // not
+    DaiOpAnd,   // and
+    DaiOpOr,    // or
 
-    DaiOpMinus,   // example: -1
-    DaiOpBang,    // example: !true
+    DaiOpMinus,        // example: -1
+    DaiOpBang,         // example: !true
+    DaiOpBitwiseNot,   // example: ~1
 
     // jump 指令的操作数是相对偏移量
     DaiOpJumpIfFalse,

@@ -400,6 +400,7 @@ DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
         }
         default: break;
     }
+    // 提取定义的全局变量
     if (name != NULL) {
         DaiSymbol symbol;
         if (DaiSymbolTable_resolve(compiler->symbolTable, name, &symbol)) {
@@ -1001,6 +1002,16 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_emit(compiler, DaiOpAnd, expr->start_line);
             } else if (strcmp(expr->operator, "or") == 0) {
                 DaiCompiler_emit(compiler, DaiOpOr, expr->start_line);
+            } else if (strcmp(expr->operator, "<<") == 0) {
+                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpLeftShift, expr->start_line);
+            } else if (strcmp(expr->operator, ">>") == 0) {
+                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpRightShift, expr->start_line);
+            } else if (strcmp(expr->operator, "&") == 0) {
+                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseAnd, expr->start_line);
+            } else if (strcmp(expr->operator, "^") == 0) {
+                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseXor, expr->start_line);
+            } else if (strcmp(expr->operator, "|") == 0) {
+                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseOr, expr->start_line);
             } else {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->left->end_line,
@@ -1022,6 +1033,8 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_emit(compiler, DaiOpBang, expr->start_line);
             } else if (strcmp(expr->operator, "not") == 0) {
                 DaiCompiler_emit(compiler, DaiOpNot, expr->start_line);
+            } else if (strcmp(expr->operator, "~") == 0) {
+                DaiCompiler_emit(compiler, DaiOpBitwiseNot, expr->start_line);
             } else {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->start_line,

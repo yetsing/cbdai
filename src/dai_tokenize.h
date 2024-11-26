@@ -44,14 +44,20 @@ typedef enum {
 
     // #region 符号，自动类型，会根据字面量自动转换成对应类型
     //  在他下面的都满足这个要求
-    DaiTokenType_auto,       // "auto"
-    DaiTokenType_assign,     // "assign="
-    DaiTokenType_plus,       // "plus+"
-    DaiTokenType_minus,      // "minus-"
-    DaiTokenType_bang,       // "bang!"
-    DaiTokenType_asterisk,   // "asterisk*"
-    DaiTokenType_slash,      // "slash/"
-    DaiTokenType_percent,    // "percent%"
+    DaiTokenType_auto,          // "auto"
+    DaiTokenType_assign,        // "assign="
+    DaiTokenType_plus,          // "plus+"
+    DaiTokenType_minus,         // "minus-"
+    DaiTokenType_bang,          // "bang!"
+    DaiTokenType_asterisk,      // "asterisk*"
+    DaiTokenType_slash,         // "slash/"
+    DaiTokenType_percent,       // "percent%"
+    DaiTokenType_left_shift,    // "left_shift<<"
+    DaiTokenType_right_shift,   // "right_shift>>"
+    DaiTokenType_bitwise_and,   // "bitwise_and&"
+    DaiTokenType_bitwise_xor,   // "bitwise_xor^"
+    DaiTokenType_bitwise_or,    // "bitwise_or|"
+    DaiTokenType_bitwise_not,   // "bitwise_not~"
 
     DaiTokenType_lt,    // "lt<"
     DaiTokenType_gt,    // "gt>"

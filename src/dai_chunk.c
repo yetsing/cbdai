@@ -17,28 +17,30 @@ static DaiOpCodeDefinition definitions[] = {
             .name          = "DaiOpConstant",
             .operand_bytes = 2,
         },
-    [DaiOpAdd] = {.name = "DaiOpAdd", .operand_bytes = 0},
-    [DaiOpSub] = {.name = "DaiOpSub", .operand_bytes = 0},
-    [DaiOpMul] = {.name = "DaiOpMul", .operand_bytes = 0},
-    [DaiOpDiv] = {.name = "DaiOpDiv", .operand_bytes = 0},
-    [DaiOpMod] = {.name = "DaiOpMod", .operand_bytes = 0},
+    [DaiOpAdd]    = {.name = "DaiOpAdd", .operand_bytes = 0},
+    [DaiOpSub]    = {.name = "DaiOpSub", .operand_bytes = 0},
+    [DaiOpMul]    = {.name = "DaiOpMul", .operand_bytes = 0},
+    [DaiOpDiv]    = {.name = "DaiOpDiv", .operand_bytes = 0},
+    [DaiOpMod]    = {.name = "DaiOpMod", .operand_bytes = 0},
+    [DaiOpBinary] = {.name = "DaiOpBinary", .operand_bytes = 1},
 
     [DaiOpTrue]      = {.name = "DaiOpTrue", .operand_bytes = 0},
     [DaiOpFalse]     = {.name = "DaiOpFalse", .operand_bytes = 0},
     [DaiOpNil]       = {.name = "DaiOpNil", .operand_bytes = 0},
     [DaiOpUndefined] = {.name = "DaiOpUndefined", .operand_bytes = 0},
 
-    [DaiOpEqual]       = {.name = "DaiOpEqual", .operand_bytes = 0},
-    [DaiOpNotEqual]    = {.name = "DaiOpNotEqual", .operand_bytes = 0},
-    [DaiOpGreaterThan] = {.name = "DaiOpGreaterThan", .operand_bytes = 0},
+    [DaiOpEqual]            = {.name = "DaiOpEqual", .operand_bytes = 0},
+    [DaiOpNotEqual]         = {.name = "DaiOpNotEqual", .operand_bytes = 0},
+    [DaiOpGreaterThan]      = {.name = "DaiOpGreaterThan", .operand_bytes = 0},
     [DaiOpGreaterEqualThan] = {.name = "DaiOpGreaterEqualThan", .operand_bytes = 0},
 
     [DaiOpNot] = {.name = "DaiOpNot", .operand_bytes = 0},
     [DaiOpAnd] = {.name = "DaiOpAnd", .operand_bytes = 0},
-    [DaiOpOr] = {.name = "DaiOpOr", .operand_bytes = 0},
+    [DaiOpOr]  = {.name = "DaiOpOr", .operand_bytes = 0},
 
-    [DaiOpMinus] = {.name = "DaiOpMinus", .operand_bytes = 0},
-    [DaiOpBang]  = {.name = "DaiOpBang", .operand_bytes = 0},
+    [DaiOpMinus]      = {.name = "DaiOpMinus", .operand_bytes = 0},
+    [DaiOpBang]       = {.name = "DaiOpBang", .operand_bytes = 0},
+    [DaiOpBitwiseNot] = {.name = "DaiOpBitwiseNot", .operand_bytes = 0},
 
     [DaiOpJumpIfFalse] = {.name = "DaiOpJumpIfFalse", .operand_bytes = 2},
     [DaiOpJump]        = {.name = "DaiOpJump", .operand_bytes = 2},
@@ -92,6 +94,23 @@ static DaiOpCodeDefinition definitions[] = {
     // 操作数：方法名的常量索引
     [DaiOpCallSuperMethod] = {.name = "DaiOpCallSuperMethod", .operand_bytes = 2},
 };
+
+const char*
+DaiBinaryOpTypeToString(DaiBinaryOpType op) {
+    switch (op) {
+        case BinaryOpAdd: return "+";
+        case BinaryOpSub: return "-";
+        case BinaryOpMul: return "*";
+        case BinaryOpDiv: return "/";
+        case BinaryOpMod: return "%";
+        case BinaryOpLeftShift: return "<<";
+        case BinaryOpRightShift: return ">>";
+        case BinaryOpBitwiseAnd: return "&";
+        case BinaryOpBitwiseXor: return "^";
+        case BinaryOpBitwiseOr: return "|";
+    }
+    return "unknown";
+}
 
 DaiOpCodeDefinition*
 dai_opcode_lookup(const DaiOpCode op) {

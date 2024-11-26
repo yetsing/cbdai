@@ -904,6 +904,7 @@ test_parsing_prefix_expressions(__attribute__((unused)) const MunitParameter par
     } prefixTests[] = {
         {"!5;", "!", 5, 3},
         {"-15;", "-", 15, 4},
+        {"~15;", "~", 15, 4},
     };
 
     for (int i = 0; i < sizeof(prefixTests) / sizeof(prefixTests[0]); i++) {
@@ -937,6 +938,7 @@ test_parsing_prefix_expressions(__attribute__((unused)) const MunitParameter par
     } boolTests[] = {
         {"!true;", "!", true, 6},
         {"!false;", "!", false, 7},
+        {"not false;", "not", false, 10},
     };
 
     for (int i = 0; i < sizeof(boolTests) / sizeof(boolTests[0]); i++) {
@@ -985,6 +987,9 @@ test_parsing_infix_expressions(__attribute__((unused)) const MunitParameter para
         {"5 == 5;", 5, "==", 5, 7},
         {"5 != 5;", 5, "!=", 5, 7},
         {"5 % 5;", 5, "%", 5, 6},
+        {"5 & 5;", 5, "&", 5, 6},
+        {"5 | 5;", 5, "|", 5, 6},
+        {"5 ^ 5;", 5, "^", 5, 6},
     };
     for (int i = 0; i < sizeof(infix_tests) / sizeof(infix_tests[0]); i++) {
         DaiAstProgram prog;
@@ -1286,6 +1291,26 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
         {
             "not true;",
             "(not true)",
+        },
+        {
+            "1 << 2 - 1 < 1 >> 2 - 1;",
+            "((1 << (2 - 1)) < (1 >> (2 - 1)))",
+        },
+        {
+            "1 << 2 - 1 & 1 < 1 >> 2 - 1 | 1;",
+            "(((1 << (2 - 1)) & 1) < ((1 >> (2 - 1)) | 1))",
+        },
+        {
+            "1 | 2 << 1;",
+            "(1 | (2 << 1))",
+        },
+        {
+            "~12 + 4;",
+            "((~ 12) + 4)",
+        },
+        {
+            "1 | 2 ^ 3 & 4;",
+            "(1 | (2 ^ (3 & 4)))",
         },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {

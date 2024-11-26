@@ -3,6 +3,7 @@
 
 #include "dai_chunk.h"
 #include "dai_error.h"
+#include "dai_symboltable.h"
 #include "dai_table.h"
 #include "dai_value.h"
 

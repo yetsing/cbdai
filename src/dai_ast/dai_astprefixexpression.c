@@ -15,7 +15,7 @@ static char*
 DaiAstPrefixExpression_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_PrefixExpression);
     const DaiAstPrefixExpression* expr = (DaiAstPrefixExpression*)base;
-    DaiStringBuffer* sb          = DaiStringBuffer_New();
+    DaiStringBuffer* sb                = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_PrefixExpression,\n");

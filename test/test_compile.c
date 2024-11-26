@@ -116,7 +116,7 @@ run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
 static MunitResult
 test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                         __attribute__((unused)) void* user_data) {
-    DaiCompilerTestCase tests[] = {
+    const DaiCompilerTestCase tests[] = {
         {
             "1 + 2;",
             8,
@@ -242,6 +242,20 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
             },
         },
         {
+            "~1;",
+            5,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpBitwiseNot,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
             "-1.0;",
             5,
             {
@@ -268,6 +282,104 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 FLOAT_VAL(3.1415926),
             },
         },
+        {
+            "2 << 1;",
+            9,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpBinary,
+                BinaryOpLeftShift,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(2),
+                INTEGER_VAL(1),
+            },
+
+        },
+        {
+            "2 >> 1;",
+            9,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpBinary,
+                BinaryOpRightShift,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(2),
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "2 & 1;",
+            9,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpBinary,
+                BinaryOpBitwiseAnd,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(2),
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "2 | 1;",
+            9,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpBinary,
+                BinaryOpBitwiseOr,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(2),
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "2 ^ 1;",
+            9,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpBinary,
+                BinaryOpBitwiseXor,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(2),
+                INTEGER_VAL(1),
+            },
+
+        },
+
 
     };
     run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
