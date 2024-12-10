@@ -1,0 +1,16 @@
+#6
+class Foo {
+  var a = 1;
+  var increment;
+  fn inc() {
+    self.a = self.a + self.increment;
+  };
+  fn get() {
+    var ins = self;
+    self.inc();
+    return ins.a;
+  };
+  class var c = 2;
+};
+var foo = Foo(2, 2);
+foo.get() + Foo.c;

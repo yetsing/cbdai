@@ -1,0 +1,9 @@
+#1
+class Foo {
+  fn get() {
+    return 1;
+  };
+};
+var foo = Foo();
+var get =foo.get;
+get();

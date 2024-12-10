@@ -3,11 +3,28 @@
 #include "munit/munit.h"
 
 #include "dai_compile.h"
+#include "dai_malloc.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
+#include "dai_utils.h"
 #include "dai_vm.h"
+
+#include <linux/limits.h>
+
+// 获取当前文件所在文件夹路径
+static void
+get_file_directory(char* path) {
+    if (realpath(__FILE__, path) == NULL) {
+        perror("realpath");
+        assert(false);
+    }
+    char* last_slash = strrchr(path, '/');
+    if (last_slash) {
+        *(last_slash + 1) = '\0';
+    }
+}
 
 static void
 interpret(DaiVM* vm, const char* input) {
@@ -95,6 +112,85 @@ run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
         }
 
         DaiVM_reset(&vm);
+    }
+}
+
+static void
+run_vm_test_file_with_number(const char* filename) {
+    char* input = dai_string_from_file(filename);
+    if (input == NULL) {
+        printf("could not open file: %s\n", filename);
+    }
+    munit_assert_not_null(input);
+    assert(input != NULL);
+    DaiValue expected = INTEGER_VAL(0);
+    {
+        char* end     = input + 1;
+        bool is_float = false;
+        while (*end != '\n') {
+            if (*end == '.') {
+                is_float = true;
+            }
+            end++;
+        }
+        char* result   = strndup(input + 1, end - input - 1);
+        const double v = strtod(result, &end);
+        if (is_float) {
+            expected = FLOAT_VAL(v);
+        } else {
+            expected = INTEGER_VAL((int64_t)v);
+        }
+        free(result);
+    }
+
+    DaiVM vm;
+    DaiVM_init(&vm);
+    interpret(&vm, input);
+    const DaiValue actual = DaiVM_lastPopedStackElem(&vm);
+    dai_assert_value_equal(actual, expected);
+    if (!DaiVM_isEmptyStack(&vm)) {
+        for (const DaiValue* slot = vm.stack; slot < vm.stack_top; slot++) {
+            printf("[ ");
+            dai_print_value(*slot);
+            printf(" ]");
+            printf("\n");
+        }
+    }
+    munit_assert_true(DaiVM_isEmptyStack(&vm));
+    // 检查垃圾回收
+    {
+        collectGarbage(&vm);
+        const size_t before = vm.bytesAllocated;
+        collectGarbage(&vm);
+        const size_t after = vm.bytesAllocated;
+        munit_assert_size(before, ==, after);
+#ifdef TEST
+        test_mark(&vm);
+        // 检查所有的对象都被标记了
+        DaiObj* obj = vm.objects;
+        while (obj != NULL) {
+            if (!obj->is_marked) {
+                printf("unmarked object ");
+                dai_print_value(OBJ_VAL(obj));
+                printf("\n");
+            }
+            munit_assert_true(obj->is_marked);
+            obj = obj->next;
+        }
+#endif
+    }
+
+    DaiVM_reset(&vm);
+    dai_free(input);
+}
+
+static void
+run_vm_test_files(const char* test_files[], const size_t count) {
+    for (int i = 0; i < count; i++) {
+        char resolved_path[PATH_MAX];
+        get_file_directory(resolved_path);
+        strcat(resolved_path, test_files[i]);
+        run_vm_test_file_with_number(resolved_path);
     }
 }
 
@@ -222,7 +318,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
 static MunitResult
 test_conditionals(__attribute__((unused)) const MunitParameter params[],
                   __attribute__((unused)) void* user_data) {
-    DaiVMTestCase tests[] = {
+    const DaiVMTestCase tests[] = {
         {"if (true) { 10; };", INTEGER_VAL(10)},
         {"if (true) { 10; } else { 20 ;};", INTEGER_VAL(10)},
         {"if (false) { 10; } else { 20 ;};", INTEGER_VAL(20)},
@@ -230,197 +326,19 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
         {"if (1 < 2) { 10; };", INTEGER_VAL(10)},
         {"if (1 > 2) { 10; } else { 20; };", INTEGER_VAL(20)},
         {"if (1 < 2) { 10; } else { 20; };", INTEGER_VAL(10)},
-        {
-            "var x = 1;"
-            "if (x == 1) {"
-            "  1;"
-            "}"
-            "elif (x == 2) {"
-            "  2;"
-            "}"
-            "elif (x == 3) {"
-            "  3;"
-            "}"
-            "elif (x == 4) {"
-            "  4;"
-            "}"
-            "elif (x == 5) {"
-            "  5;"
-            "}"
-            "elif (x == 6) {"
-            "  6;"
-            "}"
-            "else {"
-            "  999;"
-            "}"
-            ";"
-            "",
-            INTEGER_VAL(1),
-        },
-        {
-            "var x = 2;"
-            "if (x == 1) {"
-            "  1;"
-            "}"
-            "elif (x == 2) {"
-            "  2;"
-            "}"
-            "elif (x == 3) {"
-            "  3;"
-            "}"
-            "elif (x == 4) {"
-            "  4;"
-            "}"
-            "elif (x == 5) {"
-            "  5;"
-            "}"
-            "elif (x == 6) {"
-            "  6;"
-            "}"
-            "else {"
-            "  999;"
-            "}"
-            ";"
-            "",
-            INTEGER_VAL(2),
-        },
-        {
-            "var x = 3;"
-            "if (x == 1) {"
-            "  1;"
-            "}"
-            "elif (x == 2) {"
-            "  2;"
-            "}"
-            "elif (x == 3) {"
-            "  3;"
-            "}"
-            "elif (x == 4) {"
-            "  4;"
-            "}"
-            "elif (x == 5) {"
-            "  5;"
-            "}"
-            "elif (x == 6) {"
-            "  6;"
-            "}"
-            "else {"
-            "  999;"
-            "}"
-            ";"
-            "",
-            INTEGER_VAL(3),
-        },
-        {
-            "var x = 4;"
-            "if (x == 1) {"
-            "  1;"
-            "}"
-            "elif (x == 2) {"
-            "  2;"
-            "}"
-            "elif (x == 3) {"
-            "  3;"
-            "}"
-            "elif (x == 4) {"
-            "  4;"
-            "}"
-            "elif (x == 5) {"
-            "  5;"
-            "}"
-            "elif (x == 6) {"
-            "  6;"
-            "}"
-            "else {"
-            "  999;"
-            "}"
-            ";"
-            "",
-            INTEGER_VAL(4),
-        },
-        {
-            "var x = 5;"
-            "if (x == 1) {"
-            "  1;"
-            "}"
-            "elif (x == 2) {"
-            "  2;"
-            "}"
-            "elif (x == 3) {"
-            "  3;"
-            "}"
-            "elif (x == 4) {"
-            "  4;"
-            "}"
-            "elif (x == 5) {"
-            "  5;"
-            "}"
-            "elif (x == 6) {"
-            "  6;"
-            "}"
-            "else {"
-            "  999;"
-            "}"
-            ";"
-            "",
-            INTEGER_VAL(5),
-        },
-        {
-            "var x = 6;"
-            "if (x == 1) {"
-            "  1;"
-            "}"
-            "elif (x == 2) {"
-            "  2;"
-            "}"
-            "elif (x == 3) {"
-            "  3;"
-            "}"
-            "elif (x == 4) {"
-            "  4;"
-            "}"
-            "elif (x == 5) {"
-            "  5;"
-            "}"
-            "elif (x == 6) {"
-            "  6;"
-            "}"
-            "else {"
-            "  999;"
-            "}"
-            ";"
-            "",
-            INTEGER_VAL(6),
-        },
-        {
-            "var x = 111;"
-            "if (x == 1) {"
-            "  1;"
-            "}"
-            "elif (x == 2) {"
-            "  2;"
-            "}"
-            "elif (x == 3) {"
-            "  3;"
-            "}"
-            "elif (x == 4) {"
-            "  4;"
-            "}"
-            "elif (x == 5) {"
-            "  5;"
-            "}"
-            "elif (x == 6) {"
-            "  6;"
-            "}"
-            "else {"
-            "  999;"
-            "}"
-            ";"
-            "",
-            INTEGER_VAL(999),
-        },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+
+    const char* test_files[] = {
+        "codes/test_vm/test_conditionals_1.dai",
+        "codes/test_vm/test_conditionals_2.dai",
+        "codes/test_vm/test_conditionals_3.dai",
+        "codes/test_vm/test_conditionals_4.dai",
+        "codes/test_vm/test_conditionals_5.dai",
+        "codes/test_vm/test_conditionals_6.dai",
+        "codes/test_vm/test_conditionals_7.dai",
+    };
+    run_vm_test_files(test_files, sizeof(test_files) / sizeof(test_files[0]));
     return MUNIT_OK;
 }
 
@@ -730,286 +648,24 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
 static MunitResult
 test_class_instance(__attribute__((unused)) const MunitParameter params[],
                     __attribute__((unused)) void* user_data) {
-    DaiVMTestCase tests[] = {
-        {
-            "class Foo {\n"
-            "  fn get() {\n"
-            "    return 1;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo();\n"
-            "foo.get();\n",
-            INTEGER_VAL(1),
-        },
-        {
-            "class Foo {\n"
-            "  fn get() {\n"
-            "    return 1;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo();\n"
-            "var get =foo.get;\n"
-            "get();\n",
-            INTEGER_VAL(1),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  fn get() {\n"
-            "    return 1;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo();\n"
-            "foo.a;\n",
-            INTEGER_VAL(1),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  fn get() {\n"
-            "    return 1;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo();\n"
-            "foo.a = 2;\n"
-            "foo.a;\n",
-            INTEGER_VAL(2),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  fn get() {\n"
-            "    return self.a;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo();\n"
-            "foo.get();\n",
-            INTEGER_VAL(1),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    return ins.a;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo();\n"
-            "foo.get();\n",
-            INTEGER_VAL(1),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    ins.a = 2;\n"
-            "    return ins.a;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo();\n"
-            "foo.get();\n",
-            INTEGER_VAL(2),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  fn inc() {\n"
-            "    self.a = self.a + 1;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();\n"
-            "    return ins.a;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo(2);\n"
-            "foo.get();\n",
-            INTEGER_VAL(3),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  var increment;"
-            "  fn inc() {\n"
-            "    self.a = self.a + self.increment;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();"
-            "    return ins.a;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo(2, 2);\n"
-            "foo.get();\n",
-            INTEGER_VAL(4),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  var increment;"
-            "  fn inc() {\n"
-            "    self.a = self.a + self.increment;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();"
-            "    return ins.a;\n"
-            "  };\n"
-            "  class var c = 2;\n"
-            "};\n"
-            "var foo = Foo(2, 2);\n"
-            "foo.get() + Foo.c;\n",
-            INTEGER_VAL(4 + 2),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  var increment;"
-            "  fn inc() {\n"
-            "    self.a = self.a + self.increment;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();"
-            "    return ins.a;\n"
-            "  };\n"
-            "  class var c = 3;\n"
-            "  class fn cget() {\n"
-            "     return self.c;\n"
-            "  };\n"
-            "};\n"
-            "var foo = Foo(2, 2);\n"
-            "foo.get() + Foo.cget();\n",
-            INTEGER_VAL(4 + 3),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  var increment;"
-            "  fn inc() {\n"
-            "    self.a = self.a + self.increment;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();"
-            "    return ins.a;\n"
-            "  };\n"
-            "  class var c = 0;\n"
-            "  class fn cinc() {\n"
-            "    self.c = self.c + 1;\n"
-            "  };\n"
-            "  class fn cget() {\n"
-            "     return self.c;\n"
-            "  };\n"
-            "};\n"
-            "Foo.cinc();"
-            "var foo = Foo(2, 2);\n"
-            "Foo.cinc();"
-            "foo.get() + Foo.cget();\n",
-            INTEGER_VAL(4 + 2),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  var increment;"
-            "  fn init(a) {\n"
-            "    self.a = a;\n"
-            "    self.increment = 2;\n"
-            "  };\n"
-            "  fn inc() {\n"
-            "    self.a = self.a + self.increment;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();"
-            "    return ins.a;\n"
-            "  };\n"
-            "  class var c = 0;\n"
-            "  class fn cinc() {\n"
-            "    self.c = self.c + 1;\n"
-            "  };\n"
-            "  class fn cget() {\n"
-            "     return self.c;\n"
-            "  };\n"
-            "};\n"
-            "Foo.cinc();"
-            "var foo = Foo(2);\n"
-            "Foo.cinc();"
-            "foo.get() + Foo.cget();\n",
-            INTEGER_VAL(4 + 2),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  var increment;"
-            "  fn init(a) {\n"
-            "    self.a = a;\n"
-            "    self.increment = 2;\n"
-            "  };\n"
-            "  fn inc() {\n"
-            "    self.a = self.a + self.increment;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();"
-            "    return ins.a;\n"
-            "  };\n"
-            "  class var c = 0;\n"
-            "  class fn cinc() {\n"
-            "    self.c = self.c + 1;\n"
-            "  };\n"
-            "  class fn cget() {\n"
-            "     return self.c;\n"
-            "  };\n"
-            "};\n"
-            "class Goo < Foo {};\n"
-            "Goo.cinc();"
-            "var goo = Goo(2);\n"
-            "Goo.cinc();"
-            "goo.get() + Goo.cget();\n",
-            INTEGER_VAL(4 + 2),
-        },
-        {
-            "class Foo {\n"
-            "  var a = 1;\n"
-            "  var increment;"
-            "  fn init(a) {\n"
-            "    self.a = a;\n"
-            "    self.increment = 2;\n"
-            "  };\n"
-            "  fn inc() {\n"
-            "    self.a = self.a + self.increment;\n"
-            "  };\n"
-            "  fn get() {\n"
-            "    var ins = self;\n"
-            "    self.inc();"
-            "    return ins.a;\n"
-            "  };\n"
-            "  class var c = 0;\n"
-            "  class fn cinc() {\n"
-            "    self.c = self.c + 1;\n"
-            "  };\n"
-            "  class fn cget() {\n"
-            "     return self.c;\n"
-            "  };\n"
-            "};\n"
-            "class Goo < Foo {\n"
-            "  fn get() {\n"
-            "    return super.get();\n"
-            "  };\n"
-            "  class fn cget() {\n"
-            "     return super.cget();\n"
-            "  };\n"
-            "};\n"
-            "Goo.cinc();"
-            "var goo = Goo(2);\n"
-            "Goo.cinc();"
-            "goo.get() + Goo.cget();\n",
-            INTEGER_VAL(4 + 2),
-        },
+    const char* test_files[] = {
+        "codes/test_vm/test_class_instance_1.dai",
+        "codes/test_vm/test_class_instance_2.dai",
+        "codes/test_vm/test_class_instance_3.dai",
+        "codes/test_vm/test_class_instance_4.dai",
+        "codes/test_vm/test_class_instance_5.dai",
+        "codes/test_vm/test_class_instance_6.dai",
+        "codes/test_vm/test_class_instance_7.dai",
+        "codes/test_vm/test_class_instance_8.dai",
+        "codes/test_vm/test_class_instance_9.dai",
+        "codes/test_vm/test_class_instance_10.dai",
+        "codes/test_vm/test_class_instance_11.dai",
+        "codes/test_vm/test_class_instance_12.dai",
+        "codes/test_vm/test_class_instance_13.dai",
+        "codes/test_vm/test_class_instance_14.dai",
+        "codes/test_vm/test_class_instance_15.dai",
     };
-    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    run_vm_test_files(test_files, sizeof(test_files) / sizeof(test_files[0]));
     return MUNIT_OK;
 }
 

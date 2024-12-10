@@ -1,0 +1,28 @@
+#6
+class Foo {
+  var a = 1;
+  var increment;
+  fn init(a) {
+    self.a = a;
+    self.increment = 2;
+  };
+  fn inc() {
+    self.a = self.a + self.increment;
+  };
+  fn get() {
+    var ins = self;
+    self.inc();
+    return ins.a;
+  };
+  class var c = 0;
+  class fn cinc() {
+    self.c = self.c + 1;
+  };
+  class fn cget() {
+     return self.c;
+  };
+};
+Foo.cinc();
+var foo = Foo(2);
+Foo.cinc();
+foo.get() + Foo.cget();

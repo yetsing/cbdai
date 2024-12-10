@@ -1,0 +1,11 @@
+#2
+class Foo {
+  var a = 1;
+  fn get() {
+    var ins = self;
+    ins.a = 2;
+    return ins.a;
+  };
+};
+var foo = Foo();
+foo.get();
