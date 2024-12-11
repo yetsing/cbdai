@@ -74,7 +74,8 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
                              "1.234E+10 "
                              "1.234E-10 % \n"
                              "== != < > <= >= and or not\n"
-                             "& | ~ << >> ^\n";
+                             "& | ~ << >> ^\n"
+                             "[]\n";
     const DaiToken tests[] = {
         {
             DaiTokenType_assign,
@@ -286,7 +287,10 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_right_shift, ">>", 34, 10, 34, 12},
         {DaiTokenType_bitwise_xor, "^", 34, 13, 34, 14},
 
-        {DaiTokenType_eof, "", 35, 1},
+        {DaiTokenType_lbracket, "[", 35, 1, 35, 2},
+        {DaiTokenType_rbracket, "]", 35, 2, 35, 3},
+
+        {DaiTokenType_eof, "", 36, 1},
     };
 
     DaiTokenList list;
@@ -328,7 +332,7 @@ test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
     munit_assert_not_null(fp);
 
     const char* input = "\nvar _Fiv = 5;=\t\r";
-    size_t wn         = fwrite(input, strlen(input), 1, fp);
+    const size_t wn   = fwrite(input, strlen(input), 1, fp);
     munit_assert_size(1, ==, wn);
     fclose(fp);
     DaiToken tests[] = {

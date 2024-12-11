@@ -149,6 +149,8 @@ Parser_parseFunctionLiteral(Parser* p);
 static DaiAstExpression*
 Parser_parseStringLiteral(Parser* p);
 static DaiAstExpression*
+Parser_parseArrayLiteral(Parser* p);
+static DaiAstExpression*
 Parser_parseExpression(Parser* p, Precedence precedence);
 
 static DaiAstStatement*
@@ -283,6 +285,7 @@ Parser_register(Parser* p) {
         Parser_registerPrefix(p, DaiTokenType_str, Parser_parseStringLiteral);
         Parser_registerPrefix(p, DaiTokenType_self, Parser_parseSelfExpression);
         Parser_registerPrefix(p, DaiTokenType_super, Parser_parseSuperExpression);
+        Parser_registerPrefix(p, DaiTokenType_lbracket, Parser_parseArrayLiteral);
     }
 
     // 注册中缀表达式解析函数

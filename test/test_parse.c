@@ -7,6 +7,21 @@
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 
+#include <linux/limits.h>
+
+// 获取当前文件所在文件夹路径
+static void
+get_file_directory(char* path) {
+    if (realpath(__FILE__, path) == NULL) {
+        perror("realpath");
+        assert(false);
+    }
+    char* last_slash = strrchr(path, '/');
+    if (last_slash) {
+        *(last_slash + 1) = '\0';
+    }
+}
+
 // #region 测试辅助函数
 
 static void
@@ -1927,6 +1942,16 @@ recursive_string_and_free(DaiAstBase* ast) {
             literal->free_fn((DaiAstBase*)literal, false);
             break;
         }
+        case DaiAstType_ArrayLiteral: {
+            DaiAstArrayLiteral* literal = (DaiAstArrayLiteral*)ast;
+            char* s                     = literal->string_fn((DaiAstBase*)literal, false);
+            free(s);
+            s = literal->literal_fn((DaiAstExpression*)literal);
+            printf("array literal: %s\n", s);
+            free(s);
+            literal->free_fn((DaiAstBase*)literal, true);
+            break;
+        }
 
         default: {
             unreachable();
@@ -1938,7 +1963,10 @@ recursive_string_and_free(DaiAstBase* ast) {
 static MunitResult
 test_parse_example(__attribute__((unused)) const MunitParameter params[],
                    __attribute__((unused)) void* user_data) {
-    char* input = string_from_file("test/parse_example.dai");
+    char resolved_path[PATH_MAX];
+    get_file_directory(resolved_path);
+    strcat(resolved_path, "parse_example.dai");
+    char* input = string_from_file(resolved_path);
 
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
@@ -1956,6 +1984,133 @@ test_parse_example(__attribute__((unused)) const MunitParameter params[],
     free(input);
     return MUNIT_OK;
 }
+
+
+static MunitResult
+test_array_literal_expression(__attribute__((unused)) const MunitParameter params[],
+                              __attribute__((unused)) void* user_data) {
+    {
+        const char* input = "[];";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        DaiAstExpression* expr = ((DaiAstExpressionStatement*)stmt)->expression;
+        munit_assert_int(expr->type, ==, DaiAstType_ArrayLiteral);
+        const DaiAstArrayLiteral* array = (DaiAstArrayLiteral*)expr;
+        munit_assert_size(array->length, ==, 0);
+        {
+            munit_assert_int(array->start_line, ==, 1);
+            munit_assert_int(array->start_column, ==, 1);
+            munit_assert_int(array->end_line, ==, 1);
+            munit_assert_int(array->end_column, ==, 3);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "[1];";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        DaiAstExpression* expr = ((DaiAstExpressionStatement*)stmt)->expression;
+        munit_assert_int(expr->type, ==, DaiAstType_ArrayLiteral);
+        const DaiAstArrayLiteral* array = (DaiAstArrayLiteral*)expr;
+        munit_assert_size(array->length, ==, 1);
+        check_integer_literal(array->elements[0], 1);
+        {
+            munit_assert_int(array->start_line, ==, 1);
+            munit_assert_int(array->start_column, ==, 1);
+            munit_assert_int(array->end_line, ==, 1);
+            munit_assert_int(array->end_column, ==, 4);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "[1,];";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        DaiAstExpression* expr = ((DaiAstExpressionStatement*)stmt)->expression;
+        munit_assert_int(expr->type, ==, DaiAstType_ArrayLiteral);
+        const DaiAstArrayLiteral* array = (DaiAstArrayLiteral*)expr;
+        munit_assert_size(array->length, ==, 1);
+        check_integer_literal(array->elements[0], 1);
+        {
+            munit_assert_int(array->start_line, ==, 1);
+            munit_assert_int(array->start_column, ==, 1);
+            munit_assert_int(array->end_line, ==, 1);
+            munit_assert_int(array->end_column, ==, 5);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "[1, 2 * 2];";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        DaiAstExpression* expr = ((DaiAstExpressionStatement*)stmt)->expression;
+        munit_assert_int(expr->type, ==, DaiAstType_ArrayLiteral);
+        const DaiAstArrayLiteral* array = (DaiAstArrayLiteral*)expr;
+        munit_assert_size(array->length, ==, 2);
+        check_integer_literal(array->elements[0], 1);
+        check_infix_expression_int64(array->elements[1], 2, "*", 2);
+        {
+            munit_assert_int(array->start_line, ==, 1);
+            munit_assert_int(array->start_column, ==, 1);
+            munit_assert_int(array->end_line, ==, 1);
+            munit_assert_int(array->end_column, ==, 11);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "[1, 2 * 2, 3 + 3];";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
+        DaiAstExpression* expr = ((DaiAstExpressionStatement*)stmt)->expression;
+        munit_assert_int(expr->type, ==, DaiAstType_ArrayLiteral);
+        const DaiAstArrayLiteral* array = (DaiAstArrayLiteral*)expr;
+        munit_assert_size(array->length, ==, 3);
+        check_integer_literal(array->elements[0], 1);
+        check_infix_expression_int64(array->elements[1], 2, "*", 2);
+        check_infix_expression_int64(array->elements[2], 3, "+", 3);
+        {
+            munit_assert_int(array->start_line, ==, 1);
+            munit_assert_int(array->start_column, ==, 1);
+            munit_assert_int(array->end_line, ==, 1);
+            munit_assert_int(array->end_column, ==, 18);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+
+
+    return MUNIT_OK;
+}
+
 
 MunitTest parse_tests[] = {
     {(char*)"/test_var_statements", test_var_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
@@ -2077,5 +2232,11 @@ MunitTest parse_tests[] = {
      MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_parse_example", test_parse_example, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_array_literal_expression",
+     test_array_literal_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

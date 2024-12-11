@@ -73,10 +73,12 @@ typedef enum {
     DaiTokenType_comma,       // "comma,"
     DaiTokenType_semicolon,   // "semicolon;"
 
-    DaiTokenType_lparen,   // "lparen("
-    DaiTokenType_rparen,   // "rparen)"
-    DaiTokenType_lbrace,   // "lbrace{"
-    DaiTokenType_rbrace,   // "rbrace}"
+    DaiTokenType_lparen,     // "lparen("
+    DaiTokenType_rparen,     // "rparen)"
+    DaiTokenType_lbracket,   // "lbracket["
+    DaiTokenType_rbracket,   // "rbracket]"
+    DaiTokenType_lbrace,     // "lbrace{"
+    DaiTokenType_rbrace,     // "rbrace}"
     // #endregion
 
     // 结束标记

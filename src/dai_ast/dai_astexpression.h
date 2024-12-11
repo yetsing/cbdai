@@ -6,6 +6,9 @@
 typedef struct _DaiAstExpression DaiAstExpression;
 typedef char* (*DaiAstExpressionLiteralFn)(DaiAstExpression* ast);
 
+// string_fn 返回节点的字符串表示
+// free_fn 释放节点内存
+// literal_fn 返回表达式字面量表示（字符串形式）
 #define DAI_AST_EXPRESSION_HEAD           \
     DaiAstType type;                      \
     DaiAstStringFn string_fn;             \

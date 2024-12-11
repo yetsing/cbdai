@@ -33,8 +33,8 @@ static const char* DaiTokenTypeStrings[] = {
     "DaiTokenType_gt",          "DaiTokenType_lte",         "DaiTokenType_gte",
     "DaiTokenType_eq",          "DaiTokenType_not_eq",      "DaiTokenType_dot",
     "DaiTokenType_comma",       "DaiTokenType_semicolon",   "DaiTokenType_lparen",
-    "DaiTokenType_rparen",      "DaiTokenType_lbrace",      "DaiTokenType_rbrace",
-    "DaiTokenType_end",
+    "DaiTokenType_rparen",      "DaiTokenType_lbracket",    "DaiTokenType_rbracket",
+    "DaiTokenType_lbrace",      "DaiTokenType_rbrace",      "DaiTokenType_end",
 };
 
 __attribute__((unused)) const char*
@@ -53,6 +53,7 @@ static DaiToken autos[] = {
     {DaiTokenType_bitwise_and, "&"},  {DaiTokenType_bitwise_or, "|"},
     {DaiTokenType_bitwise_not, "~"},  {DaiTokenType_left_shift, "<<"},
     {DaiTokenType_right_shift, ">>"}, {DaiTokenType_bitwise_xor, "^"},
+    {DaiTokenType_lbracket, "["},     {DaiTokenType_rbracket, "]"},
 
 };
 
@@ -550,6 +551,8 @@ Tokenizer_nextToken(Tokenizer* tker) {
         case '}':
         case '(':
         case ')':
+        case '[':
+        case ']':
         case '+':
         case '-':
         case '*':

@@ -31,6 +31,7 @@ static const char* AstTypeStrings[] = {
     "DaiAstType_InfixExpression",
     "DaiAstType_FunctionLiteral",
     "DaiAstType_StringLiteral",
+    "DaiAstType_ArrayLiteral",
     "DaiAstType_CallExpression",
     "DaiAstType_DotExpression",
     "DaiAstType_SelfExpression",
@@ -39,6 +40,6 @@ static const char* AstTypeStrings[] = {
 };
 
 const char*
-DaiAstType_string(DaiAstType type) {
+DaiAstType_string(const DaiAstType type) {
     return AstTypeStrings[type];
 }

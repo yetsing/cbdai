@@ -1,11 +1,8 @@
-//
-// Created by yeqing on 24-11-17.
-//
-
 // ReSharper disable CppUnusedIncludeDirective
 #ifndef CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSION_H_
 #define CBDAI_SRC_DAI_PARSER_DAI_PARSEEXPRESSION_H_
 
+#include "dai_parse/dai_parseArrayLiteral.h"
 #include "dai_parse/dai_parseBoolean.h"
 #include "dai_parse/dai_parseCallExpression.h"
 #include "dai_parse/dai_parseDotExpression.h"

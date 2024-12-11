@@ -35,6 +35,7 @@ typedef enum {
     DaiAstType_InfixExpression,
     DaiAstType_FunctionLiteral,
     DaiAstType_StringLiteral,
+    DaiAstType_ArrayLiteral,
     DaiAstType_CallExpression,
     DaiAstType_DotExpression,
     DaiAstType_SelfExpression,

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "dai_ast/dai_astArrayLiteral.h"
 #include "dai_ast/dai_astBreakStatement.h"
 #include "dai_ast/dai_astClassMethodStatement.h"
 #include "dai_ast/dai_astClassVarStatement.h"

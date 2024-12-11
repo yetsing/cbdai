@@ -13,19 +13,6 @@ add_compile_options(-g -Werror -Wall)
 file(GLOB_RECURSE MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c)
 
-add_executable(anoop main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c
-        src/dai_parse/dai_parseClassStatement.h
-        src/dai_parse/dai_parseAssignStatement.h
-        src/dai_parse/dai_parseBoolean.h
-        src/dai_parse/dai_parseCallExpression.h
-        src/dai_parse/dai_parseFunctionLiteral.h
-        src/dai_parse/dai_parseGroupedExpression.h
-        src/dai_parse/dai_parseIfStatement.h
-        src/dai_parse/dai_parseInfixExpression.h
-        src/dai_parse/dai_parseInfixExpression.h
-        src/dai_parse/dai_parseInsVarStatement.h
-        src/dai_parse/dai_parseVarStatement.h)
-
 add_executable(cbdai main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(santest main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(mem main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
