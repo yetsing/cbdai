@@ -19,6 +19,27 @@
 
 
 static DaiAstExpression*
+Parser_parseSubscriptExpression(Parser* p, DaiAstExpression* left) {
+    DaiAstSubscriptExpression* subscript = DaiAstSubscriptExpression_New(left);
+    Parser_nextToken(p);
+    subscript->right = Parser_parseExpression(p, Precedence_Lowest);
+    if (subscript->right == NULL) {
+        subscript->free_fn((DaiAstBase*)subscript, true);
+        return NULL;
+    }
+    if (!Parser_expectPeek(p, DaiTokenType_rbracket)) {
+        subscript->free_fn((DaiAstBase*)subscript, true);
+        return NULL;
+    }
+    {
+        subscript->end_line   = subscript->right->end_line;
+        subscript->end_column = subscript->right->end_column;
+    }
+    return (DaiAstExpression*)subscript;
+}
+
+
+static DaiAstExpression*
 Parser_parseExpression(Parser* p, Precedence precedence) {
     DaiAstExpression* left_exp = NULL;
     // 解析前缀表达式

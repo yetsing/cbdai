@@ -36,6 +36,7 @@ static const char* AstTypeStrings[] = {
     "DaiAstType_DotExpression",
     "DaiAstType_SelfExpression",
     "DaiAstType_SuperExpression",
+    "DaiAstType_SubscriptExpression",
     "DaiAstType_ExpressionEnd",
 };
 

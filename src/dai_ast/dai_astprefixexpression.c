@@ -1,6 +1,3 @@
-//
-// Created by  on 2024/6/5.
-//
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

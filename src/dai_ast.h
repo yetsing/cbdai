@@ -14,6 +14,7 @@
 #include "dai_ast/dai_astFunctionStatement.h"
 #include "dai_ast/dai_astMethodStatement.h"
 #include "dai_ast/dai_astSelfExpression.h"
+#include "dai_ast/dai_astSubscriptExpression.h"
 #include "dai_ast/dai_astSuperExpression.h"
 #include "dai_ast/dai_astWhileStatement.h"
 #include "dai_ast/dai_astassignstatement.h"

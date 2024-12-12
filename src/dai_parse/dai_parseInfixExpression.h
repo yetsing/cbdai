@@ -4,7 +4,7 @@
 static DaiAstExpression*
 Parser_parseInfixExpression(Parser* p, DaiAstExpression* left) {
     // 创建中缀表达式节点，此时 cur_token 是操作符
-    DaiAstInfixExpression* expr = DaiAstInfixExpression_New(p->cur_token->literal, left, NULL);
+    DaiAstInfixExpression* expr = DaiAstInfixExpression_New(p->cur_token->literal, left);
     // 获取当前操作的优先级
     Precedence precedence = Parser_curPrecedence(p);
     Parser_nextToken(p);

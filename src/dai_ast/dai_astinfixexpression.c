@@ -84,7 +84,7 @@ DaiAstInfixExpression_literal(DaiAstExpression* base) {
 }
 
 DaiAstInfixExpression*
-DaiAstInfixExpression_New(const char* operator, DaiAstExpression * left, DaiAstExpression* right) {
+DaiAstInfixExpression_New(const char* operator, DaiAstExpression * left) {
     DaiAstInfixExpression* expr = (DaiAstInfixExpression*)dai_malloc(sizeof(DaiAstInfixExpression));
     expr->type                  = DaiAstType_InfixExpression;
     expr->string_fn             = DaiAstInfixExpression_string;
@@ -94,6 +94,6 @@ DaiAstInfixExpression_New(const char* operator, DaiAstExpression * left, DaiAstE
     expr->left         = left;
     expr->start_line   = left->start_line;
     expr->start_column = left->start_column;
-    expr->right        = right;
+    expr->right        = NULL;
     return expr;
 }

@@ -66,6 +66,7 @@ token_precedences(const DaiTokenType type) {
         case DaiTokenType_percent:
         case DaiTokenType_slash:
         case DaiTokenType_asterisk: return Precedence_Product;
+        case DaiTokenType_lbracket:
         case DaiTokenType_lparen:
         case DaiTokenType_dot: return Precedence_Call;
         default: return Precedence_Lowest;
@@ -150,6 +151,8 @@ static DaiAstExpression*
 Parser_parseStringLiteral(Parser* p);
 static DaiAstExpression*
 Parser_parseArrayLiteral(Parser* p);
+static DaiAstExpression*
+Parser_parseSubscriptExpression(Parser* p, DaiAstExpression* left);
 static DaiAstExpression*
 Parser_parseExpression(Parser* p, Precedence precedence);
 
@@ -310,6 +313,7 @@ Parser_register(Parser* p) {
         Parser_registerInfix(p, DaiTokenType_or, Parser_parseInfixExpression);
         Parser_registerInfix(p, DaiTokenType_lparen, Parser_parseCallExpression);
         Parser_registerInfix(p, DaiTokenType_dot, Parser_parseDotExpression);
+        Parser_registerInfix(p, DaiTokenType_lbracket, Parser_parseSubscriptExpression);
     }
 }
 

@@ -35,6 +35,14 @@ test_ast_type_string(__attribute__((unused)) const MunitParameter params[],
                               "DaiAstType_FunctionLiteral");
     munit_assert_string_equal(DaiAstType_string(DaiAstType_CallExpression),
                               "DaiAstType_CallExpression");
+    munit_assert_string_equal(DaiAstType_string(DaiAstType_DotExpression),
+                              "DaiAstType_DotExpression");
+    munit_assert_string_equal(DaiAstType_string(DaiAstType_SelfExpression),
+                              "DaiAstType_SelfExpression");
+    munit_assert_string_equal(DaiAstType_string(DaiAstType_SuperExpression),
+                              "DaiAstType_SuperExpression");
+    munit_assert_string_equal(DaiAstType_string(DaiAstType_SubscriptExpression),
+                              "DaiAstType_SubscriptExpression");
     munit_assert_string_equal(DaiAstType_string(DaiAstType_ExpressionEnd),
                               "DaiAstType_ExpressionEnd");
     return MUNIT_OK;

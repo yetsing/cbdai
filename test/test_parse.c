@@ -1327,6 +1327,22 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
             "1 | 2 ^ 3 & 4;",
             "(1 | (2 ^ (3 & 4)))",
         },
+        {
+            "[1];",
+            "[1, ]",
+        },
+        {
+            "x[1] * 2;",
+            "((x[1]) * 2)",
+        },
+        {
+            "x[1](2);",
+            "(x[1])(2)",
+        },
+        {
+            "x(2)[1];",
+            "(x(2)[1])",
+        },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
@@ -1950,6 +1966,17 @@ recursive_string_and_free(DaiAstBase* ast) {
             printf("array literal: %s\n", s);
             free(s);
             literal->free_fn((DaiAstBase*)literal, true);
+            break;
+        }
+        case DaiAstType_SubscriptExpression: {
+            DaiAstSubscriptExpression* expression = (DaiAstSubscriptExpression*)ast;
+            char* s = expression->string_fn((DaiAstBase*)expression, false);
+            free(s);
+            s = expression->literal_fn((DaiAstExpression*)expression);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)expression->left);
+            recursive_string_and_free((DaiAstBase*)expression->right);
+            expression->free_fn((DaiAstBase*)expression, false);
             break;
         }
 
