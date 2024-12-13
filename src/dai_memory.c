@@ -162,6 +162,10 @@ blackenObject(DaiVM* vm, DaiObj* object) {
     printf("\n");
 #endif
     switch (object->type) {
+        case DaiObjType_array: {
+            // todo array
+            break;
+        }
         case DaiObjType_boundMethod: {
             DaiObjBoundMethod* bound = (DaiObjBoundMethod*)object;
             markValue(vm, bound->receiver);

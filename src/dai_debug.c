@@ -45,6 +45,13 @@ simple_instruction(const char* name, int offset) {
 }
 
 static int
+simple_instruction2(const char* name, const DaiChunk* chunk, const int offset) {
+    uint16_t n = DaiChunk_readu16(chunk, offset + 1);
+    printf("%s %d\n", name, n);
+    return offset + 1;
+}
+
+static int
 binary_instruction(const char* name, const DaiChunk* chunk, const int offset) {
     const DaiBinaryOpType t = DaiChunk_read(chunk, offset + 1);
     printf("%s(%s)\n", name, DaiBinaryOpTypeToString(t));
@@ -144,11 +151,13 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpDiv: return simple_instruction("OP_DIV", offset);
         case DaiOpMod: return simple_instruction("OP_MOD", offset);
         case DaiOpBinary: return binary_instruction("OP_BINARY", chunk, offset);
+        case DaiOpSubscript: return simple_instruction("OP_SUBSCRIPT", offset);
 
         case DaiOpTrue: return simple_instruction("OP_TRUE", offset);
         case DaiOpFalse: return simple_instruction("OP_FALSE", offset);
         case DaiOpNil: return simple_instruction("OP_NIL", offset);
         case DaiOpUndefined: return simple_instruction("OP_UNDEFINED", offset);
+        case DaiOpArray: return simple_instruction2("OP_ARRAY", chunk, offset);
 
         case DaiOpEqual: return simple_instruction("OP_EQUAL", offset);
         case DaiOpNotEqual: return simple_instruction("OP_NOT_EQUAL", offset);

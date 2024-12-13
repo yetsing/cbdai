@@ -2618,6 +2618,153 @@ test_compile_error(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_array(__attribute__((unused)) const MunitParameter params[],
+           __attribute__((unused)) void* user_data) {
+    const DaiCompilerTestCase tests[] = {
+        {
+            "[];",
+            4,
+            {
+                DaiOpArray,
+                0,
+                0,
+                DaiOpPop,
+            },
+            {},
+        },
+        {
+            "[1];",
+            7,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpArray,
+                0,
+                1,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "[1, 23];",
+            10,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpArray,
+                0,
+                2,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(23),
+            },
+        },
+        {
+            "[1, 23, 1 + 2];",
+            17,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpConstant,
+                0,
+                2,
+                DaiOpConstant,
+                0,
+                3,
+                DaiOpAdd,
+
+                DaiOpArray,
+                0,
+                3,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(23),
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+            },
+        },
+
+    };
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
+static MunitResult
+test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
+                          __attribute__((unused)) void* user_data) {
+    const DaiCompilerTestCase tests[] = {
+        {
+            "[][1];",
+            8,
+            {
+                DaiOpArray,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpSubscript,
+                DaiOpPop,
+            },
+            {INTEGER_VAL(1)},
+        },
+        {
+            "[1, 2, 3][1 + 1];",
+            21,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpConstant,
+                0,
+                2,
+                DaiOpArray,
+                0,
+                3,
+                DaiOpConstant,
+                0,
+                3,
+                DaiOpConstant,
+                0,
+                4,
+                DaiOpAdd,
+                DaiOpSubscript,
+                DaiOpPop,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+                INTEGER_VAL(3),
+                INTEGER_VAL(1),
+                INTEGER_VAL(1),
+            },
+        },
+
+    };
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
+
 MunitTest compile_tests[] = {
     {(char*)"/test_integer_arithmetic",
      test_integer_arithmetic,
@@ -2662,5 +2809,12 @@ MunitTest compile_tests[] = {
     {(char*)"/test_closures", test_closures, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_class", test_class, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_compile_error", test_compile_error, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_array", test_array, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_subscript_expression",
+     test_subscript_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

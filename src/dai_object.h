@@ -36,6 +36,7 @@ typedef enum {
     DaiObjType_class,
     DaiObjType_instance,
     DaiObjType_boundMethod,
+    DaiObjType_array,
 } DaiObjType;
 
 typedef DaiValue (*BuiltinFn)(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);

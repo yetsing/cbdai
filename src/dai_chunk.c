@@ -17,17 +17,20 @@ static DaiOpCodeDefinition definitions[] = {
             .name          = "DaiOpConstant",
             .operand_bytes = 2,
         },
-    [DaiOpAdd]    = {.name = "DaiOpAdd", .operand_bytes = 0},
-    [DaiOpSub]    = {.name = "DaiOpSub", .operand_bytes = 0},
-    [DaiOpMul]    = {.name = "DaiOpMul", .operand_bytes = 0},
-    [DaiOpDiv]    = {.name = "DaiOpDiv", .operand_bytes = 0},
-    [DaiOpMod]    = {.name = "DaiOpMod", .operand_bytes = 0},
-    [DaiOpBinary] = {.name = "DaiOpBinary", .operand_bytes = 1},
+    [DaiOpAdd]       = {.name = "DaiOpAdd", .operand_bytes = 0},
+    [DaiOpSub]       = {.name = "DaiOpSub", .operand_bytes = 0},
+    [DaiOpMul]       = {.name = "DaiOpMul", .operand_bytes = 0},
+    [DaiOpDiv]       = {.name = "DaiOpDiv", .operand_bytes = 0},
+    [DaiOpMod]       = {.name = "DaiOpMod", .operand_bytes = 0},
+    [DaiOpBinary]    = {.name = "DaiOpBinary", .operand_bytes = 1},
+    [DaiOpSubscript] = {.name = "DaiOpSubscript", .operand_bytes = 0},
 
     [DaiOpTrue]      = {.name = "DaiOpTrue", .operand_bytes = 0},
     [DaiOpFalse]     = {.name = "DaiOpFalse", .operand_bytes = 0},
     [DaiOpNil]       = {.name = "DaiOpNil", .operand_bytes = 0},
     [DaiOpUndefined] = {.name = "DaiOpUndefined", .operand_bytes = 0},
+    // 操作数: uint16 数组元素数量
+    [DaiOpArray] = {.name = "DaiOpArray", .operand_bytes = 2},
 
     [DaiOpEqual]            = {.name = "DaiOpEqual", .operand_bytes = 0},
     [DaiOpNotEqual]         = {.name = "DaiOpNotEqual", .operand_bytes = 0},
@@ -61,7 +64,7 @@ static DaiOpCodeDefinition definitions[] = {
 
     [DaiOpGetBuiltin] = {.name = "DaiOpGetBuiltin", .operand_bytes = 1},
 
-    // 操作数:前 2 个字节是函数常量的索引，后 1 个字节是自由变量个数
+    // 操作数: uint16 函数常量的索引，uint8 自由变量个数
     [DaiOpClosure] = {.name = "DaiOpClosure", .operand_bytes = 3},
 
     [DaiOpGetFree] = {.name = "DaiOpGetFree", .operand_bytes = 1},
@@ -98,11 +101,11 @@ static DaiOpCodeDefinition definitions[] = {
 const char*
 DaiBinaryOpTypeToString(DaiBinaryOpType op) {
     switch (op) {
-        case BinaryOpAdd: return "+";
-        case BinaryOpSub: return "-";
-        case BinaryOpMul: return "*";
-        case BinaryOpDiv: return "/";
-        case BinaryOpMod: return "%";
+        // case BinaryOpAdd: return "+";
+        // case BinaryOpSub: return "-";
+        // case BinaryOpMul: return "*";
+        // case BinaryOpDiv: return "/";
+        // case BinaryOpMod: return "%";
         case BinaryOpLeftShift: return "<<";
         case BinaryOpRightShift: return ">>";
         case BinaryOpBitwiseAnd: return "&";

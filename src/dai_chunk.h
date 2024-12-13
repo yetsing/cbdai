@@ -9,11 +9,11 @@
 
 // 二元操作类型，比如加减乘除
 typedef enum {
-    BinaryOpAdd,
-    BinaryOpSub,
-    BinaryOpMul,
-    BinaryOpDiv,
-    BinaryOpMod,
+    // BinaryOpAdd,
+    // BinaryOpSub,
+    // BinaryOpMul,
+    // BinaryOpDiv,
+    // BinaryOpMod,
 
     BinaryOpLeftShift,
     BinaryOpRightShift,
@@ -40,11 +40,13 @@ typedef enum __attribute__((__packed__)) {
     DaiOpDiv,
     DaiOpMod,
     DaiOpBinary,
+    DaiOpSubscript,
 
     DaiOpTrue,
     DaiOpFalse,
     DaiOpNil,
     DaiOpUndefined,
+    DaiOpArray,
 
     DaiOpEqual,
     DaiOpNotEqual,

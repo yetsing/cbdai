@@ -341,6 +341,12 @@ dai_print_object(DaiValue value) {
             print_function(AS_CLOSURE(value)->function);
             break;
         }
+        case DaiObjType_array: {
+            dai_log("[");
+            // todo array
+            dai_log("]");
+            break;
+        }
         default: dai_log("Unknown object type %d", OBJ_TYPE(value)); break;
     }
 }
@@ -363,6 +369,7 @@ dai_object_ts(DaiValue value) {
         case DaiObjType_closure: {
             return "function";
         }
+        case DaiObjType_array: return "array";
         default: return "unknown";
     }
 }
