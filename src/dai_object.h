@@ -18,6 +18,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_BUILTINFN(value) dai_is_obj_type(value, DaiObjType_builtinFn)
 #define IS_CLASS(value) dai_is_obj_type(value, DaiObjType_class)
 #define IS_STRING(value) dai_is_obj_type(value, DaiObjType_string)
+#define IS_ARRAY(value) dai_is_obj_type(value, DaiObjType_array)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
 #define AS_INSTANCE(value) ((DaiObjInstance*)AS_OBJ(value))
@@ -27,6 +28,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_CLASS(value) ((DaiObjClass*)AS_OBJ(value))
 #define AS_STRING(value) ((DaiObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((DaiObjString*)AS_OBJ(value))->chars)
+#define AS_ARRAY(value) ((DaiObjArray*)AS_OBJ(value))
 
 typedef enum {
     DaiObjType_function,
@@ -128,6 +130,15 @@ dai_take_string(DaiVM* vm, char* chars, int length);
 DaiObjString*
 dai_copy_string(DaiVM* vm, const char* chars, int length);
 
+typedef struct {
+    DaiObj obj;
+    int capacity;
+    int length;
+    DaiValue* elements;
+} DaiObjArray;
+DaiObjArray*
+DaiObjArray_New(DaiVM* vm, const DaiValue* elements, int length);
+
 void
 dai_print_object(DaiValue value);
 const char*
@@ -140,4 +151,6 @@ dai_is_obj_type(DaiValue value, DaiObjType type) {
 
 // 内置函数
 extern DaiObjBuiltinFunction builtin_funcs[256];
+// 特殊的内置函数
+extern DaiObjBuiltinFunction builtin_subscript;
 #endif /* D772959F_7E3C_4B7E_B19F_7880710F99C0 */

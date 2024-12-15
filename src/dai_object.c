@@ -24,6 +24,44 @@ dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiVa
     assert(false);
 }
 
+static DaiValue
+DaiObjInstance_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);
+static DaiObjBuiltinFunction builtin_init = {
+    {.type = DaiObjType_builtinFn},
+    .name     = "init",
+    .function = DaiObjInstance_init,
+};
+
+static DaiValue
+DaiObjArray_subscript(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                      DaiValue* argv);
+static DaiValue
+builtin_subscript_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                     DaiValue* argv) {
+    if (!IS_OBJ(receiver)) {
+        dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
+        assert(false);
+    }
+    const DaiObj* obj = AS_OBJ(receiver);
+    switch (obj->type) {
+        case DaiObjType_array: {
+            return DaiObjArray_subscript(vm, receiver, argc, argv);
+            break;
+        }
+        default: {
+            dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
+            assert(false);
+        }
+    }
+    return receiver;
+}
+
+DaiObjBuiltinFunction builtin_subscript = {
+    {.type = DaiObjType_builtinFn},
+    .name     = "subscript",
+    .function = builtin_subscript_fn,
+};
+
 static DaiObj*
 allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
     DaiObj* object            = (DaiObj*)vm_reallocate(vm, NULL, 0, size);
@@ -97,12 +135,6 @@ DaiObjInstance_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int ar
     }
     return receiver;
 }
-
-static DaiObjBuiltinFunction builtin_init = {
-    {.type = DaiObjType_builtinFn},
-    .name     = "init",
-    .function = DaiObjInstance_init,
-};
 
 static bool
 DaiObjInstance_get_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue* method) {
@@ -307,6 +339,41 @@ dai_copy_string(DaiVM* vm, const char* chars, int length) {
     heap_chars[length] = '\0';
     return allocate_string(vm, heap_chars, length, hash);
 }
+
+DaiObjArray*
+DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
+    DaiObjArray* array = ALLOCATE_OBJ(vm, DaiObjArray, DaiObjType_array);
+    array->capacity    = length;
+    array->length      = length;
+    array->elements    = NULL;
+    array->elements    = GROW_ARRAY(DaiValue, array->elements, 0, array->capacity);
+    memcpy(array->elements, elements, array->length * sizeof(DaiValue));
+    return array;
+}
+
+static DaiValue
+DaiObjArray_subscript(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                      DaiValue* argv) {
+    assert(IS_ARRAY(receiver));
+    const DaiValue v = argv[0];
+    if (!IS_INTEGER(v)) {
+        // todo return error
+        dai_error("array index must be integer\n");
+        assert(false);
+    }
+    const DaiObjArray* array = AS_ARRAY(receiver);
+    int64_t n                = AS_INTEGER(v);
+    if (n < 0) {
+        n += array->length;
+    }
+    if (n < 0 || n >= array->length) {
+        // todo return error
+        dai_error("array index out of bounds\n");
+        assert(false);
+    }
+    return array->elements[n];
+}
+
 static void
 print_function(DaiObjFunction* function) {
     if (function->name == NULL) {
@@ -343,7 +410,10 @@ dai_print_object(DaiValue value) {
         }
         case DaiObjType_array: {
             dai_log("[");
-            // todo array
+            for (int i = 0; i < AS_ARRAY(value)->length; i++) {
+                dai_print_value(AS_ARRAY(value)->elements[i]);
+                dai_log(", ");
+            }
             dai_log("]");
             break;
         }

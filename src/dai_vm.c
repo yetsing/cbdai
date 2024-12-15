@@ -40,7 +40,7 @@ DaiVM_init(DaiVM* vm) {
     {
         // 初始化栈
         for (int i = 0; i < STACK_MAX; i++) {
-            vm->stack[i] = NIL_VAL;
+            vm->stack[i] = UNDEFINED_VAL;
         }
     }
     vm->objects        = NULL;
@@ -364,6 +364,13 @@ DaiVM_dorun(DaiVM* vm) {
                 }
                 break;
             }
+            case DaiOpSubscript: {
+                DaiRuntimeError* err = DaiVM_callValue(vm, OBJ_VAL(&builtin_subscript), 1);
+                if (err != NULL) {
+                    return err;
+                }
+                break;
+            }
             case DaiOpTrue: {
                 DaiVM_push(vm, dai_true);
                 break;
@@ -380,6 +387,14 @@ DaiVM_dorun(DaiVM* vm) {
                 DaiVM_push(vm, UNDEFINED_VAL);
                 break;
             }
+            case DaiOpArray: {
+                uint16_t length    = READ_UINT16();
+                DaiObjArray* array = DaiObjArray_New(vm, vm->stack_top - length, length);
+                vm->stack_top -= length;
+                DaiVM_push(vm, OBJ_VAL(array));
+                break;
+            }
+
             case DaiOpEqual: {
                 DaiValue b   = DaiVM_pop(vm);
                 DaiValue a   = DaiVM_pop(vm);

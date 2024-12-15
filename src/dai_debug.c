@@ -48,7 +48,7 @@ static int
 simple_instruction2(const char* name, const DaiChunk* chunk, const int offset) {
     uint16_t n = DaiChunk_readu16(chunk, offset + 1);
     printf("%s %d\n", name, n);
-    return offset + 1;
+    return offset + 3;
 }
 
 static int

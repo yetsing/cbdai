@@ -8,12 +8,13 @@ include_directories(src)
 # include_directories(src/utils)
 include_directories(test)
 
-add_compile_options(-g -Werror -Wall)
+add_compile_options(-g -Wno-unused-function -Werror -Wall)
 
 file(GLOB_RECURSE MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c)
 
 add_executable(cbdai main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
+add_executable(cbdai-debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(santest main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(mem main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(coverage main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
@@ -22,6 +23,7 @@ add_executable(debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(test_atstr atstr/test_atstr.c atstr/atstr.c munit/munit.c)
 
 target_compile_definitions(cbdai PRIVATE TEST)
+target_compile_definitions(cbdai-debug PRIVATE TEST)
 target_compile_definitions(santest PRIVATE TEST)
 target_compile_definitions(santest PRIVATE SANTEST_OUTPUT)
 target_compile_definitions(mem PRIVATE TEST)

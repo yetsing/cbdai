@@ -145,7 +145,7 @@ typedef struct {
 
 #ifdef DISASSEMBLE_VARIABLE_NAME
 void
-DaiCompiler_addName(DaiCompiler* compiler, const char* name, int back) {
+DaiCompiler_addName(const DaiCompiler* compiler, const char* name, int back) {
     DaiChunk* chunk = &(compiler->function->chunk);
     DaiChunk_addName(chunk, name, back);
 }
@@ -614,6 +614,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     break;
                 }
                 default: {
+                    dai_error("assign unsupported %s\n", DaiAstType_string(stmt->left->type));
                     unreachable();
                 }
             }

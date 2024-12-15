@@ -69,17 +69,17 @@ dai_value_equal(DaiValue a, DaiValue b) {
 
 void
 DaiValueArray_init(DaiValueArray* array) {
-    array->capcity = 0;
-    array->count   = 0;
-    array->values  = NULL;
+    array->capacity = 0;
+    array->count    = 0;
+    array->values   = NULL;
 }
 
 void
 DaiValueArray_write(DaiValueArray* array, DaiValue value) {
-    if (array->capcity < array->count + 1) {
-        int old_capacity = array->capcity;
-        array->capcity   = GROW_CAPACITY(array->capcity);
-        array->values    = GROW_ARRAY(DaiValue, array->values, old_capacity, array->capcity);
+    if (array->capacity < array->count + 1) {
+        int old_capacity = array->capacity;
+        array->capacity  = GROW_CAPACITY(array->capacity);
+        array->values    = GROW_ARRAY(DaiValue, array->values, old_capacity, array->capacity);
     }
     array->values[array->count] = value;
     array->count++;
@@ -87,15 +87,15 @@ DaiValueArray_write(DaiValueArray* array, DaiValue value) {
 
 void
 DaiValueArray_reset(DaiValueArray* array) {
-    FREE_ARRAY(DaiValue, array->values, array->capcity);
+    FREE_ARRAY(DaiValue, array->values, array->capacity);
     DaiValueArray_init(array);
 }
 
 void
 DaiValueArray_copy(DaiValueArray* src, DaiValueArray* dst) {
-    dst->capcity = src->capcity;
-    dst->count   = src->count;
-    dst->values  = GROW_ARRAY(DaiValue, dst->values, 0, dst->capcity);
+    dst->capacity = src->capacity;
+    dst->count    = src->count;
+    dst->values   = GROW_ARRAY(DaiValue, dst->values, 0, dst->capacity);
     for (int i = 0; i < src->count; i++) {
         dst->values[i] = src->values[i];
     }

@@ -59,7 +59,7 @@ bool
 dai_value_equal(DaiValue a, DaiValue b);
 
 typedef struct {
-    int capcity;
+    int capacity;
     int count;
     DaiValue* values;
 } DaiValueArray;

@@ -11,6 +11,7 @@
 #include "dai_utils.h"
 #include "dai_vm.h"
 
+#include <dai_debug.h>
 #include <linux/limits.h>
 
 // 获取当前文件所在文件夹路径
@@ -57,7 +58,7 @@ interpret(DaiVM* vm, const char* input) {
     // 运行
     err = DaiVM_run(vm, function);
     if (err) {
-        // DaiChunk_disassemble(&function->chunk, "<test>");
+        DaiChunk_disassemble(&function->chunk, "<test>");
         DaiRuntimeError_pprint(err, input);
         munit_assert_null(err);
     }
@@ -400,6 +401,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
+
 static MunitResult
 test_string_expressions(__attribute__((unused)) const MunitParameter params[],
                         __attribute__((unused)) void* user_data) {
@@ -454,6 +456,7 @@ test_calling_functions_without_arguments(__attribute__((unused)) const MunitPara
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
+
 static MunitResult
 test_calling_functions_without_return_value(__attribute__((unused)) const MunitParameter params[],
                                             __attribute__((unused)) void* user_data) {
@@ -471,6 +474,7 @@ test_calling_functions_without_return_value(__attribute__((unused)) const MunitP
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
+
 static MunitResult
 test_calling_functions_with_bindings(__attribute__((unused)) const MunitParameter params[],
                                      __attribute__((unused)) void* user_data) {
@@ -527,6 +531,7 @@ test_calling_functions_with_bindings(__attribute__((unused)) const MunitParamete
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
+
 static MunitResult
 test_calling_functions_with_arguments_and_bindings(__attribute__((unused))
                                                    const MunitParameter params[],
@@ -699,6 +704,40 @@ test_fibonacci(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+__attribute__((unused)) static MunitResult
+test_array(__attribute__((unused)) const MunitParameter params[],
+           __attribute__((unused)) void* user_data) {
+    const DaiVMTestCase tests[] = {
+        {
+            "[0, 1, 2][0];",
+            INTEGER_VAL(0),
+        },
+        {
+            "[0, 1, 2][1];",
+            INTEGER_VAL(1),
+        },
+        {
+            "[0, 1, 2][2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "[0, 1, 1 + 1][2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "[0, 1, 2][1 - 1];",
+            INTEGER_VAL(0),
+        },
+        {
+            "var m = [0, 1, 2]; m[1 - 1];",
+            INTEGER_VAL(0),
+        },
+
+    };
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
 MunitTest vm_tests[] = {
     {(char*)"/test_number_arithmetic",
      test_number_arithmetic,
@@ -764,5 +803,6 @@ MunitTest vm_tests[] = {
     {(char*)"/test_closures", test_closures, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_class_instance", test_class_instance, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_fibonacci", test_fibonacci, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_array", test_array, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

@@ -48,6 +48,17 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     printf("%p free type %d\n", (void*)object, object->type);
 #endif
     switch (object->type) {
+        case DaiObjType_array: {
+            DaiObjArray* array = (DaiObjArray*)object;
+            for (int i = 0; i < array->length; i++) {
+                if (IS_OBJ(array->elements[i])) {
+                    vm_free_object(vm, AS_OBJ(array->elements[i]));
+                }
+            }
+            VM_FREE_ARRAY(vm, DaiValue, array->elements, array->capacity);
+            VM_FREE(vm, DaiObjArray, object);
+            break;
+        }
         case DaiObjType_boundMethod: {
             VM_FREE(vm, DaiObjBoundMethod, object);
             break;
@@ -163,7 +174,12 @@ blackenObject(DaiVM* vm, DaiObj* object) {
 #endif
     switch (object->type) {
         case DaiObjType_array: {
-            // todo array
+            const DaiObjArray* array = (DaiObjArray*)object;
+            for (int i = 0; i < array->length; i++) {
+                if (IS_OBJ(array->elements[i])) {
+                    blackenObject(vm, AS_OBJ(array->elements[i]));
+                }
+            }
             break;
         }
         case DaiObjType_boundMethod: {
