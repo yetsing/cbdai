@@ -13,14 +13,14 @@
 static DaiValue
 dai_default_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     dai_error(
-        "PropertyError: '%s' object has no property '%s'", dai_value_ts(receiver), name->chars);
+        "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
     assert(false);
 }
 
 static DaiValue
 dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     dai_error(
-        "PropertyError: '%s' object has no property '%s'", dai_value_ts(receiver), name->chars);
+        "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
     assert(false);
 }
 
@@ -53,7 +53,7 @@ builtin_subscript_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int a
             assert(false);
         }
     }
-    return receiver;
+    return UNDEFINED_VAL;
 }
 
 DaiObjBuiltinFunction builtin_subscript = {
@@ -340,13 +340,118 @@ dai_copy_string(DaiVM* vm, const char* chars, int length) {
     return allocate_string(vm, heap_chars, length, hash);
 }
 
+// #region 数组 DaiObjArray
+static DaiValue
+DaiObjArray_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        dai_error("TypeError: length() expected no arguments, but got %d\n", argc);
+        assert(false);
+    }
+    return INTEGER_VAL(AS_ARRAY(receiver)->length);
+}
+
+static DaiValue
+DaiObjArray_add(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc == 0) {
+        dai_error("TypeError: add() expected one or more arguments, but got no arguments\n");
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    int want           = array->length + argc;
+    if (want > array->capacity) {
+        int old_capacity = array->capacity;
+        array->capacity  = GROW_CAPACITY(array->capacity);
+        if (want > array->capacity) {
+            array->capacity = want;
+        }
+        array->elements = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
+    }
+    for (int i = 0; i < argc; i++) {
+        array->elements[array->length + i] = argv[i];
+    }
+    array->length += argc;
+    return NIL_VAL;
+}
+
+static DaiValue
+DaiObjArray_pop(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        dai_error("TypeError: pop() expected no arguments, but got %d\n", argc);
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    if (array->length == 0) {
+        dai_error("IndexError: pop from empty list\n");
+        assert(false);
+    }
+    DaiValue value = array->elements[array->length - 1];
+    array->length--;
+    return value;
+}
+
+enum DaiObjArrayFunctionNo {
+    DaiObjArrayFunctionNo_length = 0,
+    DaiObjArrayFunctionNo_add,
+    DaiObjArrayFunctionNo_pop,
+};
+
+static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
+    [DaiObjArrayFunctionNo_length] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "length",
+            .function = &DaiObjArray_length,
+        },
+    [DaiObjArrayFunctionNo_add] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "add",
+            .function = &DaiObjArray_add,
+        },
+    [DaiObjArrayFunctionNo_pop] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "pop",
+            .function = &DaiObjArray_pop,
+        },
+};
+
+static DaiValue
+DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    const char* cname = name->chars;
+    switch (cname[0]) {
+        case 'a': {
+            if (strcmp(cname, "add") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_add]);
+            }
+            break;
+        }
+        case 'l': {
+            if (strcmp(cname, "length") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_length]);
+            }
+            break;
+        }
+        case 'p': {
+            if (strcmp(cname, "pop") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_pop]);
+            }
+            break;
+        }
+    }
+    dai_error(
+        "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
+    assert(false);
+}
+
 DaiObjArray*
 DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
-    DaiObjArray* array = ALLOCATE_OBJ(vm, DaiObjArray, DaiObjType_array);
-    array->capacity    = length;
-    array->length      = length;
-    array->elements    = NULL;
-    array->elements    = GROW_ARRAY(DaiValue, array->elements, 0, array->capacity);
+    DaiObjArray* array           = ALLOCATE_OBJ(vm, DaiObjArray, DaiObjType_array);
+    array->obj.get_property_func = DaiObjArray_get_property;
+    array->capacity              = length;
+    array->length                = length;
+    array->elements              = NULL;
+    array->elements              = GROW_ARRAY(DaiValue, array->elements, 0, array->capacity);
     memcpy(array->elements, elements, array->length * sizeof(DaiValue));
     return array;
 }
@@ -373,6 +478,9 @@ DaiObjArray_subscript(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int 
     }
     return array->elements[n];
 }
+
+
+// #endregion
 
 static void
 print_function(DaiObjFunction* function) {

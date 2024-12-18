@@ -696,7 +696,7 @@ DaiVM_dorun(DaiVM* vm) {
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                         0,
-                        "'%s' object has no property1 '%s'",
+                        "'%s' object has not property '%s'",
                         dai_value_ts(receiver),
                         name->chars);
                 }
@@ -714,7 +714,7 @@ DaiVM_dorun(DaiVM* vm) {
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                         0,
-                        "'%s' object has no property2 '%s'",
+                        "'%s' object can not set property '%s'",
                         dai_value_ts(receiver),
                         name->chars);
                 }
@@ -759,28 +759,24 @@ DaiVM_dorun(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = DaiVM_peek(vm, argCount);
-                DaiObjClass* klass  = NULL;
-                if (IS_CLASS(receiver)) {
-                    klass = AS_CLASS(receiver);
-                } else if (IS_INSTANCE(receiver)) {
-                    klass = AS_INSTANCE(receiver)->klass;
+                if (IS_OBJ(receiver)) {
+                    DaiValue res         = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiRuntimeError* err = DaiVM_callValue(vm, res, argCount);
+                    if (err != NULL) {
+                        return err;
+                    }
+                    frame           = CURRENT_FRAME;
+                    frame->slots[0] = receiver;
+                    chunk           = &frame->function->chunk;
                 } else {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                         0,
-                        "'%s' object is not class or instance",
-                        dai_value_ts(receiver));
+                        "'%s' object has not property '%s'",
+                        dai_value_ts(receiver),
+                        name->chars);
                 }
-                DaiValue method;
-                DaiObj_get_method(vm, klass, receiver, name, &method);
-                DaiRuntimeError* err = DaiVM_callValue(vm, method, argCount);
-                if (err != NULL) {
-                    return err;
-                }
-                frame           = CURRENT_FRAME;
-                frame->slots[0] = receiver;
-                chunk           = &frame->function->chunk;
                 break;
             }
             case DaiOpCallSelfMethod: {
@@ -788,28 +784,24 @@ DaiVM_dorun(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = frame->slots[0];
-                DaiObjClass* klass  = NULL;
-                if (IS_CLASS(receiver)) {
-                    klass = AS_CLASS(receiver);
-                } else if (IS_INSTANCE(receiver)) {
-                    klass = AS_INSTANCE(receiver)->klass;
+                if (IS_OBJ(receiver)) {
+                    DaiValue res         = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiRuntimeError* err = DaiVM_callValue(vm, res, argCount);
+                    if (err != NULL) {
+                        return err;
+                    }
+                    frame           = CURRENT_FRAME;
+                    frame->slots[0] = receiver;
+                    chunk           = &frame->function->chunk;
                 } else {
                     return DaiRuntimeError_Newf(
                         chunk->filename,
                         DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
                         0,
-                        "'%s' object is not class or instance",
-                        dai_value_ts(receiver));
+                        "'%s' object has not property '%s'",
+                        dai_value_ts(receiver),
+                        name->chars);
                 }
-                DaiValue method;
-                DaiObj_get_method(vm, klass, receiver, name, &method);
-                DaiRuntimeError* err = DaiVM_callValue(vm, method, argCount);
-                if (err != NULL) {
-                    return err;
-                }
-                frame           = CURRENT_FRAME;
-                frame->slots[0] = receiver;
-                chunk           = &frame->function->chunk;
                 break;
             }
             case DaiOpCallSuperMethod: {
