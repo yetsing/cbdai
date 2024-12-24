@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dai_assert.h"
-#include "dai_debug.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_vm.h"

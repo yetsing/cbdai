@@ -299,6 +299,7 @@ DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString
 }
 // #endregion
 
+// #region 字符串
 static DaiObjString*
 allocate_string(DaiVM* vm, char* chars, int length, uint32_t hash) {
     DaiObjString* string = ALLOCATE_OBJ(vm, DaiObjString, DaiObjType_string);
@@ -339,8 +340,10 @@ dai_copy_string(DaiVM* vm, const char* chars, int length) {
     heap_chars[length] = '\0';
     return allocate_string(vm, heap_chars, length, hash);
 }
+// #endregion
 
 // #region 数组 DaiObjArray
+// TODO 缩容
 static DaiValue
 DaiObjArray_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 0) {
@@ -389,10 +392,99 @@ DaiObjArray_pop(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
     return value;
 }
 
+static DaiValue
+DaiObjArray_sub(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1 && argc != 2) {
+        dai_error("TypeError: sub() expected 1-2 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    if (!IS_INTEGER(argv[0])) {
+        dai_error("TypeError: sub() expected int arguments, but got %s\n", dai_value_ts(argv[0]));
+        assert(false);
+    }
+    if (argc == 2 && !IS_INTEGER(argv[1])) {
+        dai_error("TypeError: sub() expected int arguments, but got %s\n", dai_value_ts(argv[1]));
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    int start          = AS_INTEGER(argv[0]);
+    int end = argc == 2 ? AS_INTEGER(argv[1]) : array->length;
+    if (start < 0) {
+        start += array->length;
+        if (start < 0) {
+            start = 0;
+        }
+    }
+    if (end < 0) {
+        end += array->length;
+        if (end < 0) {
+            end = 0;
+        }
+    } else if (end > array->length) {
+        end = array->length;
+    }
+    if (start >= end) {
+        return OBJ_VAL(DaiObjArray_New(vm, NULL, 0));
+    }
+    DaiObjArray *sub_array = DaiObjArray_New(vm, array->elements + start, end - start);
+    return OBJ_VAL(sub_array);
+}
+
+static DaiValue
+DaiObjArray_remove(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        dai_error("TypeError: remove() expected 1 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    DaiValue value     = argv[0];
+    for (int i = 0; i < array->length; i++) {
+        if (dai_value_equal(array->elements[i], value)) {
+            for (int j = i; j < array->length - 1; j++) {
+                array->elements[j] = array->elements[j + 1];
+            }
+            array->length--;
+            return NIL_VAL;
+        }
+    }
+    dai_error("ValueError: array.remove(x): x not in array\n");
+    assert(false);
+}
+
+static DaiValue
+DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        dai_error("TypeError: removeIndex() expected 1 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    if (!IS_INTEGER(argv[0])) {
+        dai_error("TypeError: removeIndex() expected int arguments, but got %s\n", dai_value_ts(argv[0]));
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    int index = AS_INTEGER(argv[0]);
+    if (index < 0) {
+        index += array->length;
+    }
+    if (index < 0 || index >= array->length) {
+        dai_error("IndexError: removeIndex() index out of bounds\n");
+        assert(false);
+    }
+    for (int i = index; i < array->length - 1; i++) {
+        array->elements[i] = array->elements[i + 1];
+    }
+    array->length--;
+    return NIL_VAL;
+}
+
+
 enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_length = 0,
     DaiObjArrayFunctionNo_add,
     DaiObjArrayFunctionNo_pop,
+    DaiObjArrayFunctionNo_sub,
+    DaiObjArrayFunctionNo_remove,
+    DaiObjArrayFunctionNo_removeIndex,
 };
 
 static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
@@ -413,6 +505,24 @@ static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
             {.type = DaiObjType_builtinFn},
             .name     = "pop",
             .function = &DaiObjArray_pop,
+        },
+    [DaiObjArrayFunctionNo_sub] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "sub",
+            .function = &DaiObjArray_sub,
+        },
+    [DaiObjArrayFunctionNo_remove] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "remove",
+            .function = &DaiObjArray_remove,
+        },
+    [DaiObjArrayFunctionNo_removeIndex] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "removeIndex",
+            .function = &DaiObjArray_removeIndex,
         },
 };
 
@@ -438,6 +548,21 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
             }
             break;
         }
+        case 'r': {
+            if (strcmp(cname, "remove") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_remove]);
+            }
+            if (strcmp(cname, "removeIndex") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_removeIndex]);
+            }
+            break;
+        }
+        case 's': {
+            if (strcmp(cname, "sub") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_sub]);
+            }
+            break;
+        }
     }
     dai_error(
         "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
@@ -451,8 +576,10 @@ DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
     array->capacity              = length;
     array->length                = length;
     array->elements              = NULL;
-    array->elements              = GROW_ARRAY(DaiValue, array->elements, 0, array->capacity);
-    memcpy(array->elements, elements, array->length * sizeof(DaiValue));
+    if (length > 0) {
+        array->elements = GROW_ARRAY(DaiValue, NULL, 0, length);
+        memcpy(array->elements, elements, length * sizeof(DaiValue));
+    }
     return array;
 }
 

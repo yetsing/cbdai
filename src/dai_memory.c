@@ -42,6 +42,7 @@ reallocate(void* pointer, size_t old_size, size_t new_size) {
     return result;
 }
 
+// note: 只需释放自身内存
 static void
 vm_free_object(DaiVM* vm, DaiObj* object) {
 #ifdef DEBUG_LOG_GC
@@ -50,11 +51,6 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     switch (object->type) {
         case DaiObjType_array: {
             DaiObjArray* array = (DaiObjArray*)object;
-            for (int i = 0; i < array->length; i++) {
-                if (IS_OBJ(array->elements[i])) {
-                    vm_free_object(vm, AS_OBJ(array->elements[i]));
-                }
-            }
             VM_FREE_ARRAY(vm, DaiValue, array->elements, array->capacity);
             VM_FREE(vm, DaiObjArray, object);
             break;
