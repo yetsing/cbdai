@@ -897,6 +897,90 @@ test_array_method(__attribute__((unused)) const MunitParameter params[],
             "var m = [1, 3, 4, '字符串', 5, 3]; m.removeIndex(-1); m[-1];",
             INTEGER_VAL(5),
         },
+
+        // extend
+        {
+            "var m = [1, 3, 4]; var n = [2, 5, 6]; m.extend(n); m.length();",
+            INTEGER_VAL(6),
+        },
+        {
+            "var m = [1, 3, 4]; var n = [2, 5, 6]; m.extend(n); n.length();",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 3, 4]; var n = [2, 5, 6]; m.extend(n); m[-1];",
+            INTEGER_VAL(6),
+        },
+
+        // has
+        {
+            "var m = [1, 2, 'nihk', 3.14]; m.has(1);",
+            dai_true,
+        },
+        {
+            "var m = [1, 2, 'nihk', 3.14]; m.has(3);",
+            dai_false,
+        },
+        {
+            "var m = [1, 2, 'nihk', 3.14]; m.has('nihk');",
+            dai_true,
+        },
+        {
+            "var m = [1, 2, 'nihk', 3.14]; m.has(3.14);",
+            dai_true,
+        },
+
+        // reversed
+        {
+            "var m = [1, 2, 3, 4]; var n = m.reversed(); n.length();",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 2, 3, 4]; var n = m.reversed(); n[0];",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 2, 3, 4]; var n = m.reversed(); n[1];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 2, 3, 4]; var n = m.reversed(); n[2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [1, 2, 3, 4]; var n = m.reversed(); n[3];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1, 2, 3, 4]; var n = m.reversed(); m[0];",
+            INTEGER_VAL(1),
+        },
+
+        // reverse
+        {
+            "var m = [1, 2, 3, 4]; m.reverse(); m.length();",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.reverse(); m[0];",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.reverse(); m[1];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.reverse(); m[2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.reverse(); m[3];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.reverse(); m[-1];",
+            INTEGER_VAL(1),
+        },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
@@ -966,8 +1050,7 @@ MunitTest vm_tests[] = {
      MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_closures", test_closures, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_class_instance", test_class_instance, NULL, NULL, MUNIT_TEST_OPTION_NONE,
-    NULL},
+    {(char*)"/test_class_instance", test_class_instance, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_fibonacci", test_fibonacci, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_array", test_array, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_array_method", test_array_method, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},

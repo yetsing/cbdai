@@ -344,6 +344,28 @@ dai_copy_string(DaiVM* vm, const char* chars, int length) {
 
 // #region 数组 DaiObjArray
 // TODO 缩容
+
+static DaiObjArray*
+DaiObjArray_pcopy(DaiVM* vm, DaiObjArray* array) {
+    DaiObjArray* copy = DaiObjArray_New(vm, NULL, 0);
+    copy->length      = array->length;
+    copy->capacity    = array->capacity;
+    copy->elements    = GROW_ARRAY(DaiValue, NULL, 0, copy->capacity);
+    for (int i = 0; i < array->length; i++) {
+        copy->elements[i] = array->elements[i];
+    }
+    return copy;
+}
+
+static void
+DaiObjArray_preverse(DaiObjArray* array) {
+    for (int i = 0; i < array->length / 2; i++) {
+        DaiValue tmp                           = array->elements[i];
+        array->elements[i]                     = array->elements[array->length - i - 1];
+        array->elements[array->length - i - 1] = tmp;
+    }
+}
+
 static DaiValue
 DaiObjArray_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 0) {
@@ -373,7 +395,7 @@ DaiObjArray_add(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
         array->elements[array->length + i] = argv[i];
     }
     array->length += argc;
-    return NIL_VAL;
+    return receiver;
 }
 
 static DaiValue
@@ -408,7 +430,7 @@ DaiObjArray_sub(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     int start          = AS_INTEGER(argv[0]);
-    int end = argc == 2 ? AS_INTEGER(argv[1]) : array->length;
+    int end            = argc == 2 ? AS_INTEGER(argv[1]) : array->length;
     if (start < 0) {
         start += array->length;
         if (start < 0) {
@@ -426,7 +448,7 @@ DaiObjArray_sub(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
     if (start >= end) {
         return OBJ_VAL(DaiObjArray_New(vm, NULL, 0));
     }
-    DaiObjArray *sub_array = DaiObjArray_New(vm, array->elements + start, end - start);
+    DaiObjArray* sub_array = DaiObjArray_New(vm, array->elements + start, end - start);
     return OBJ_VAL(sub_array);
 }
 
@@ -444,7 +466,7 @@ DaiObjArray_remove(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
                 array->elements[j] = array->elements[j + 1];
             }
             array->length--;
-            return NIL_VAL;
+            return receiver;
         }
     }
     dai_error("ValueError: array.remove(x): x not in array\n");
@@ -452,17 +474,19 @@ DaiObjArray_remove(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
 }
 
 static DaiValue
-DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                        DaiValue* argv) {
     if (argc != 1) {
         dai_error("TypeError: removeIndex() expected 1 arguments, but got %d\n", argc);
         assert(false);
     }
     if (!IS_INTEGER(argv[0])) {
-        dai_error("TypeError: removeIndex() expected int arguments, but got %s\n", dai_value_ts(argv[0]));
+        dai_error("TypeError: removeIndex() expected int arguments, but got %s\n",
+                  dai_value_ts(argv[0]));
         assert(false);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
-    int index = AS_INTEGER(argv[0]);
+    int index          = AS_INTEGER(argv[0]);
     if (index < 0) {
         index += array->length;
     }
@@ -477,6 +501,77 @@ DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, in
     return NIL_VAL;
 }
 
+static DaiValue
+DaiObjArray_extend(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        dai_error("TypeError: extend() expected 1 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    if (!IS_ARRAY(argv[0])) {
+        dai_error("TypeError: extend() expected array arguments, but got %s\n",
+                  dai_value_ts(argv[0]));
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    DaiObjArray* other = AS_ARRAY(argv[0]);
+    int want           = array->length + other->length;
+    if (want > array->capacity) {
+        int old_capacity = array->capacity;
+        array->capacity  = GROW_CAPACITY(array->capacity);
+        if (want > array->capacity) {
+            array->capacity = want;
+        }
+        array->elements = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
+    }
+    for (int i = 0; i < other->length; i++) {
+        array->elements[array->length + i] = other->elements[i];
+    }
+    array->length += other->length;
+    return receiver;
+}
+
+static DaiValue
+DaiObjArray_has(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        dai_error("TypeError: has() expected 1 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    DaiValue value     = argv[0];
+    for (int i = 0; i < array->length; i++) {
+        if (dai_value_equal(array->elements[i], value)) {
+            return dai_true;
+        }
+    }
+    return dai_false;
+}
+
+static DaiValue
+DaiObjArray_reversed(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                     DaiValue* argv) {
+    if (argc != 0) {
+        dai_error("TypeError: reversed() expected 0 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    // copy array and reverse
+    DaiObjArray* copy = DaiObjArray_pcopy(vm, array);
+    DaiObjArray_preverse(copy);
+    return OBJ_VAL(copy);
+}
+
+static DaiValue
+DaiObjArray_reverse(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                    DaiValue* argv) {
+    if (argc != 0) {
+        dai_error("TypeError: reverse() expected 0 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    DaiObjArray_preverse(array);
+    return receiver;
+}
+
 
 enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_length = 0,
@@ -485,6 +580,10 @@ enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_sub,
     DaiObjArrayFunctionNo_remove,
     DaiObjArrayFunctionNo_removeIndex,
+    DaiObjArrayFunctionNo_extend,
+    DaiObjArrayFunctionNo_has,
+    DaiObjArrayFunctionNo_reversed,
+    DaiObjArrayFunctionNo_reverse,
 };
 
 static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
@@ -524,6 +623,30 @@ static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
             .name     = "removeIndex",
             .function = &DaiObjArray_removeIndex,
         },
+    [DaiObjArrayFunctionNo_extend] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "extend",
+            .function = &DaiObjArray_extend,
+        },
+    [DaiObjArrayFunctionNo_has] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "has",
+            .function = &DaiObjArray_has,
+        },
+    [DaiObjArrayFunctionNo_reversed] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "reversed",
+            .function = &DaiObjArray_reversed,
+        },
+    [DaiObjArrayFunctionNo_reverse] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "reverse",
+            .function = &DaiObjArray_reverse,
+        },
 };
 
 static DaiValue
@@ -533,6 +656,18 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
         case 'a': {
             if (strcmp(cname, "add") == 0) {
                 return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_add]);
+            }
+            break;
+        }
+        case 'e': {
+            if (strcmp(cname, "extend") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_extend]);
+            }
+            break;
+        }
+        case 'h': {
+            if (strcmp(cname, "has") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_has]);
             }
             break;
         }
@@ -554,6 +689,12 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
             }
             if (strcmp(cname, "removeIndex") == 0) {
                 return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_removeIndex]);
+            }
+            if (strcmp(cname, "reversed") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_reversed]);
+            }
+            if (strcmp(cname, "reverse") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_reverse]);
             }
             break;
         }

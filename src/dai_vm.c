@@ -190,10 +190,18 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
                 return DaiVM_call(vm, (DaiObjFunction*)AS_OBJ(callee), argCount);
             }
             case DaiObjType_builtinFn: {
-                BuiltinFn func = AS_BUILTINFN(callee)->function;
+                // new frame
+                CallFrame* frame      = &vm->frames[vm->frameCount++];
+                frame->function       = NULL;
+                frame->closure        = NULL;
+                frame->ip             = NULL;
+                frame->slots          = vm->stack_top - argCount - 1;
+                frame->returnCallback = NULL;
+                BuiltinFn func        = AS_BUILTINFN(callee)->function;
                 DaiValue result =
                     func(vm, DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
-                vm->stack_top -= argCount + 1;
+                vm->frameCount--;
+                vm->stack_top = frame->slots;
                 DaiVM_push(vm, result);
                 return NULL;
             }

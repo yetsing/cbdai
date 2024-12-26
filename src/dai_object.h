@@ -55,10 +55,10 @@ struct DaiObj {
 
 typedef struct {
     DaiObj obj;
-    int arity;
+    int arity;   // 参数数量
     DaiChunk chunk;
     DaiObjString* name;
-    DaiObjClass* superclass;
+    DaiObjClass* superclass;   // 用于实现 super
 } DaiObjFunction;
 DaiObjFunction*
 DaiObjFunction_New(DaiVM* vm, const char* name);
