@@ -33,19 +33,45 @@ static DaiObjBuiltinFunction builtin_init = {
 };
 
 static DaiValue
-DaiObjArray_subscript(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
-                      DaiValue* argv);
+DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index);
 static DaiValue
-builtin_subscript_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
-                     DaiValue* argv) {
+DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index,
+                         DaiValue value);
+static DaiValue
+builtin_subscript_get_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                         DaiValue* argv) {
     if (!IS_OBJ(receiver)) {
         dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
         assert(false);
     }
-    const DaiObj* obj = AS_OBJ(receiver);
+    const DaiObj* obj    = AS_OBJ(receiver);
+    const DaiValue index = argv[0];
     switch (obj->type) {
         case DaiObjType_array: {
-            return DaiObjArray_subscript(vm, receiver, argc, argv);
+            return DaiObjArray_subscriptGet(vm, receiver, index);
+            break;
+        }
+        default: {
+            dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
+            assert(false);
+        }
+    }
+    return UNDEFINED_VAL;
+}
+static DaiValue
+builtin_subscript_set_fn(__attribute__((unused)) DaiVM* vm,
+                         __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
+    if (!IS_OBJ(receiver)) {
+        dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
+        assert(false);
+    }
+    // argv 排列为 value, object, index
+    const DaiObj* obj    = AS_OBJ(receiver);
+    const DaiValue value = argv[0];
+    const DaiValue index = argv[2];
+    switch (obj->type) {
+        case DaiObjType_array: {
+            return DaiObjArray_subscriptSet(vm, receiver, index, value);
             break;
         }
         default: {
@@ -56,10 +82,16 @@ builtin_subscript_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int a
     return UNDEFINED_VAL;
 }
 
-DaiObjBuiltinFunction builtin_subscript = {
+DaiObjBuiltinFunction builtin_subscript_get = {
     {.type = DaiObjType_builtinFn},
-    .name     = "subscript",
-    .function = builtin_subscript_fn,
+    .name     = "subscript_get",
+    .function = builtin_subscript_get_fn,
+};
+
+DaiObjBuiltinFunction builtin_subscript_set = {
+    {.type = DaiObjType_builtinFn},
+    .name     = "subscript_set",
+    .function = builtin_subscript_set_fn,
 };
 
 static DaiObj*
@@ -765,17 +797,15 @@ DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
 }
 
 static DaiValue
-DaiObjArray_subscript(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
-                      DaiValue* argv) {
+DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index) {
     assert(IS_ARRAY(receiver));
-    const DaiValue v = argv[0];
-    if (!IS_INTEGER(v)) {
+    if (!IS_INTEGER(index)) {
         // todo return error
         dai_error("array index must be integer\n");
         assert(false);
     }
     const DaiObjArray* array = AS_ARRAY(receiver);
-    int64_t n                = AS_INTEGER(v);
+    int64_t n                = AS_INTEGER(index);
     if (n < 0) {
         n += array->length;
     }
@@ -785,6 +815,29 @@ DaiObjArray_subscript(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int 
         assert(false);
     }
     return array->elements[n];
+}
+
+static DaiValue
+DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index,
+                         DaiValue value) {
+    assert(IS_ARRAY(receiver));
+    if (!IS_INTEGER(index)) {
+        // todo return error
+        dai_error("array index must be integer\n");
+        assert(false);
+    }
+    const DaiObjArray* array = AS_ARRAY(receiver);
+    int64_t n                = AS_INTEGER(index);
+    if (n < 0) {
+        n += array->length;
+    }
+    if (n < 0 || n >= array->length) {
+        // todo return error
+        dai_error("array index out of bounds\n");
+        assert(false);
+    }
+    array->elements[n] = value;
+    return receiver;
 }
 
 

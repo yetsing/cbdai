@@ -40,7 +40,9 @@ typedef enum __attribute__((__packed__)) {
     DaiOpDiv,
     DaiOpMod,
     DaiOpBinary,
+
     DaiOpSubscript,
+    DaiOpSubscriptSet,
 
     DaiOpTrue,
     DaiOpFalse,

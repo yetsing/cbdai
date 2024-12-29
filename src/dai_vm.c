@@ -374,10 +374,20 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
             case DaiOpSubscript: {
-                DaiRuntimeError* err = DaiVM_callValue(vm, OBJ_VAL(&builtin_subscript), 1);
-                if (err != NULL) {
-                    return err;
-                }
+                // 从栈顶排列为 index, object (object[index])
+                DaiValue receiver = DaiVM_peek(vm, 1);
+                DaiValue result =
+                    builtin_subscript_get.function(vm, receiver, 1, vm->stack_top - 1);
+                vm->stack_top = vm->stack_top - 2;   // 弹出 index, object
+                DaiVM_push(vm, result);
+                break;
+            }
+            case DaiOpSubscriptSet: {
+                // 从栈顶排列为 index, object, value (object[index] = value)
+                int argCount      = 3;
+                DaiValue receiver = DaiVM_peek(vm, 1);
+                builtin_subscript_set.function(vm, receiver, argCount, vm->stack_top - argCount);
+                vm->stack_top = vm->stack_top - argCount;   // 弹出 index, object, value
                 break;
             }
             case DaiOpTrue: {
@@ -837,12 +847,13 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             }
 
             default: {
-                return DaiRuntimeError_Newf(chunk->filename,
-                                            DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                                            0,
-                                            "Unknown opcode: %s(%d)",
-                                            dai_opcode_name(op),
-                                            op);
+                return DaiRuntimeError_Newf(
+                    chunk->filename,
+                    DaiChunk_getLine(chunk, (int)(frame->ip - 1 - chunk->code)),
+                    0,
+                    "Unknown opcode: %s(%d)",
+                    dai_opcode_name(op),
+                    op);
             }
         }
     }

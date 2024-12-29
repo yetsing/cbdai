@@ -151,5 +151,6 @@ dai_is_obj_type(DaiValue value, DaiObjType type) {
 // 内置函数
 extern DaiObjBuiltinFunction builtin_funcs[256];
 // 特殊的内置函数
-extern DaiObjBuiltinFunction builtin_subscript;
+extern DaiObjBuiltinFunction builtin_subscript_get;
+extern DaiObjBuiltinFunction builtin_subscript_set;
 #endif /* D772959F_7E3C_4B7E_B19F_7880710F99C0 */

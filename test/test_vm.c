@@ -1036,6 +1036,43 @@ test_array_method(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_array_subscript_set(__attribute__((unused)) const MunitParameter params[],
+                         __attribute__((unused)) void* user_data) {
+    const DaiVMTestCase tests[] = {
+        {
+            "var m = [0, 1, 2]; m[0] = 1; m[0];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [0, 1, 2]; m[1] = 2; m[1];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [0, 1, 2]; m[2] = 3; m[2];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[1 + 1] = 3; m[2];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[1 - 1] = 3; m[0];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[- 1] = 3; m[2];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[- 3] = 3; m[0];",
+            INTEGER_VAL(3),
+        },
+    };
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
 
 MunitTest vm_tests[] = {
     {(char*)"/test_number_arithmetic",
@@ -1104,5 +1141,11 @@ MunitTest vm_tests[] = {
     {(char*)"/test_fibonacci", test_fibonacci, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_array", test_array, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_array_method", test_array_method, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_array_subscript_set",
+     test_array_subscript_set,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

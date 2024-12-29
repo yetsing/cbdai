@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "dai_chunk.h"
+#include "dai_value.h"
 #include "munit/munit.h"
 
 #include "dai_compile.h"
@@ -2828,6 +2830,72 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_subscript_set_expression(__attribute__((unused)) const MunitParameter params[],
+                              __attribute__((unused)) void* user_data) {
+    const DaiCompilerTestCase tests[] = {
+        {
+            "var m = []; m[0] = 1;",
+            16,
+            {
+                DaiOpArray,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpSubscriptSet,
+            },
+            {INTEGER_VAL(1), INTEGER_VAL(0)},
+        },
+        {
+            "var m = []; var n = 0; m[n] = 1;",
+            22,
+            {
+                // var m = [];
+                DaiOpArray,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                // var n = 0;
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                1,
+                // m[n] = 1;
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpGetGlobal,
+                0,
+                1,
+                DaiOpSubscriptSet,
+            },
+            {INTEGER_VAL(0), INTEGER_VAL(1)},
+        },
+
+
+    };
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
 
 MunitTest compile_tests[] = {
     {(char*)"/test_integer_arithmetic",
@@ -2876,6 +2944,12 @@ MunitTest compile_tests[] = {
     {(char*)"/test_array", test_array, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_subscript_expression",
      test_subscript_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_subscript_set_expression",
+     test_subscript_set_expression,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

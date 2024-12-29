@@ -1,13 +1,15 @@
-#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "dai_assert.h"
+#include "dai_ast/dai_asttype.h"
+#include "dai_chunk.h"
 #include "dai_compile.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_parse.h"
 
+// #region IntArray 记录 break continue 层级和位置，辅助编译跳转指令
 typedef struct {
     int level;
     int value;
@@ -93,6 +95,9 @@ IntArray_show(const IntArray* array) {
     dai_log("]\n");
 }
 
+// #endregion
+
+// #region DaiCompiler
 typedef enum {
     FunctionType_classMethod,
     FunctionType_method,
@@ -400,7 +405,7 @@ DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
         }
         default: break;
     }
-    // 提取定义的全局变量
+    // 检查全局变量是否重复定义和数量超出限制
     if (name != NULL) {
         DaiSymbol symbol;
         if (DaiSymbolTable_resolve(compiler->symbolTable, name, &symbol)) {
@@ -611,6 +616,19 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                         dai_copy_string(compiler->vm, expr->name->value, strlen(expr->name->value));
                     int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
                     DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
+                    break;
+                }
+                case DaiAstType_SubscriptExpression: {
+                    DaiAstSubscriptExpression* expr = (DaiAstSubscriptExpression*)stmt->left;
+                    err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+                    if (err != NULL) {
+                        return err;
+                    }
+                    err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+                    if (err != NULL) {
+                        return err;
+                    }
+                    DaiCompiler_emit(compiler, DaiOpSubscriptSet, stmt->start_line);
                     break;
                 }
                 default: {
@@ -1293,6 +1311,8 @@ DaiCompiler_patchJumpBack(const DaiCompiler* compiler, int offset, int dst) {
     chunk->code[offset + 2] = (uint8_t)(jump & 0xff);
 }
 
+// #endregion
+
 DaiCompileError*
 dai_compile(DaiAstProgram* program, DaiObjFunction* function, DaiVM* vm) {
     vm->state = VMState_compiling;
@@ -1307,7 +1327,9 @@ dai_compile(DaiAstProgram* program, DaiObjFunction* function, DaiVM* vm) {
         return err;
     }
     err = DaiCompiler_compile(&compiler, (DaiAstBase*)program);
+    // free comiler
     DaiCompiler_reset(&compiler);
+    // free ast
     DaiAstProgram_reset(program);
     return err;
 }
