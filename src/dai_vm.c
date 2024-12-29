@@ -1,10 +1,16 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "dai_error.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_vm.h"
+
+#ifdef DEBUG_TRACE_EXECUTION
+#    include "dai_debug.h"
+#endif
 
 #define CURRENT_FRAME &(vm->frames[vm->frameCount - 1])
 
@@ -12,9 +18,12 @@ static void
 DaiVM_push(DaiVM* vm, DaiValue value);
 static DaiValue
 DaiVM_pop(DaiVM* vm);
+static DaiRuntimeError*
+DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount);
 
 DaiValue dai_true  = {.type = DaiValueType_bool, .as.boolean = true};
 DaiValue dai_false = {.type = DaiValueType_bool, .as.boolean = false};
+
 
 static bool
 dai_value_is_truthy(const DaiValue value) {
@@ -127,17 +136,18 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
                                    0);
     }
     // new frame
-    CallFrame* frame      = &vm->frames[vm->frameCount++];
-    frame->function       = function;
-    frame->closure        = NULL;
-    frame->ip             = function->chunk.code;
+    CallFrame* frame = &vm->frames[vm->frameCount++];
+    frame->function  = function;
+    frame->closure   = NULL;
+    frame->ip        = function->chunk.code;
+    // 前面有一个空位用来放 self ，实际是占了被调用函数本身的位置，会在后续操作中更新成 self
+    // (例如 DaiVM_callValue DaiObjType_boundMethod 分支)。
+    // 因为帧上面有函数的指针，所以占了也没关系
     frame->slots          = vm->stack_top - argCount - 1;
     frame->returnCallback = NULL;
     return NULL;
 }
 
-static DaiRuntimeError*
-DaiVM_callValue(DaiVM* vm, DaiValue callee, int argCount);
 // 在实例的 init 方法后调用
 static DaiValue
 DaiVM_post_init(DaiVM* vm) {
@@ -190,18 +200,10 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
                 return DaiVM_call(vm, (DaiObjFunction*)AS_OBJ(callee), argCount);
             }
             case DaiObjType_builtinFn: {
-                // new frame
-                CallFrame* frame      = &vm->frames[vm->frameCount++];
-                frame->function       = NULL;
-                frame->closure        = NULL;
-                frame->ip             = NULL;
-                frame->slots          = vm->stack_top - argCount - 1;
-                frame->returnCallback = NULL;
-                BuiltinFn func        = AS_BUILTINFN(callee)->function;
-                DaiValue result =
+                const BuiltinFn func = AS_BUILTINFN(callee)->function;
+                const DaiValue result =
                     func(vm, DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
-                vm->frameCount--;
-                vm->stack_top = frame->slots;
+                vm->stack_top = vm->stack_top - argCount - 1;
                 DaiVM_push(vm, result);
                 return NULL;
             }
@@ -251,8 +253,9 @@ DaiVM_executeIntBinary(DaiVM* vm, const DaiBinaryOpType opType, const DaiValue a
     }
 }
 
+// exitOnReturn 为 true 时，遇到 return 时返回 NULL，否则返回错误
 static DaiRuntimeError*
-DaiVM_dorun(DaiVM* vm) {
+DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
     CallFrame* frame = &vm->frames[vm->frameCount - 1];
     DaiChunk* chunk  = &frame->function->chunk;
 
@@ -570,6 +573,9 @@ DaiVM_dorun(DaiVM* vm) {
                 DaiVM_push(vm, result);
                 frame = &vm->frames[vm->frameCount - 1];
                 chunk = &frame->function->chunk;
+                if (exitOnReturn) {
+                    return NULL;
+                }
                 break;
             }
             case DaiOpReturn: {
@@ -583,6 +589,9 @@ DaiVM_dorun(DaiVM* vm) {
                 DaiVM_push(vm, result);
                 frame = &vm->frames[vm->frameCount - 1];
                 chunk = &frame->function->chunk;
+                if (exitOnReturn) {
+                    return NULL;
+                }
                 break;
             }
 
@@ -851,7 +860,24 @@ DaiVM_run(DaiVM* vm, DaiObjFunction* function) {
     DaiVM_push(vm, OBJ_VAL(function));
     DaiRuntimeError* err = DaiVM_call(vm, function, 0);
     assert(err == NULL);
-    return DaiVM_dorun(vm);
+    return DaiVM_dorun(vm, false);
+}
+
+DaiValue
+DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
+    DaiVM_push(vm, callee);
+    va_list args;
+    va_start(args, argCount);
+    for (int i = 0; i < argCount; i++) {
+        DaiVM_push(vm, va_arg(args, DaiValue));
+    }
+    va_end(args);
+    DaiRuntimeError* err = NULL;
+    err                  = DaiVM_callValue(vm, callee, argCount);
+    assert(err == NULL);
+    err = DaiVM_dorun(vm, true);
+    assert(err == NULL);
+    return DaiVM_pop(vm);
 }
 
 static void

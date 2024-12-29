@@ -981,6 +981,56 @@ test_array_method(__attribute__((unused)) const MunitParameter params[],
             "var m = [1, 2, 3, 4]; m.reverse(); m[-1];",
             INTEGER_VAL(1),
         },
+
+        // sort
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e1 - e2;}); m.length();",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e1 - e2;}); m[0];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e1 - e2;}); m[1];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e1 - e2;}); m[2];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e1 - e2;}); m[3];",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e2 - e1;}); m[0];",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e2 - e1;}); m[1];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e2 - e1;}); m[2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [1, 3, 2, 4]; m.sort(fn(e1, e2) {return e2 - e1;}); m[3];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [4, 3, 2, 1]; m.sort(fn(e1, e2) {return e1 - e2;}); m[-1];",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.sort(fn(e1, e2) {return e2 - e1;}); m[-1];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1, 1, 1, 1]; m.sort(fn(e1, e2) {return e2 - e1;}); m[-1];",
+            INTEGER_VAL(1),
+        },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

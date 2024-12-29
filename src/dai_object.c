@@ -572,6 +572,36 @@ DaiObjArray_reverse(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int ar
     return receiver;
 }
 
+static DaiValue
+DaiObjArray_sort(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        dai_error("TypeError: sort() expected 1 arguments, but got %d\n", argc);
+        assert(false);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    DaiValue cmp       = argv[0];
+    // insertion sort
+    for (int i = 1; i < array->length; i++) {
+        DaiValue val = array->elements[i];
+        int j        = i - 1;
+        for (; j >= 0; --j) {
+            DaiValue ret = DaiVM_runCall(vm, cmp, 2, array->elements[j], val);
+            if (!IS_INTEGER(ret)) {
+                dai_error("TypeError: cmp() expected int return value, but got %s\n",
+                          dai_value_ts(ret));
+                assert(false);
+            }
+            if (AS_INTEGER(ret) > 0) {
+                array->elements[j + 1] = array->elements[j];   // 数据移动
+            } else {
+                break;
+            }
+        }
+        array->elements[j + 1] = val;
+    }
+    return receiver;
+}
+
 
 enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_length = 0,
@@ -584,6 +614,7 @@ enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_has,
     DaiObjArrayFunctionNo_reversed,
     DaiObjArrayFunctionNo_reverse,
+    DaiObjArrayFunctionNo_sort,
 };
 
 static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
@@ -647,6 +678,12 @@ static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
             .name     = "reverse",
             .function = &DaiObjArray_reverse,
         },
+    [DaiObjArrayFunctionNo_sort] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "sort",
+            .function = &DaiObjArray_sort,
+        },
 };
 
 static DaiValue
@@ -701,6 +738,9 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
         case 's': {
             if (strcmp(cname, "sub") == 0) {
                 return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_sub]);
+            }
+            if (strcmp(cname, "sort") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_sort]);
             }
             break;
         }

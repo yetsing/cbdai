@@ -3,6 +3,7 @@
 
 #include "dai_chunk.h"
 #include "dai_error.h"
+#include "dai_object.h"
 #include "dai_symboltable.h"
 #include "dai_table.h"
 #include "dai_value.h"
@@ -23,8 +24,9 @@ typedef struct {
     DaiObjFunction* function;
     DaiObjClosure* closure;
     uint8_t* ip;
-    DaiValue* slots;             // 局部变量存放位置
-    VMCallback returnCallback;   // 函数 return 时的回调，回调返回的值会作为函数返回值
+    DaiValue* slots;   // 局部变量存放位置
+    VMCallback returnCallback;   // 函数 return 时的回调，回调返回的值会作为函数返回值。主要用来在
+                                 // init 方法后检查实例属性是否都已初始化
 } CallFrame;
 
 extern DaiValue dai_true;
@@ -67,6 +69,8 @@ void
 DaiVM_resetStack(DaiVM* vm);
 DaiRuntimeError*
 DaiVM_run(DaiVM* vm, DaiObjFunction* function);
+DaiValue
+DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...);
 
 DaiValue
 DaiVM_stackTop(const DaiVM* vm);
