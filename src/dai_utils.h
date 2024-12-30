@@ -4,7 +4,6 @@
 #ifndef AECB9C05_1769_47C9_99B4_8EB1E4235629
 #define AECB9C05_1769_47C9_99B4_8EB1E4235629
 
-#include <stdio.h>
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <time.h>

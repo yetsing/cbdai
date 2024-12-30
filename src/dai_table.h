@@ -1,7 +1,6 @@
 #ifndef EC3F9B25_451A_484C_906A_F9BFCA85A45A
 #define EC3F9B25_451A_484C_906A_F9BFCA85A45A
 
-#include "dai_common.h"
 #include "dai_value.h"
 
 typedef struct {

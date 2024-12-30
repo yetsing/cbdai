@@ -1,7 +1,10 @@
 #ifndef C9146535_C1FA_42E3_B5A4_60209E40BC53
 #define C9146535_C1FA_42E3_B5A4_60209E40BC53
 
+#include <stdlib.h>
+
 #include "dai_chunk.h"
+#include "dai_common.h"
 #include "dai_error.h"
 #include "dai_object.h"
 #include "dai_symboltable.h"

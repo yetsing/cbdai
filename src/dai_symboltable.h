@@ -4,7 +4,7 @@
 #ifndef FADFA587_97BF_4F17_B81D_02BA645443DF
 #define FADFA587_97BF_4F17_B81D_02BA645443DF
 
-#include "dai_common.h"
+#include <stdbool.h>
 
 typedef enum {
     DaiSymbolType_builtin,   // 内置

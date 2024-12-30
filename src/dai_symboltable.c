@@ -6,7 +6,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "dai_common.h"
 #include "dai_memory.h"
 #include "dai_symboltable.h"
 

@@ -1,13 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "dai_assert.h"
 #include "dai_ast/dai_asttype.h"
 #include "dai_chunk.h"
 #include "dai_compile.h"
 #include "dai_memory.h"
 #include "dai_object.h"
-#include "dai_parse.h"
 
 // #region IntArray 记录 break continue 层级和位置，辅助编译跳转指令
 typedef struct {

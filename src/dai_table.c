@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "dai_memory.h"
-#include "dai_object.h"
 #include "dai_table.h"
 #include "dai_value.h"
 

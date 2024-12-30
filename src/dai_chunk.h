@@ -4,7 +4,6 @@
 #ifndef A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0
 #define A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0
 
-#include "dai_common.h"
 #include "dai_value.h"
 
 // 二元操作类型，比如加减乘除

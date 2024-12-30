@@ -2,7 +2,6 @@
 #define B3714F2B_3668_44DA_94B6_7C4516C32529
 
 #include <assert.h>
-#include <stdio.h>
 
 #define daiassert(cond, ...)              \
     do {                                  \
