@@ -18,15 +18,15 @@ compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
     DaiTokenList* tlist = DaiTokenList_New();
     DaiError* err       = dai_tokenize_string(input, tlist);
     if (err) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
     DaiAstProgram program;
-    DaiAstProgram_init(&program);
+    DaiAstProgram_init(&program, "<test>");
     err = dai_parse(tlist, &program);
     if (err) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
@@ -49,15 +49,15 @@ compile_error_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
     DaiTokenList* tlist = DaiTokenList_New();
     DaiError* err       = dai_tokenize_string(input, tlist);
     if (err) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
     DaiAstProgram program;
-    DaiAstProgram_init(&program);
+    DaiAstProgram_init(&program, "<test>");
     err = dai_parse(tlist, &program);
     if (err) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);

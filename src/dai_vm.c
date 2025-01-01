@@ -3,9 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dai_chunk.h"
 #include "dai_error.h"
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_value.h"
 #include "dai_vm.h"
 
 #ifdef DEBUG_TRACE_EXECUTION
@@ -143,39 +145,7 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     // 前面有一个空位用来放 self ，实际是占了被调用函数本身的位置，会在后续操作中更新成 self
     // (例如 DaiVM_callValue DaiObjType_boundMethod 分支)。
     // 因为帧上面有函数的指针，所以占了也没关系
-    frame->slots          = vm->stack_top - argCount - 1;
-    frame->returnCallback = NULL;
-    return NULL;
-}
-
-// 在实例的 init 方法后调用
-static DaiValue
-DaiVM_post_init(DaiVM* vm) {
-    CallFrame* frame         = CURRENT_FRAME;
-    DaiValue value           = frame->slots[0];
-    DaiObjInstance* instance = AS_INSTANCE(value);
-    // 检查所有实例属性都已初始化
-    for (int i = 0; i < instance->klass->field_names.count; i++) {
-        DaiObjString* name = AS_STRING(instance->klass->field_names.values[i]);
-        DaiValue res       = UNDEFINED_VAL;
-        DaiTable_get(&instance->fields, name, &res);
-        if (IS_UNDEFINED(res)) {
-            // todo Exception
-            dai_error(
-                "'%s' object has uninitialized field '%s'\n", dai_object_ts(value), name->chars);
-            assert(false);
-        }
-    }
-    return value;
-}
-
-static DaiRuntimeError*
-DaiVM_callClass(DaiVM* vm, DaiObjClass* klass, int argCount) {
-    DaiObjInstance* instance     = DaiObjInstance_New(vm, klass);
-    vm->stack_top[-argCount - 1] = OBJ_VAL(instance);
-    DaiVM_callValue(vm, klass->init, argCount);
-    CallFrame* frame      = CURRENT_FRAME;
-    frame->returnCallback = DaiVM_post_init;
+    frame->slots = vm->stack_top - argCount - 1;
     return NULL;
 }
 
@@ -194,7 +164,15 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
                 return NULL;
             }
             case DaiObjType_class: {
-                return DaiVM_callClass(vm, (DaiObjClass*)AS_OBJ(callee), argCount);
+                DaiValue* new_stack_top = vm->stack_top - argCount - 1;
+                DaiValue result         = DaiObjClass_call(
+                    (DaiObjClass*)AS_OBJ(callee), vm, argCount, vm->stack_top - argCount);
+                if (vm->stack_top != new_stack_top) {
+                    // 如果内部调用了自定义 init 函数，那么栈顶已经更新；否则需要手动更新
+                    vm->stack_top = new_stack_top;
+                }
+                DaiVM_push(vm, result);
+                return NULL;
             }
             case DaiObjType_function: {
                 return DaiVM_call(vm, (DaiObjFunction*)AS_OBJ(callee), argCount);
@@ -571,13 +549,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
             case DaiOpReturnValue: {
-                DaiValue result;
-                if (frame->returnCallback != NULL) {
-                    result                = frame->returnCallback(vm);
-                    frame->returnCallback = NULL;
-                } else {
-                    result = DaiVM_pop(vm);
-                }
+                DaiValue result = DaiVM_pop(vm);
                 vm->frameCount--;
                 vm->stack_top = frame->slots;
                 DaiVM_push(vm, result);
@@ -590,10 +562,6 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             }
             case DaiOpReturn: {
                 DaiValue result = NIL_VAL;
-                if (frame->returnCallback != NULL) {
-                    result                = frame->returnCallback(vm);
-                    frame->returnCallback = NULL;
-                }
                 vm->frameCount--;
                 vm->stack_top = frame->slots;
                 DaiVM_push(vm, result);
@@ -774,7 +742,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 assert(frame->function->superclass != NULL);
                 uint16_t name_index             = READ_UINT16();
                 DaiObjString* name              = AS_STRING(chunk->constants.values[name_index]);
-                DaiObjBoundMethod* bound_method = DaiObjClass_get_bound_method(
+                DaiObjBoundMethod* bound_method = DaiObjClass_get_super_method(
                     vm, frame->function->superclass, name, frame->slots[0]);
                 DaiVM_push(vm, OBJ_VAL(bound_method));
                 break;
@@ -889,6 +857,26 @@ DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
     err = DaiVM_dorun(vm, true);
     assert(err == NULL);
     return DaiVM_pop(vm);
+}
+DaiValue
+DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
+    DaiRuntimeError* err = NULL;
+    err                  = DaiVM_callValue(vm, callee, argCount);
+    assert(err == NULL);
+    err = DaiVM_dorun(vm, true);
+    assert(err == NULL);
+    return DaiVM_pop(vm);
+}
+void
+DaiVM_printError(DaiVM* vm, DaiObjError* err) {
+    dai_log("Traceback\n");
+    for (int i = 0; i < vm->frameCount; ++i) {
+        // todo
+        // CallFrame* frame = &vm->frames[i];
+        // DaiChunk* chunk  = &frame->function->chunk;
+        // int line         = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
+    }
+    dai_log("%s\n", err->message);
 }
 
 static void

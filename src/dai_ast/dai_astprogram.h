@@ -7,18 +7,17 @@
 
 #include <stddef.h>
 
-#include "dai_error.h"
-
 #include "dai_ast/dai_aststatement.h"
 typedef struct {
     DAI_AST_BASE_HEAD
     size_t size;
     size_t length;
     DaiAstStatement** statements;
+    char* filepath;   // 文件路径
 } DaiAstProgram;
 
 void
-DaiAstProgram_init(DaiAstProgram* program);
+DaiAstProgram_init(DaiAstProgram* program, const char* filepath);
 void
 DaiAstProgram_reset(DaiAstProgram* program);
 void

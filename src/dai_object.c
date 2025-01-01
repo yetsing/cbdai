@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,14 +24,6 @@ dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiVa
         "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
     assert(false);
 }
-
-static DaiValue
-DaiObjInstance_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);
-static DaiObjBuiltinFunction builtin_init = {
-    {.type = DaiObjType_builtinFn},
-    .name     = "init",
-    .function = DaiObjInstance_init,
-};
 
 static DaiValue
 DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index);
@@ -141,32 +134,6 @@ DaiObjClosure_name(DaiObjClosure* closure) {
 }
 
 // #region 类与实例
-static DaiValue
-DaiObjInstance_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
-                    DaiValue* argv) {
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    // todo Exception 将错误也作为一种值返回
-    DaiValueArray* field_names = &(instance->klass->field_names);
-    if (argc > field_names->count) {
-        dai_error("Too many arguments, max expected=%d got=%d.\n", field_names->count, argc);
-        assert(false);
-    }
-    for (int i = 0; i < argc; i++) {
-        DaiObjString* name = AS_STRING(field_names->values[i]);
-        DaiTable_set(&instance->fields, name, argv[i]);
-    }
-    for (int i = argc; i < field_names->count; i++) {
-        DaiObjString* name = AS_STRING(field_names->values[i]);
-        DaiValue value     = UNDEFINED_VAL;
-        DaiTable_get(&instance->klass->fields, name, &value);
-        if (IS_UNDEFINED(value)) {
-            dai_error(
-                "'%s' object has uninitialized field '%s'\n", dai_object_ts(receiver), name->chars);
-            assert(false);
-        }
-    }
-    return receiver;
-}
 
 static bool
 DaiObjInstance_get_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue* method) {
@@ -271,8 +238,44 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
     DaiTable_init(&klass->fields);
     DaiValueArray_init(&klass->field_names);
     klass->parent = NULL;
-    klass->init   = OBJ_VAL(&builtin_init);
+    // klass->init   = OBJ_VAL(&builtin_init);
+    klass->init = NIL_VAL;
     return klass;
+}
+
+DaiValue
+DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
+    DaiObjInstance* instance = DaiObjInstance_New(vm, klass);
+    // 设置此次调用的实例
+    vm->stack_top[-argc - 1]   = OBJ_VAL(instance);
+    DaiValueArray* field_names = &(instance->klass->field_names);
+    if (argc > field_names->count) {
+        // todo Exception 将错误也作为一种值返回
+        dai_error("Too many arguments, max expected=%d got=%d.\n", field_names->count, argc);
+        assert(false);
+    }
+    if (IS_NIL(instance->klass->init)) {
+        for (int i = 0; i < argc; i++) {
+            DaiObjString* name = AS_STRING(field_names->values[i]);
+            DaiTable_set(&instance->fields, name, argv[i]);
+        }
+    } else {
+        // todo check return error
+        DaiVM_runCall2(vm, instance->klass->init, argc);
+    }
+    // check all fields are initialized
+    for (int i = argc; i < field_names->count; i++) {
+        DaiObjString* name = AS_STRING(field_names->values[i]);
+        DaiValue value     = UNDEFINED_VAL;
+        DaiTable_get(&instance->fields, name, &value);
+        if (IS_UNDEFINED(value)) {
+            dai_error("'%s' object has uninitialized field '%s'\n",
+                      dai_object_ts(OBJ_VAL(instance)),
+                      name->chars);
+            assert(false);
+        }
+    }
+    return OBJ_VAL(instance);
 }
 
 
@@ -295,7 +298,7 @@ DaiObjBoundMethod_New(DaiVM* vm, DaiValue receiver, DaiValue method) {
     return bound_method;
 }
 DaiObjBoundMethod*
-DaiObjClass_get_bound_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver) {
+DaiObjClass_get_super_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver) {
     DaiValue method;
     if (IS_CLASS(receiver)) {
         if (DaiObjClass_get_method(vm, klass, name, &method)) {
@@ -843,6 +846,17 @@ DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, D
 
 // #endregion
 
+
+DaiObjError*
+DaiObjError_Newf(DaiVM* vm, const char* format, ...) {
+    DaiObjError* error = ALLOCATE_OBJ(vm, DaiObjError, DaiObjType_error);
+    va_list args;
+    va_start(args, format);
+    vsnprintf(error->message, sizeof(error->message), format, args);
+    va_end(args);
+    return error;
+}
+
 static void
 print_function(DaiObjFunction* function) {
     if (function->name == NULL) {
@@ -886,6 +900,7 @@ dai_print_object(DaiValue value) {
             dai_log("]");
             break;
         }
+        case DaiObjType_error: dai_log("%s", AS_ERROR(value)->message); break;
         default: dai_log("Unknown object type %d", OBJ_TYPE(value)); break;
     }
 }
@@ -909,6 +924,7 @@ dai_object_ts(DaiValue value) {
             return "function";
         }
         case DaiObjType_array: return "array";
+        case DaiObjType_error: return "error";
         default: return "unknown";
     }
 }

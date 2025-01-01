@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "dai_memory.h"
+#include "dai_object.h"
 
 #ifdef DEBUG_LOG_GC
 #    include "dai_debug.h"
@@ -49,6 +50,10 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     printf("%p free type %d\n", (void*)object, object->type);
 #endif
     switch (object->type) {
+        case DaiObjType_error: {
+            VM_FREE(vm, DaiObjError, object);
+            break;
+        }
         case DaiObjType_array: {
             DaiObjArray* array = (DaiObjArray*)object;
             VM_FREE_ARRAY(vm, DaiValue, array->elements, array->capacity);
@@ -214,6 +219,7 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             markArray(vm, &(function->chunk.constants));
             break;
         }
+        case DaiObjType_error:
         case DaiObjType_builtinFn:
         case DaiObjType_string: {
             break;

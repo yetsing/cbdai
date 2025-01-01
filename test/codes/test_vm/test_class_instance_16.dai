@@ -1,0 +1,13 @@
+#1
+class Foo {
+  fn get() {
+    return 1;
+  };
+};
+
+fn get() {
+  var foo = Foo();
+  return foo.get();
+};
+
+get();

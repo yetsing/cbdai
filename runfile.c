@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "dai_assert.h"
 #include "dai_compile.h"
 #include "dai_malloc.h"

@@ -137,13 +137,13 @@ parse_helper(const char* input, DaiAstProgram* program) {
     DaiTokenList* tlist = DaiTokenList_New();
     DaiSyntaxError* err = dai_tokenize_string(input, tlist);
     if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
     err = dai_parse(tlist, program);
     if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
@@ -155,16 +155,16 @@ parse_error(const char* input) {
     DaiTokenList* tlist = DaiTokenList_New();
     DaiSyntaxError* err = dai_tokenize_string(input, tlist);
     if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     err                    = dai_parse(tlist, program);
     if (err) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
+        DaiSyntaxError_setFilename(err, "<test>");
     }
     DaiTokenList_free(tlist);
     program->free_fn((DaiAstBase*)program, true);
@@ -194,7 +194,7 @@ test_var_statements(__attribute__((unused)) const MunitParameter params[],
                   "var foobar = 838383;\n"
                   "";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -256,7 +256,7 @@ test_return_statements(__attribute__((unused)) const MunitParameter params[],
                         "return ;\n"
                         "";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -297,7 +297,7 @@ test_if_statements(__attribute__((unused)) const MunitParameter params[],
                    __attribute__((unused)) void* user_data) {
     const char* input = "if (x < y) { x;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -337,7 +337,7 @@ test_if_else_statements(__attribute__((unused)) const MunitParameter params[],
                         __attribute__((unused)) void* user_data) {
     const char* input = "if (x < y) { x;} else {y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -377,7 +377,7 @@ test_if_elif_else_statements(__attribute__((unused)) const MunitParameter params
                         "elif (x > y) { y;}"
                         "else {y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -430,7 +430,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                         " break;\n"
                         "}";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -473,7 +473,7 @@ test_assign_statements(__attribute__((unused)) const MunitParameter params[],
     {
         const char* input = "x = y;";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
         munit_assert_int(program->length, ==, 1);
@@ -506,7 +506,7 @@ test_class_statements(__attribute__((unused)) const MunitParameter params[],
                             "  class fn cget() {};\n"
                             "};";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
         munit_assert_int(program->length, ==, 1);
@@ -576,7 +576,7 @@ test_class_statements(__attribute__((unused)) const MunitParameter params[],
                             "  class fn cget() {};\n"
                             "};";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
         munit_assert_int(program->length, ==, 1);
@@ -642,7 +642,7 @@ test_identifier_expression(__attribute__((unused)) const MunitParameter params[]
                            __attribute__((unused)) void* user_data) {
     const char* input = "foobar;";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -670,7 +670,7 @@ test_integer_literal_expression(__attribute__((unused)) const MunitParameter par
     {
         const char* input = "5;";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -708,7 +708,7 @@ test_integer_literal_expression(__attribute__((unused)) const MunitParameter par
     for (int i = 0; i < sizeof(integerTests) / sizeof(integerTests[0]); i++) {
         const char* input = integerTests[i].input;
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -746,7 +746,7 @@ test_float_literal_expression(__attribute__((unused)) const MunitParameter param
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         const char* input = tests[i].input;
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -773,7 +773,7 @@ test_function_literal_parsing(__attribute__((unused)) const MunitParameter param
                               __attribute__((unused)) void* user_data) {
     const char* input = "fn(x, y) {x + y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -815,7 +815,7 @@ test_function_statements(__attribute__((unused)) const MunitParameter params[],
                          __attribute__((unused)) void* user_data) {
     const char* input = "fn add(x, y) {x + y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -862,7 +862,7 @@ test_function_parameter_parsing(__attribute__((unused)) const MunitParameter par
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -892,7 +892,7 @@ test_string_literal_parsing(__attribute__((unused)) const MunitParameter params[
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
         munit_assert_int(program->length, ==, 1);
@@ -924,7 +924,7 @@ test_parsing_prefix_expressions(__attribute__((unused)) const MunitParameter par
 
     for (int i = 0; i < sizeof(prefixTests) / sizeof(prefixTests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(prefixTests[i].input, program);
 
@@ -958,7 +958,7 @@ test_parsing_prefix_expressions(__attribute__((unused)) const MunitParameter par
 
     for (int i = 0; i < sizeof(boolTests) / sizeof(boolTests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(boolTests[i].input, program);
 
@@ -1008,7 +1008,7 @@ test_parsing_infix_expressions(__attribute__((unused)) const MunitParameter para
     };
     for (int i = 0; i < sizeof(infix_tests) / sizeof(infix_tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(infix_tests[i].input, program);
 
@@ -1043,7 +1043,7 @@ test_parsing_infix_expressions(__attribute__((unused)) const MunitParameter para
     };
     for (int i = 0; i < sizeof(bool_infix_tests) / sizeof(bool_infix_tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(bool_infix_tests[i].input, program);
         munit_assert_int(program->length, ==, 1);
@@ -1071,7 +1071,7 @@ test_parsing_call_expressions(__attribute__((unused)) const MunitParameter param
                               __attribute__((unused)) void* user_data) {
     const char* input = "add(1, 2 * 3, 4 + 5);";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
     munit_assert_int(program->length, ==, 1);
@@ -1134,7 +1134,7 @@ test_parsing_call_expression_parameter_parsing(__attribute__((unused))
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
         munit_assert_int(program->length, ==, 1);
@@ -1346,7 +1346,7 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -1381,7 +1381,7 @@ test_boolean_expression(__attribute__((unused)) const MunitParameter params[],
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -1410,7 +1410,7 @@ test_nil_expression(__attribute__((unused)) const MunitParameter params[],
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -1436,217 +1436,217 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
             "let a = 5;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "
             "got \"DaiTokenType_ident\" in "
-            "<stdin>:1:5",
+            "<test>:1:5",
         },
         {
             "var var = 5;",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
             "\"DaiTokenType_var\" in "
-            "<stdin>:1:5",
+            "<test>:1:5",
 
         },
         {
             "var a a 5;",
             "SyntaxError: expected token to be \"DaiTokenType_assign\" but got "
             "\"DaiTokenType_ident\" in "
-            "<stdin>:1:7",
+            "<test>:1:7",
 
         },
         {
             "* 3 + 5;",
             "SyntaxError: no prefix parse function for \"DaiTokenType_asterisk\" "
-            "found in <stdin>:1:1",
+            "found in <test>:1:1",
         },
         {
             "0b12;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
-            "\"DaiTokenType_int\" in <stdin>:1:4",
+            "\"DaiTokenType_int\" in <test>:1:4",
         },
         {
             "0B12;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
-            "\"DaiTokenType_int\" in <stdin>:1:4",
+            "\"DaiTokenType_int\" in <test>:1:4",
         },
         {
             "0o18;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
-            "\"DaiTokenType_int\" in <stdin>:1:4",
+            "\"DaiTokenType_int\" in <test>:1:4",
         },
         {
             "0O18;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
-            "\"DaiTokenType_int\" in <stdin>:1:4",
+            "\"DaiTokenType_int\" in <test>:1:4",
         },
         {
             "0x1g;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
-            "\"DaiTokenType_ident\" in <stdin>:1:4",
+            "\"DaiTokenType_ident\" in <test>:1:4",
         },
         {
             "0X1g;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
-            "\"DaiTokenType_ident\" in <stdin>:1:4",
+            "\"DaiTokenType_ident\" in <test>:1:4",
         },
         {
             "1 + 2",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "
-            "got \"DaiTokenType_eof\" in <stdin>:1:6",
+            "got \"DaiTokenType_eof\" in <test>:1:6",
         },
         {
             "var a =;",
             "SyntaxError: no prefix parse function for "
-            "\"DaiTokenType_semicolon\" found in <stdin>:1:8",
+            "\"DaiTokenType_semicolon\" found in <test>:1:8",
         },
         {
             "var a = 1",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "
-            "got \"DaiTokenType_eof\" in <stdin>:1:10",
+            "got \"DaiTokenType_eof\" in <test>:1:10",
         },
         {
             "a(,)",
             "SyntaxError: no prefix parse function for \"DaiTokenType_comma\" "
-            "found in <stdin>:1:3",
+            "found in <test>:1:3",
         },
         {
             "a(1,* 2)",
             "SyntaxError: no prefix parse function for \"DaiTokenType_asterisk\" "
-            "found in <stdin>:1:5",
+            "found in <test>:1:5",
         },
         {
             "a(1, 2;",
             "SyntaxError: expected token to be \"DaiTokenType_rparen\" but got "
-            "\"DaiTokenType_semicolon\" in <stdin>:1:7",
+            "\"DaiTokenType_semicolon\" in <test>:1:7",
         },
         {
             "if (a) { var b;}",
             "SyntaxError: expected token to be \"DaiTokenType_assign\" but got "
-            "\"DaiTokenType_semicolon\" in <stdin>:1:15",
+            "\"DaiTokenType_semicolon\" in <test>:1:15",
         },
         {
             "if (a) { var b = 1;",
-            "SyntaxError: expected '}' in <stdin>:1:20",
+            "SyntaxError: expected '}' in <test>:1:20",
         },
         {
             "if a) { var b = 1;",
             "SyntaxError: expected token to be \"DaiTokenType_lparen\" but got "
-            "\"DaiTokenType_ident\" in <stdin>:1:4",
+            "\"DaiTokenType_ident\" in <test>:1:4",
         },
         {
             "if () { var b = 1;",
             "SyntaxError: no prefix parse function for \"DaiTokenType_rparen\" "
-            "found in <stdin>:1:5",
+            "found in <test>:1:5",
         },
         {
             "if (a { var b = 1;",
             "SyntaxError: expected token to be \"DaiTokenType_rparen\" but got "
-            "\"DaiTokenType_lbrace\" in <stdin>:1:7",
+            "\"DaiTokenType_lbrace\" in <test>:1:7",
         },
         {
             "if (a) var b = 1;}",
             "SyntaxError: expected token to be \"DaiTokenType_lbrace\" but got "
-            "\"DaiTokenType_var\" in <stdin>:1:8",
+            "\"DaiTokenType_var\" in <test>:1:8",
         },
         {
             "if (a) {} else var b = 1;}",
             "SyntaxError: expected token to be \"DaiTokenType_lbrace\" but got "
-            "\"DaiTokenType_var\" in <stdin>:1:16",
+            "\"DaiTokenType_var\" in <test>:1:16",
         },
         {
             "if (a) {} else {var b1;}",
             "SyntaxError: expected token to be \"DaiTokenType_assign\" but got "
-            "\"DaiTokenType_semicolon\" in <stdin>:1:23",
+            "\"DaiTokenType_semicolon\" in <test>:1:23",
         },
         {
             "if (a) {} else {}",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "
-            "got \"DaiTokenType_eof\" in <stdin>:1:18",
+            "got \"DaiTokenType_eof\" in <test>:1:18",
         },
         {
             "var foo = fn(1) { 1; };",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
-            "\"DaiTokenType_int\" in <stdin>:1:14",
+            "\"DaiTokenType_int\" in <test>:1:14",
         },
         {
             "var foo = fn(a { 1; };",
             "SyntaxError: expected token to be \"DaiTokenType_rparen\" but got "
-            "\"DaiTokenType_lbrace\" in <stdin>:1:16",
+            "\"DaiTokenType_lbrace\" in <test>:1:16",
         },
         {
             "var foo = fn(a,1) { 1; };",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
-            "\"DaiTokenType_int\" in <stdin>:1:16",
+            "\"DaiTokenType_int\" in <test>:1:16",
         },
         {
             "var foo = fn a,) { 1; };",
             "SyntaxError: expected token to be \"DaiTokenType_lparen\" but got "
-            "\"DaiTokenType_ident\" in <stdin>:1:14",
+            "\"DaiTokenType_ident\" in <test>:1:14",
         },
         {
             "var foo = fn (a,) { var; };",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
-            "\"DaiTokenType_semicolon\" in <stdin>:1:24",
+            "\"DaiTokenType_semicolon\" in <test>:1:24",
         },
         {
             "var foo = fn (a,)   };",
             "SyntaxError: expected token to be \"DaiTokenType_lbrace\" but got "
-            "\"DaiTokenType_rbrace\" in <stdin>:1:21",
+            "\"DaiTokenType_rbrace\" in <test>:1:21",
         },
         {
             "(a;",
             "SyntaxError: expected token to be \"DaiTokenType_rparen\" but got "
-            "\"DaiTokenType_semicolon\" in <stdin>:1:3",
+            "\"DaiTokenType_semicolon\" in <test>:1:3",
         },
         {
             "-;",
             "SyntaxError: no prefix parse function for "
-            "\"DaiTokenType_semicolon\" found in <stdin>:1:2",
+            "\"DaiTokenType_semicolon\" found in <test>:1:2",
         },
         {
             "1-;",
             "SyntaxError: no prefix parse function for "
-            "\"DaiTokenType_semicolon\" found in <stdin>:1:3",
+            "\"DaiTokenType_semicolon\" found in <test>:1:3",
         },
         {
             "return 1 - ;",
             "SyntaxError: no prefix parse function for "
-            "\"DaiTokenType_semicolon\" found in <stdin>:1:12",
+            "\"DaiTokenType_semicolon\" found in <test>:1:12",
         },
         {
             "return 1",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "
-            "got \"DaiTokenType_eof\" in <stdin>:1:9",
+            "got \"DaiTokenType_eof\" in <test>:1:9",
         },
         {
             "a = ",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <stdin>:1:4",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:4",
         },
         {
             "a = -",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <stdin>:1:6",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:6",
         },
         {
             "a = 3 + 4 * 5",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
-            "\"DaiTokenType_eof\" in <stdin>:1:14",
+            "\"DaiTokenType_eof\" in <test>:1:14",
         },
         {
             "this.",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got \"DaiTokenType_eof\" "
-            "in <stdin>:1:6",
+            "in <test>:1:6",
         },
         {
             "a.123",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got \"DaiTokenType_int\" "
-            "in <stdin>:1:3",
+            "in <test>:1:3",
         },
         {
             "super.a.",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got \"DaiTokenType_eof\" "
-            "in <stdin>:1:9",
+            "in <test>:1:9",
         },
         {
             "this.a = ",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <stdin>:1:9",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:9",
         },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
@@ -1996,7 +1996,7 @@ test_parse_example(__attribute__((unused)) const MunitParameter params[],
     char* input = string_from_file(resolved_path);
 
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
+    DaiAstProgram_init(&prog, "<test>");
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -2019,7 +2019,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2041,7 +2041,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2064,7 +2064,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1,];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2087,7 +2087,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1, 2 * 2];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2111,7 +2111,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1, 2 * 2, 3 + 3];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog);
+        DaiAstProgram_init(&prog, "<test>");
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 

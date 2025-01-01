@@ -40,7 +40,7 @@ interpret(DaiVM* vm, const char* input) {
     munit_assert_null(err);
     // 语法分析
     DaiAstProgram program;
-    DaiAstProgram_init(&program);
+    DaiAstProgram_init(&program, "<test>");
     err = dai_parse(tlist, &program);
     DaiTokenList_free(tlist);
     if (err) {
@@ -669,6 +669,7 @@ test_class_instance(__attribute__((unused)) const MunitParameter params[],
         "codes/test_vm/test_class_instance_13.dai",
         "codes/test_vm/test_class_instance_14.dai",
         "codes/test_vm/test_class_instance_15.dai",
+        "codes/test_vm/test_class_instance_16.dai",
     };
     run_vm_test_files(test_files, sizeof(test_files) / sizeof(test_files[0]));
     return MUNIT_OK;

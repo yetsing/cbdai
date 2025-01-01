@@ -18,6 +18,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_CLASS(value) dai_is_obj_type(value, DaiObjType_class)
 #define IS_STRING(value) dai_is_obj_type(value, DaiObjType_string)
 #define IS_ARRAY(value) dai_is_obj_type(value, DaiObjType_array)
+#define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
 #define AS_INSTANCE(value) ((DaiObjInstance*)AS_OBJ(value))
@@ -28,6 +29,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_STRING(value) ((DaiObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((DaiObjString*)AS_OBJ(value))->chars)
 #define AS_ARRAY(value) ((DaiObjArray*)AS_OBJ(value))
+#define AS_ERROR(value) ((DaiObjError*)AS_OBJ(value))
 
 typedef enum {
     DaiObjType_function,
@@ -38,6 +40,7 @@ typedef enum {
     DaiObjType_instance,
     DaiObjType_boundMethod,
     DaiObjType_array,
+    DaiObjType_error,
 } DaiObjType;
 
 typedef DaiValue (*BuiltinFn)(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);
@@ -85,10 +88,13 @@ typedef struct _DaiObjClass {
     DaiValueArray field_names;   // 按定义顺序存储实例属性名
     DaiObjClass* parent;
     // 下面是一些特殊的实例方法
-    DaiValue init;   // 实例初始化方法
+    DaiValue init;   // 自定义的实例初始化方法
 } DaiObjClass;
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name);
+DaiValue
+DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv);
+
 
 typedef struct {
     DaiObj obj;
@@ -106,7 +112,7 @@ typedef struct {
 DaiObjBoundMethod*
 DaiObjBoundMethod_New(DaiVM* vm, DaiValue receiver, DaiValue method);
 DaiObjBoundMethod*
-DaiObjClass_get_bound_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver);
+DaiObjClass_get_super_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver);
 void
 DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString* name,
                   DaiValue* method);
@@ -137,6 +143,13 @@ typedef struct {
 } DaiObjArray;
 DaiObjArray*
 DaiObjArray_New(DaiVM* vm, const DaiValue* elements, int length);
+
+typedef struct {
+    DaiObj obj;
+    char message[256];
+} DaiObjError;
+DaiObjError*
+DaiObjError_Newf(DaiVM* vm, const char* format, ...) __attribute__((format(printf, 2, 3)));
 
 void
 dai_print_object(DaiValue value);
