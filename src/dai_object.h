@@ -63,7 +63,7 @@ typedef struct {
     DaiObjClass* superclass;   // 用于实现 super
 } DaiObjFunction;
 DaiObjFunction*
-DaiObjFunction_New(DaiVM* vm, const char* name);
+DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename);
 const char*
 DaiObjFunction_name(DaiObjFunction* function);
 

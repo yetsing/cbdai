@@ -40,7 +40,7 @@ interpret(DaiVM* vm, const char* input) {
     munit_assert_null(err);
     // 语法分析
     DaiAstProgram program;
-    DaiAstProgram_init(&program, "<test>");
+    DaiAstProgram_init(&program);
     err = dai_parse(tlist, &program);
     DaiTokenList_free(tlist);
     if (err) {
@@ -49,17 +49,17 @@ interpret(DaiVM* vm, const char* input) {
     }
     munit_assert_null(err);
     // 编译
-    DaiObjFunction* function = DaiObjFunction_New(vm, "<test>");
+    DaiObjFunction* function = DaiObjFunction_New(vm, "<test>", "<test>");
     err                      = dai_compile(&program, function, vm);
     if (err) {
         DaiCompileError_pprint(err, input);
     }
     munit_assert_null(err);
     // 运行
-    err = DaiVM_run(vm, function);
-    if (err) {
+    DaiObjError* runtime_err = DaiVM_run(vm, function);
+    if (runtime_err) {
         DaiChunk_disassemble(&function->chunk, "<test>");
-        DaiRuntimeError_pprint(err, input);
+        DaiVM_printError2(vm, runtime_err, input);
         munit_assert_null(err);
     }
 }

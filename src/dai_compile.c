@@ -312,7 +312,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     }
 
     // 创建函数对象
-    DaiObjFunction* function = DaiObjFunction_New(compiler->vm, name);
+    DaiObjFunction* function = DaiObjFunction_New(compiler->vm, name, compiler->filename);
     // 创建函数符号表
     DaiSymbolTable* functable = DaiSymbolTable_NewFunction(compiler->symbolTable);
     // 创建子编译器

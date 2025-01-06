@@ -76,15 +76,15 @@ main() {
             DaiSyntaxError_pprint(err, input);
             goto end;
         }
-        DaiObjFunction* function = DaiObjFunction_New(&vm, "<stdin>");
+        DaiObjFunction* function = DaiObjFunction_New(&vm, "<main>", "<stdin>");
         err                      = dai_compile(&program, function, &vm);
         if (err != NULL) {
             DaiCompileError_pprint(err, input);
             goto end;
         }
-        err = DaiVM_run(&vm, function);
-        if (err != NULL) {
-            DaiRuntimeError_pprint(err, input);
+        DaiObjError* runtime_err = DaiVM_run(&vm, function);
+        if (runtime_err != NULL) {
+            DaiVM_printError(&vm, runtime_err);
             DaiVM_resetStack(&vm);
             goto end;
         }

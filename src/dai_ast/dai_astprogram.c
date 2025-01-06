@@ -51,34 +51,21 @@ DaiAstProgram_free(DaiAstBase* base, bool recursive) {
             statements[i]->free_fn((DaiAstBase*)statements[i], true);
         }
     }
-    if (prog->filepath) {
-        dai_free(prog->filepath);
-    }
     dai_free(prog->statements);
     // program 本身会放在栈上，所以不需要释放
     // dai_free(prog);
     // 重新初始化一遍，防止意外使用
-    DaiAstProgram_init(prog, NULL);
+    DaiAstProgram_init(prog);
 };
 
 void
-DaiAstProgram_init(DaiAstProgram* program, const char* filepath) {
+DaiAstProgram_init(DaiAstProgram* program) {
     program->type       = DaiAstType_program;
     program->string_fn  = DaiAstProgram_string;
     program->free_fn    = DaiAstProgram_free;
     program->length     = 0;
     program->size       = 0;
     program->statements = NULL;
-    program->filepath   = NULL;
-    if (filepath) {
-        program->filepath = strdup(filepath);
-    }
-}
-
-void
-DaiAstProgram_setFilepath(DaiAstProgram* program, const char* filepath) {
-    assert(program->filepath == NULL);
-    program->filepath = strdup(filepath);
 }
 
 void
@@ -88,10 +75,7 @@ DaiAstProgram_reset(DaiAstProgram* program) {
         statements[i]->free_fn((DaiAstBase*)statements[i], true);
     }
     dai_free(program->statements);
-    if (program->filepath) {
-        dai_free(program->filepath);
-    }
-    DaiAstProgram_init(program, NULL);
+    DaiAstProgram_init(program);
 }
 
 void

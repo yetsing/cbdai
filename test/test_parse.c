@@ -160,7 +160,7 @@ parse_error(const char* input) {
     }
     munit_assert_null(err);
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     err                    = dai_parse(tlist, program);
     if (err) {
@@ -194,7 +194,7 @@ test_var_statements(__attribute__((unused)) const MunitParameter params[],
                   "var foobar = 838383;\n"
                   "";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -256,7 +256,7 @@ test_return_statements(__attribute__((unused)) const MunitParameter params[],
                         "return ;\n"
                         "";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -297,7 +297,7 @@ test_if_statements(__attribute__((unused)) const MunitParameter params[],
                    __attribute__((unused)) void* user_data) {
     const char* input = "if (x < y) { x;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -337,7 +337,7 @@ test_if_else_statements(__attribute__((unused)) const MunitParameter params[],
                         __attribute__((unused)) void* user_data) {
     const char* input = "if (x < y) { x;} else {y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -377,7 +377,7 @@ test_if_elif_else_statements(__attribute__((unused)) const MunitParameter params
                         "elif (x > y) { y;}"
                         "else {y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -430,7 +430,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                         " break;\n"
                         "}";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -473,7 +473,7 @@ test_assign_statements(__attribute__((unused)) const MunitParameter params[],
     {
         const char* input = "x = y;";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
         munit_assert_int(program->length, ==, 1);
@@ -506,7 +506,7 @@ test_class_statements(__attribute__((unused)) const MunitParameter params[],
                             "  class fn cget() {};\n"
                             "};";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
         munit_assert_int(program->length, ==, 1);
@@ -576,7 +576,7 @@ test_class_statements(__attribute__((unused)) const MunitParameter params[],
                             "  class fn cget() {};\n"
                             "};";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
         munit_assert_int(program->length, ==, 1);
@@ -642,7 +642,7 @@ test_identifier_expression(__attribute__((unused)) const MunitParameter params[]
                            __attribute__((unused)) void* user_data) {
     const char* input = "foobar;";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -670,7 +670,7 @@ test_integer_literal_expression(__attribute__((unused)) const MunitParameter par
     {
         const char* input = "5;";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -708,7 +708,7 @@ test_integer_literal_expression(__attribute__((unused)) const MunitParameter par
     for (int i = 0; i < sizeof(integerTests) / sizeof(integerTests[0]); i++) {
         const char* input = integerTests[i].input;
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -746,7 +746,7 @@ test_float_literal_expression(__attribute__((unused)) const MunitParameter param
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         const char* input = tests[i].input;
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -773,7 +773,7 @@ test_function_literal_parsing(__attribute__((unused)) const MunitParameter param
                               __attribute__((unused)) void* user_data) {
     const char* input = "fn(x, y) {x + y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -815,7 +815,7 @@ test_function_statements(__attribute__((unused)) const MunitParameter params[],
                          __attribute__((unused)) void* user_data) {
     const char* input = "fn add(x, y) {x + y;};";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -862,7 +862,7 @@ test_function_parameter_parsing(__attribute__((unused)) const MunitParameter par
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -892,7 +892,7 @@ test_string_literal_parsing(__attribute__((unused)) const MunitParameter params[
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
         munit_assert_int(program->length, ==, 1);
@@ -924,7 +924,7 @@ test_parsing_prefix_expressions(__attribute__((unused)) const MunitParameter par
 
     for (int i = 0; i < sizeof(prefixTests) / sizeof(prefixTests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(prefixTests[i].input, program);
 
@@ -958,7 +958,7 @@ test_parsing_prefix_expressions(__attribute__((unused)) const MunitParameter par
 
     for (int i = 0; i < sizeof(boolTests) / sizeof(boolTests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(boolTests[i].input, program);
 
@@ -1008,7 +1008,7 @@ test_parsing_infix_expressions(__attribute__((unused)) const MunitParameter para
     };
     for (int i = 0; i < sizeof(infix_tests) / sizeof(infix_tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(infix_tests[i].input, program);
 
@@ -1043,7 +1043,7 @@ test_parsing_infix_expressions(__attribute__((unused)) const MunitParameter para
     };
     for (int i = 0; i < sizeof(bool_infix_tests) / sizeof(bool_infix_tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(bool_infix_tests[i].input, program);
         munit_assert_int(program->length, ==, 1);
@@ -1071,7 +1071,7 @@ test_parsing_call_expressions(__attribute__((unused)) const MunitParameter param
                               __attribute__((unused)) void* user_data) {
     const char* input = "add(1, 2 * 3, 4 + 5);";
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
     munit_assert_int(program->length, ==, 1);
@@ -1134,7 +1134,7 @@ test_parsing_call_expression_parameter_parsing(__attribute__((unused))
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
         munit_assert_int(program->length, ==, 1);
@@ -1346,7 +1346,7 @@ test_operator_precedence_parsing(__attribute__((unused)) const MunitParameter pa
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -1381,7 +1381,7 @@ test_boolean_expression(__attribute__((unused)) const MunitParameter params[],
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -1410,7 +1410,7 @@ test_nil_expression(__attribute__((unused)) const MunitParameter params[],
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(tests[i].input, program);
 
@@ -1996,7 +1996,7 @@ test_parse_example(__attribute__((unused)) const MunitParameter params[],
     char* input = string_from_file(resolved_path);
 
     DaiAstProgram prog;
-    DaiAstProgram_init(&prog, "<test>");
+    DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
     parse_helper(input, program);
 
@@ -2019,7 +2019,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2041,7 +2041,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2064,7 +2064,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1,];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2087,7 +2087,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1, 2 * 2];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 
@@ -2111,7 +2111,7 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
     {
         const char* input = "[1, 2 * 2, 3 + 3];";
         DaiAstProgram prog;
-        DaiAstProgram_init(&prog, "<test>");
+        DaiAstProgram_init(&prog);
         DaiAstProgram* program = &prog;
         parse_helper(input, program);
 

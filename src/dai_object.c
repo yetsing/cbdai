@@ -105,11 +105,11 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
 }
 
 DaiObjFunction*
-DaiObjFunction_New(DaiVM* vm, const char* name) {
+DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename) {
     DaiObjFunction* function = ALLOCATE_OBJ(vm, DaiObjFunction, DaiObjType_function);
     function->arity          = 0;
     function->name           = dai_copy_string(vm, name, strlen(name));
-    DaiChunk_init(&function->chunk, function->name->chars);
+    DaiChunk_init(&function->chunk, filename);
     function->superclass = NULL;
     return function;
 }

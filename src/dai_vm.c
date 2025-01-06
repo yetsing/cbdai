@@ -4,9 +4,10 @@
 #include <string.h>
 
 #include "dai_chunk.h"
-#include "dai_error.h"
+#include "dai_malloc.h"
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
 
@@ -20,7 +21,7 @@ static void
 DaiVM_push(DaiVM* vm, DaiValue value);
 static DaiValue
 DaiVM_pop(DaiVM* vm);
-static DaiRuntimeError*
+static DaiObjError*
 DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount);
 
 DaiValue dai_true  = {.type = DaiValueType_bool, .as.boolean = true};
@@ -117,25 +118,13 @@ concatenate_string(DaiVM* vm, DaiValue v1, DaiValue v2) {
     DaiVM_push(vm, OBJ_VAL(result));
 }
 
-static DaiRuntimeError*
+static DaiObjError*
 DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     if (argCount != function->arity) {
-        CallFrame* frame = &vm->frames[vm->frameCount - 1];
-        DaiChunk* chunk  = &frame->function->chunk;
-        return DaiRuntimeError_Newf(chunk->filename,
-                                    DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                                    0,
-                                    "Expected %d arguments but got %d",
-                                    function->arity,
-                                    argCount);
+        return DaiObjError_Newf(vm, "Expected %d arguments but got %d", function->arity, argCount);
     }
     if (vm->frameCount == FRAMES_MAX) {
-        CallFrame* frame = &vm->frames[vm->frameCount - 1];
-        DaiChunk* chunk  = &frame->function->chunk;
-        return DaiRuntimeError_New("Stack overflow",
-                                   chunk->filename,
-                                   DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                                   0);
+        return DaiObjError_Newf(vm, "Stack overflow");
     }
     // new frame
     CallFrame* frame = &vm->frames[vm->frameCount++];
@@ -149,13 +138,13 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     return NULL;
 }
 
-static DaiRuntimeError*
+static DaiObjError*
 DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
             case DaiObjType_boundMethod: {
                 DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(callee);
-                DaiRuntimeError* err = DaiVM_callValue(vm, OBJ_VAL(bound_method->method), argCount);
+                DaiObjError* err = DaiVM_callValue(vm, OBJ_VAL(bound_method->method), argCount);
                 if (err != NULL) {
                     return err;
                 }
@@ -187,20 +176,14 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
             }
             case DaiObjType_closure: {
                 DaiObjClosure* closure = (DaiObjClosure*)AS_OBJ(callee);
-                DaiRuntimeError* err   = DaiVM_call(vm, closure->function, argCount);
+                DaiObjError* err       = DaiVM_call(vm, closure->function, argCount);
                 vm->frames[vm->frameCount - 1].closure = closure;
                 return err;
             }
             default: break;
         }
     }
-    CallFrame* frame = &vm->frames[vm->frameCount - 1];
-    DaiChunk* chunk  = &frame->function->chunk;
-    return DaiRuntimeError_Newf(chunk->filename,
-                                DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                                0,
-                                "'%s' object is not callable",
-                                dai_value_ts(callee));
+    return DaiObjError_Newf(vm, "'%s' object is not callable", dai_value_ts(callee));
 }
 
 static bool
@@ -232,7 +215,7 @@ DaiVM_executeIntBinary(DaiVM* vm, const DaiBinaryOpType opType, const DaiValue a
 }
 
 // exitOnReturn 为 true 时，遇到 return 时返回 NULL，否则返回错误
-static DaiRuntimeError*
+static DaiObjError*
 DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
     CallFrame* frame = &vm->frames[vm->frameCount - 1];
     DaiChunk* chunk  = &frame->function->chunk;
@@ -250,10 +233,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
         } else if (IS_FLOAT(a) && IS_FLOAT(b)) {                                \
             DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op AS_FLOAT(b)));              \
         } else {                                                                \
-            return DaiRuntimeError_Newf(                                        \
-                chunk->filename,                                                \
-                DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),        \
-                0,                                                              \
+            return DaiObjError_Newf(                                            \
+                vm,                                                             \
                 "TypeError: unsupported operand type(s) for %s: '%s' and '%s'", \
                 #op,                                                            \
                 dai_value_ts(a),                                                \
@@ -322,10 +303,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 if (IS_INTEGER(a) && IS_INTEGER(b)) {
                     DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) % AS_INTEGER(b)));
                 } else {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
+                    return DaiObjError_Newf(
+                        vm,
                         "TypeError: unsupported operand type(s) for %%: '%s' and '%s'",
                         dai_value_ts(a),
                         dai_value_ts(b));
@@ -340,10 +319,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     DaiVM_executeIntBinary(vm, opType, a, b);
                     break;
                 } else {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
+                    return DaiObjError_Newf(
+                        vm,
                         "TypeError: unsupported operand type(s) for %s: '%s' and '%s'",
                         DaiBinaryOpTypeToString(opType),
                         dai_value_ts(a),
@@ -410,10 +387,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
                 if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
+                    return DaiObjError_Newf(
+                        vm,
                         "TypeError: unsupported operand type(s) for >/<: '%s' and '%s'",
                         dai_value_ts(a),
                         dai_value_ts(b));
@@ -426,10 +401,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
                 if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
+                    return DaiObjError_Newf(
+                        vm,
                         "TypeError: unsupported operand type(s) for >=/<=: '%s' and '%s'",
                         dai_value_ts(a),
                         dai_value_ts(b));
@@ -469,12 +442,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             case DaiOpMinus: {
                 DaiValue a = DaiVM_pop(vm);
                 if (IS_NOT_INTEGER(a)) {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
-                        "TypeError: unsupported operand type(s) for -: '%s'",
-                        dai_value_ts(a));
+                    return DaiObjError_Newf(
+                        vm, "TypeError: unsupported operand type(s) for -: '%s'", dai_value_ts(a));
                 }
                 DaiVM_push(vm, INTEGER_VAL(-AS_INTEGER(a)));
                 break;
@@ -490,12 +459,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 if (IS_INTEGER(a)) {
                     DaiVM_push(vm, INTEGER_VAL(~AS_INTEGER(a)));
                 } else {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
-                        "TypeError: unsupported operand type(s) for ~: '%s'",
-                        dai_value_ts(a));
+                    return DaiObjError_Newf(
+                        vm, "TypeError: unsupported operand type(s) for ~: '%s'", dai_value_ts(a));
                 }
                 break;
             }
@@ -538,9 +503,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             }
 
             case DaiOpCall: {
-                int argCount         = READ_BYTE();
-                DaiValue callee      = DaiVM_peek(vm, argCount);
-                DaiRuntimeError* err = DaiVM_callValue(vm, callee, argCount);
+                int argCount     = READ_BYTE();
+                DaiValue callee  = DaiVM_peek(vm, argCount);
+                DaiObjError* err = DaiVM_callValue(vm, callee, argCount);
                 if (err != NULL) {
                     return err;
                 }
@@ -685,13 +650,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
                     DaiVM_push(vm, res);
                 } else {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
-                        "'%s' object has not property '%s'",
-                        dai_value_ts(receiver),
-                        name->chars);
+                    return DaiObjError_Newf(vm,
+                                            "'%s' object has not property '%s'",
+                                            dai_value_ts(receiver),
+                                            name->chars);
                 }
                 break;
             }
@@ -703,13 +665,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 if (IS_OBJ(receiver)) {
                     AS_OBJ(receiver)->set_property_func(vm, receiver, name, value);
                 } else {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
-                        "'%s' object can not set property '%s'",
-                        dai_value_ts(receiver),
-                        name->chars);
+                    return DaiObjError_Newf(vm,
+                                            "'%s' object can not set property '%s'",
+                                            dai_value_ts(receiver),
+                                            name->chars);
                 }
                 break;
             }
@@ -753,8 +712,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = DaiVM_peek(vm, argCount);
                 if (IS_OBJ(receiver)) {
-                    DaiValue res         = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
-                    DaiRuntimeError* err = DaiVM_callValue(vm, res, argCount);
+                    DaiValue res     = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiObjError* err = DaiVM_callValue(vm, res, argCount);
                     if (err != NULL) {
                         return err;
                     }
@@ -762,13 +721,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     frame->slots[0] = receiver;
                     chunk           = &frame->function->chunk;
                 } else {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
-                        "'%s' object has not property '%s'",
-                        dai_value_ts(receiver),
-                        name->chars);
+                    return DaiObjError_Newf(vm,
+                                            "'%s' object has not property '%s'",
+                                            dai_value_ts(receiver),
+                                            name->chars);
                 }
                 break;
             }
@@ -778,8 +734,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = frame->slots[0];
                 if (IS_OBJ(receiver)) {
-                    DaiValue res         = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
-                    DaiRuntimeError* err = DaiVM_callValue(vm, res, argCount);
+                    DaiValue res     = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiObjError* err = DaiVM_callValue(vm, res, argCount);
                     if (err != NULL) {
                         return err;
                     }
@@ -787,13 +743,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     frame->slots[0] = receiver;
                     chunk           = &frame->function->chunk;
                 } else {
-                    return DaiRuntimeError_Newf(
-                        chunk->filename,
-                        DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code)),
-                        0,
-                        "'%s' object has not property '%s'",
-                        dai_value_ts(receiver),
-                        name->chars);
+                    return DaiObjError_Newf(vm,
+                                            "'%s' object has not property '%s'",
+                                            dai_value_ts(receiver),
+                                            name->chars);
                 }
                 break;
             }
@@ -804,7 +757,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue receiver   = frame->slots[0];
                 DaiValue method;
                 DaiObj_get_method(vm, frame->function->superclass, receiver, name, &method);
-                DaiRuntimeError* err = DaiVM_callValue(vm, method, argCount);
+                DaiObjError* err = DaiVM_callValue(vm, method, argCount);
                 if (err != NULL) {
                     return err;
                 }
@@ -815,13 +768,11 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             }
 
             default: {
-                return DaiRuntimeError_Newf(
-                    chunk->filename,
-                    DaiChunk_getLine(chunk, (int)(frame->ip - 1 - chunk->code)),
-                    0,
-                    "Unknown opcode: %s(%d)",
-                    dai_opcode_name(op),
-                    op);
+                return DaiObjError_Newf(vm,
+
+                                        "Unknown opcode: %s(%d)",
+                                        dai_opcode_name(op),
+                                        op);
             }
         }
     }
@@ -832,12 +783,12 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
 #undef READ_BYTE
 }
 
-DaiRuntimeError*
+DaiObjError*
 DaiVM_run(DaiVM* vm, DaiObjFunction* function) {
     vm->state = VMState_running;
     // 把函数压入栈，然后调用他
     DaiVM_push(vm, OBJ_VAL(function));
-    DaiRuntimeError* err = DaiVM_call(vm, function, 0);
+    DaiObjError* err = DaiVM_call(vm, function, 0);
     assert(err == NULL);
     return DaiVM_dorun(vm, false);
 }
@@ -851,30 +802,79 @@ DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
         DaiVM_push(vm, va_arg(args, DaiValue));
     }
     va_end(args);
-    DaiRuntimeError* err = NULL;
-    err                  = DaiVM_callValue(vm, callee, argCount);
-    assert(err == NULL);
+    DaiObjError* err = NULL;
+    err              = DaiVM_callValue(vm, callee, argCount);
+    if (err != NULL) {
+        return OBJ_VAL(err);
+    }
     err = DaiVM_dorun(vm, true);
-    assert(err == NULL);
+    if (err != NULL) {
+        return OBJ_VAL(err);
+    }
     return DaiVM_pop(vm);
 }
 DaiValue
 DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
-    DaiRuntimeError* err = NULL;
-    err                  = DaiVM_callValue(vm, callee, argCount);
-    assert(err == NULL);
+    DaiObjError* err = NULL;
+    err              = DaiVM_callValue(vm, callee, argCount);
+    if (err != NULL) {
+        return OBJ_VAL(err);
+    }
     err = DaiVM_dorun(vm, true);
-    assert(err == NULL);
+    if (err != NULL) {
+        return OBJ_VAL(err);
+    }
     return DaiVM_pop(vm);
 }
+
 void
 DaiVM_printError(DaiVM* vm, DaiObjError* err) {
-    dai_log("Traceback\n");
+    dai_log("Traceback:\n");
     for (int i = 0; i < vm->frameCount; ++i) {
-        // todo
-        // CallFrame* frame = &vm->frames[i];
-        // DaiChunk* chunk  = &frame->function->chunk;
-        // int line         = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
+        CallFrame* frame         = &vm->frames[i];
+        DaiChunk* chunk          = &frame->function->chunk;
+        int lineno               = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
+        DaiObjFunction* function = frame->function;
+        dai_log("  File \"%s\", line %d, in %s\n",
+                chunk->filename,
+                lineno,
+                DaiObjFunction_name(function));
+        char* line = dai_line_from_file(chunk->filename, lineno);
+        if (line != NULL) {
+            // remove prefix space
+            char* tmp = line;
+            while (tmp[0] == ' ') {
+                tmp++;
+            }
+            dai_log("    %s\n", tmp);
+            dai_free(line);
+        }
+    }
+    dai_log("%s\n", err->message);
+}
+
+void
+DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input) {
+    dai_log("Traceback:\n");
+    for (int i = 0; i < vm->frameCount; ++i) {
+        CallFrame* frame         = &vm->frames[i];
+        DaiChunk* chunk          = &frame->function->chunk;
+        int lineno               = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
+        DaiObjFunction* function = frame->function;
+        dai_log("  File \"%s\", line %d, in %s\n",
+                chunk->filename,
+                lineno,
+                DaiObjFunction_name(function));
+        char* line = dai_get_line(input, lineno);
+        if (line != NULL) {
+            // remove prefix space
+            char* tmp = line;
+            while (tmp[0] == ' ') {
+                tmp++;
+            }
+            dai_log("    %s\n", tmp);
+            dai_free(line);
+        }
     }
     dai_log("%s\n", err->message);
 }

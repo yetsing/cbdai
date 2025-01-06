@@ -1,7 +1,9 @@
 /*
 工具函数
 */
+#include <assert.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dai_malloc.h"
 #include "dai_utils.h"
@@ -74,4 +76,34 @@ dai_string_from_file(const char* filename) {
     s[length] = '\0';
     fclose(fp);
     return s;
+}
+
+char*
+dai_get_line(const char* s, int lineno) {
+    const char* s1 = s;
+    for (int i = 0; i < lineno - 1; i++) {
+        s1 = strchr(s, '\n');
+        if (s1 == NULL) {
+            return strdup("<unknown>");
+        }
+        s = s1 + 1;
+    }
+    char* line_end = strchr(s, '\n');
+    if (line_end == NULL) {
+        return strdup(s);
+    } else {
+        size_t n = line_end - s;
+        return strndup(s, n);
+    }
+}
+
+char*
+dai_line_from_file(const char* filename, int lineno) {
+    char* s = dai_string_from_file(filename);
+    if (s == NULL) {
+        return NULL;
+    }
+    char* line = dai_get_line(s, lineno);
+    free(s);
+    return line;
 }

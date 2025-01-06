@@ -5,7 +5,6 @@
 
 #include "dai_chunk.h"
 #include "dai_common.h"
-#include "dai_error.h"
 #include "dai_object.h"
 #include "dai_symboltable.h"
 #include "dai_table.h"
@@ -68,7 +67,7 @@ void
 DaiVM_reset(DaiVM* vm);
 void
 DaiVM_resetStack(DaiVM* vm);
-DaiRuntimeError*
+DaiObjError*
 DaiVM_run(DaiVM* vm, DaiObjFunction* function);
 // 传入参数，将其压入中栈
 DaiValue
@@ -76,8 +75,12 @@ DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...);
 // 调用参数已经在栈上
 DaiValue
 DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount);
+// 打印运行时错误（包含错误调用栈）
 void
 DaiVM_printError(DaiVM* vm, DaiObjError* err);
+// input 用来传入源代码（不在文件中的，比如 repl 中输入的代码）
+void
+DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input);
 
 DaiValue
 DaiVM_stackTop(const DaiVM* vm);

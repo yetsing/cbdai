@@ -13,11 +13,10 @@ typedef struct {
     size_t size;
     size_t length;
     DaiAstStatement** statements;
-    char* filepath;   // 文件路径
 } DaiAstProgram;
 
 void
-DaiAstProgram_init(DaiAstProgram* program, const char* filepath);
+DaiAstProgram_init(DaiAstProgram* program);
 void
 DaiAstProgram_reset(DaiAstProgram* program);
 void

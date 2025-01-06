@@ -109,20 +109,6 @@ DaiCompileError_Newf(const char* filename, int lineno, int column, const char* f
     return (DaiCompileError*)err;
 }
 
-DaiRuntimeError*
-DaiRuntimeError_New(char* msg, const char* filename, int lineno, int column) {
-    return DaiError_New("RuntimeError", msg, filename, lineno, column);
-}
-
-DaiRuntimeError*
-DaiRuntimeError_Newf(const char* filename, int lineno, int column, const char* fmt, ...) {
-    va_list arg;
-    va_start(arg, fmt);
-    DaiError* err = DaiError_Newf("RuntimeError", filename, lineno, column, fmt, arg);
-    va_end(arg);
-    return (DaiRuntimeError*)err;
-}
-
 char*
 DaiError_string(DaiError* error) {
     size_t bufsize = strlen(error->msg) + 256;
