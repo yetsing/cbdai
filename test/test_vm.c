@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "dai_value.h"
 #include "munit/munit.h"
 
 #include "dai_compile.h"
@@ -27,8 +28,40 @@ get_file_directory(char* path) {
     }
 }
 
-static void
+static DaiObjError*
 interpret(DaiVM* vm, const char* input) {
+    const char* filename = "<test>";
+    // 词法分析
+    DaiTokenList* tlist = DaiTokenList_New();
+    DaiError* err       = dai_tokenize_string(input, tlist);
+    if (err) {
+        DaiSyntaxError_setFilename(err, filename);
+        DaiSyntaxError_pprint(err, input);
+    }
+    munit_assert_null(err);
+    // 语法分析
+    DaiAstProgram program;
+    DaiAstProgram_init(&program);
+    err = dai_parse(tlist, &program);
+    DaiTokenList_free(tlist);
+    if (err) {
+        DaiSyntaxError_setFilename(err, filename);
+        DaiSyntaxError_pprint(err, input);
+    }
+    munit_assert_null(err);
+    // 编译
+    DaiObjFunction* function = DaiObjFunction_New(vm, "<test>", "<test>");
+    err                      = dai_compile(&program, function, vm);
+    if (err) {
+        DaiCompileError_pprint(err, input);
+    }
+    munit_assert_null(err);
+    // 运行
+    return DaiVM_run(vm, function);
+}
+
+static void
+interpret2(DaiVM* vm, const char* input) {
     const char* filename = "<test>";
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
@@ -77,18 +110,24 @@ run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
     for (int i = 0; i < count; i++) {
         DaiVM vm;
         DaiVM_init(&vm);
-        interpret(&vm, tests[i].input);
-        DaiValue actual = DaiVM_lastPopedStackElem(&vm);
-        dai_assert_value_equal(actual, tests[i].expected);
-        if (!DaiVM_isEmptyStack(&vm)) {
-            for (DaiValue* slot = vm.stack; slot < vm.stack_top; slot++) {
-                printf("[ ");
-                dai_print_value(*slot);
-                printf(" ]");
-                printf("\n");
+        if (IS_ERROR(tests[i].expected)) {
+            DaiObjError* got_err = interpret(&vm, tests[i].input);
+            munit_assert_not_null(got_err);
+            dai_assert_value_equal(OBJ_VAL(got_err), tests[i].expected);
+        } else {
+            interpret2(&vm, tests[i].input);
+            DaiValue actual = DaiVM_lastPopedStackElem(&vm);
+            dai_assert_value_equal(actual, tests[i].expected);
+            if (!DaiVM_isEmptyStack(&vm)) {
+                for (DaiValue* slot = vm.stack; slot < vm.stack_top; slot++) {
+                    printf("[ ");
+                    dai_print_value(*slot);
+                    printf(" ]");
+                    printf("\n");
+                }
             }
+            munit_assert_true(DaiVM_isEmptyStack(&vm));
         }
-        munit_assert_true(DaiVM_isEmptyStack(&vm));
         // 检查垃圾回收
         {
             collectGarbage(&vm);
@@ -575,6 +614,9 @@ test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
         {"len(\"\");", INTEGER_VAL(0)},
         {"len(\"four\");", INTEGER_VAL(4)},
         {"len(\"hello\");", INTEGER_VAL(5)},
+        {"len([]);", INTEGER_VAL(0)},
+        {"len([1]);", INTEGER_VAL(1)},
+        {"var m = [1, 2, 3]; len(m);", INTEGER_VAL(3)},
         {"print(\"hello\");", NIL_VAL},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
@@ -931,7 +973,7 @@ test_array_method(__attribute__((unused)) const MunitParameter params[],
             dai_true,
         },
 
-        // reversed
+        // reversed return new array
         {
             "var m = [1, 2, 3, 4]; var n = m.reversed(); n.length();",
             INTEGER_VAL(4),
@@ -957,7 +999,7 @@ test_array_method(__attribute__((unused)) const MunitParameter params[],
             INTEGER_VAL(1),
         },
 
-        // reverse
+        // reverse in place
         {
             "var m = [1, 2, 3, 4]; m.reverse(); m.length();",
             INTEGER_VAL(4),
@@ -1075,6 +1117,247 @@ test_array_subscript_set(__attribute__((unused)) const MunitParameter params[],
 }
 
 
+static MunitResult
+test_error(__attribute__((unused)) const MunitParameter params[],
+           __attribute__((unused)) void* user_data) {
+    DaiVM vm;
+    DaiVM_init(&vm);
+    const DaiVMTestCase tests[] = {
+        {
+            "var a = 1 / 0;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "division by zero")),
+        },
+        {
+            "var a = 1 / 0.0;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "division by zero")),
+        },
+        {
+            "1 + 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for +: 'int' and 'string'")),
+        },
+        {
+            "1 - 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for -: 'int' and 'string'")),
+        },
+        {
+            "1 * 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for *: 'int' and 'string'")),
+        },
+        {
+            "1 / 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for /: 'int' and 'string'")),
+        },
+        {
+            "1 % 'string';",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "unsupported operand type(s) for %%: 'int' and 'string'")),
+        },
+        {
+            "1 < 'string';",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "unsupported operand type(s) for >/<: 'string' and 'int'")),
+        },
+        {
+            "1 <= 'string';",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "unsupported operand type(s) for >=/<=: 'string' and 'int'")),
+        },
+        {
+            "1 > 'string';",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "unsupported operand type(s) for >/<: 'int' and 'string'")),
+        },
+        {
+            "1 >= 'string';",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "unsupported operand type(s) for >=/<=: 'int' and 'string'")),
+        },
+        {
+            "1 & 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for &: 'int' and 'string'")),
+        },
+        {
+            "1 | 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for |: 'int' and 'string'")),
+        },
+        {
+            "~ 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for ~: 'string'")),
+        },
+        {
+            "1 ^ 'string';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unsupported operand type(s) for ^: 'int' and 'string'")),
+        },
+        {
+            "1 << 'string';",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "unsupported operand type(s) for <<: 'int' and 'string'")),
+        },
+        {
+            "1 >> 'string';",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "unsupported operand type(s) for >>: 'int' and 'string'")),
+        },
+
+        {
+            "var a = [1, 2, 3]; a[3];",
+            OBJ_VAL(DaiObjError_Newf(&vm, "array index out of bounds")),
+        },
+        {
+            "var a = []; a[0] = 1;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "array index out of bounds")),
+        },
+        {
+            "var a = []; a.length(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "length() expected no arguments, but got 1")),
+        },
+        {
+            "var a = []; a.add();",
+            OBJ_VAL(DaiObjError_Newf(&vm,
+                                     "add() expected one or more arguments, but got no arguments")),
+        },
+        {
+            "var a = []; a.pop(1, 2);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "pop() expected no arguments, but got 2")),
+        },
+        {
+            "var a = []; a.pop();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "pop from empty array")),
+        },
+        {
+            "var a = []; a.sub();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "sub() expected 1-2 arguments, but got 0")),
+        },
+        {
+            "var a = []; a.sub('a');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "sub() expected int arguments, but got string")),
+        },
+        {
+            "var a = []; a.sub(1, 'a');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "sub() expected int arguments, but got string")),
+        },
+        {
+            "var a = []; a.remove(1, 'a');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "remove() expected 1 arguments, but got 2")),
+        },
+        {
+            "var a = []; a.remove(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "array.remove(x): x not in array")),
+        },
+        {
+            "var a = []; a.removeIndex();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "removeIndex() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = []; a.removeIndex(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "removeIndex() index out of bounds")),
+        },
+        {
+            "var a = []; a.extend();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "extend() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = []; a.extend(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "extend() expected array arguments, but got int")),
+        },
+        {
+            "var a = []; a.has();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "has() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = []; a.reversed(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "reversed() expected 0 arguments, but got 1")),
+        },
+        {
+            "var a = []; a.reverse(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "reverse() expected 0 arguments, but got 1")),
+        },
+        {
+            "var a = [1, 2]; a.sort(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'int' object is not callable")),
+        },
+        {
+            "var a = [1, 2]; a.sort( fn(a, b) {return '';} );",
+            OBJ_VAL(DaiObjError_Newf(&vm, "sort cmp() expected int return value, but got string")),
+        },
+
+        {
+            "len(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'len' not supported 'int'")),
+        },
+
+
+        {
+            "var a = fn() { return 1 + 'string'; }; a(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "<anonymous 0>() expected 0 arguments but got 1")),
+        },
+        {
+            "fn recursive() { recursive(); }; recursive();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "maximum recursion depth exceeded")),
+        },
+        {
+            "var a = 'string'; a(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'string' object is not callable")),
+        },
+
+
+        {
+            "var a = 1; a.nonexistent;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'int' object has not property 'nonexistent'")),
+        },
+        {
+            "var a = 1; a.nonexistent = 2;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'int' object has not property 'nonexistent'")),
+        },
+        {
+            "var a = [1]; a.nonexistent;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'array' object has not property 'nonexistent'")),
+        },
+        {
+            "var a = [1]; a.nonexistent = 2;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'array' object has not property 'nonexistent'")),
+        },
+        {
+            "class F { var a = 1; }; var f = F(); f.nonexistent;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has not property 'nonexistent'")),
+        },
+        {
+            "class F { var a = 1; }; var f = F(); f.a();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'int' object is not callable")),
+        },
+        {
+            "class F { var a = 1; fn get() { return super.a;}; }; var f = F(); f.get();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "no superclass found")),
+        },
+        {
+            "class F { var a = 1; fn get() { return self.b;}; }; var f = F(); f.get();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has not property 'b'")),
+        },
+        {
+            "class F { var a = 1; fn get() { return self.b();}; }; var f = F(); f.get();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has not property 'b'")),
+        },
+        {
+            "class F { var a = 1; fn set() { self.b = 1;}; }; var f = F(); f.set();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has not property 'b'")),
+        },
+        {
+            "class F { var a = 1; fn set() { self.b = 1;}; }; var f = F(); f.set(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "set() expected 0 arguments but got 1")),
+        },
+        {
+            "class G { var a = 1; }; class F < G { var a = 1; fn get() { return super.a;}; }; "
+            "var f = F(); f.get();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'super' object has not property 'a'")),
+        },
+
+    };
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    DaiVM_reset(&vm);
+    return MUNIT_OK;
+}
+
+
 MunitTest vm_tests[] = {
     {(char*)"/test_number_arithmetic",
      test_number_arithmetic,
@@ -1148,5 +1431,6 @@ MunitTest vm_tests[] = {
      NULL,
      MUNIT_TEST_OPTION_NONE,
      NULL},
+    {(char*)"/test_error", test_error, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

@@ -9,7 +9,7 @@
 
 #include "dai_ast.h"
 
-typedef struct _Parser Parser;   // NOLINT(*-reserved-identifier)
+typedef struct TParser Parser;
 
 // 解析函数需要遵循一个约定
 // 函数在开始解析表达式时， cur_token 必须是当前所关联的 token 类型，
@@ -73,7 +73,7 @@ token_precedences(const DaiTokenType type) {
     }
 }
 
-typedef struct _Parser {
+typedef struct TParser {
     DaiTokenList* tlist;
 
     // 上一个 token ，帮助展示更准确的错误信息

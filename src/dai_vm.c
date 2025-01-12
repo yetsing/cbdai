@@ -121,10 +121,14 @@ concatenate_string(DaiVM* vm, DaiValue v1, DaiValue v2) {
 static DaiObjError*
 DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     if (argCount != function->arity) {
-        return DaiObjError_Newf(vm, "Expected %d arguments but got %d", function->arity, argCount);
+        return DaiObjError_Newf(vm,
+                                "%s() expected %d arguments but got %d",
+                                function->name->chars,
+                                function->arity,
+                                argCount);
     }
     if (vm->frameCount == FRAMES_MAX) {
-        return DaiObjError_Newf(vm, "Stack overflow");
+        return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
     }
     // new frame
     CallFrame* frame = &vm->frames[vm->frameCount++];
@@ -160,6 +164,9 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
                     // 如果内部调用了自定义 init 函数，那么栈顶已经更新；否则需要手动更新
                     vm->stack_top = new_stack_top;
                 }
+                if (IS_ERROR(result)) {
+                    return AS_ERROR(result);
+                }
                 DaiVM_push(vm, result);
                 return NULL;
             }
@@ -171,6 +178,9 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
                 const DaiValue result =
                     func(vm, DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
                 vm->stack_top = vm->stack_top - argCount - 1;
+                if (IS_ERROR(result)) {
+                    return AS_ERROR(result);
+                }
                 DaiVM_push(vm, result);
                 return NULL;
             }
@@ -220,26 +230,25 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
     CallFrame* frame = &vm->frames[vm->frameCount - 1];
     DaiChunk* chunk  = &frame->function->chunk;
 
-#define ARITHMETIC_OPERATION(op)                                                \
-    do {                                                                        \
-        DaiValue b = DaiVM_pop(vm);                                             \
-        DaiValue a = DaiVM_pop(vm);                                             \
-        if (IS_INTEGER(a) && IS_INTEGER(b)) {                                   \
-            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) op AS_INTEGER(b)));        \
-        } else if (IS_FLOAT(a) && IS_INTEGER(b)) {                              \
-            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op(double) AS_INTEGER(b)));    \
-        } else if (IS_INTEGER(a) && IS_FLOAT(b)) {                              \
-            DaiVM_push(vm, FLOAT_VAL((double)AS_INTEGER(a) op AS_FLOAT(b)));    \
-        } else if (IS_FLOAT(a) && IS_FLOAT(b)) {                                \
-            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op AS_FLOAT(b)));              \
-        } else {                                                                \
-            return DaiObjError_Newf(                                            \
-                vm,                                                             \
-                "TypeError: unsupported operand type(s) for %s: '%s' and '%s'", \
-                #op,                                                            \
-                dai_value_ts(a),                                                \
-                dai_value_ts(b));                                               \
-        }                                                                       \
+#define ARITHMETIC_OPERATION(op)                                                         \
+    do {                                                                                 \
+        DaiValue b = DaiVM_pop(vm);                                                      \
+        DaiValue a = DaiVM_pop(vm);                                                      \
+        if (IS_INTEGER(a) && IS_INTEGER(b)) {                                            \
+            DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) op AS_INTEGER(b)));                 \
+        } else if (IS_FLOAT(a) && IS_INTEGER(b)) {                                       \
+            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op(double) AS_INTEGER(b)));             \
+        } else if (IS_INTEGER(a) && IS_FLOAT(b)) {                                       \
+            DaiVM_push(vm, FLOAT_VAL((double)AS_INTEGER(a) op AS_FLOAT(b)));             \
+        } else if (IS_FLOAT(a) && IS_FLOAT(b)) {                                         \
+            DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) op AS_FLOAT(b)));                       \
+        } else {                                                                         \
+            return DaiObjError_Newf(vm,                                                  \
+                                    "unsupported operand type(s) for %s: '%s' and '%s'", \
+                                    #op,                                                 \
+                                    dai_value_ts(a),                                     \
+                                    dai_value_ts(b));                                    \
+        }                                                                                \
     } while (0)
 
     // 先取值，再自增
@@ -294,7 +303,25 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
             case DaiOpDiv: {
-                ARITHMETIC_OPERATION(/);
+                DaiValue b = DaiVM_pop(vm);
+                DaiValue a = DaiVM_pop(vm);
+                if (AS_INTEGER(b) == 0) {
+                    return DaiObjError_Newf(vm, "division by zero");
+                }
+                if (IS_INTEGER(a) && IS_INTEGER(b)) {
+                    DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) / AS_INTEGER(b)));
+                } else if (IS_FLOAT(a) && IS_INTEGER(b)) {
+                    DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) / (double)AS_INTEGER(b)));
+                } else if (IS_INTEGER(a) && IS_FLOAT(b)) {
+                    DaiVM_push(vm, FLOAT_VAL((double)AS_INTEGER(a) / AS_FLOAT(b)));
+                } else if (IS_FLOAT(a) && IS_FLOAT(b)) {
+                    DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) / AS_FLOAT(b)));
+                } else {
+                    return DaiObjError_Newf(vm,
+                                            "unsupported operand type(s) for /: '%s' and '%s'",
+                                            dai_value_ts(a),
+                                            dai_value_ts(b));
+                }
                 break;
             }
             case DaiOpMod: {
@@ -303,11 +330,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 if (IS_INTEGER(a) && IS_INTEGER(b)) {
                     DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) % AS_INTEGER(b)));
                 } else {
-                    return DaiObjError_Newf(
-                        vm,
-                        "TypeError: unsupported operand type(s) for %%: '%s' and '%s'",
-                        dai_value_ts(a),
-                        dai_value_ts(b));
+                    return DaiObjError_Newf(vm,
+                                            "unsupported operand type(s) for %%: '%s' and '%s'",
+                                            dai_value_ts(a),
+                                            dai_value_ts(b));
                 }
                 break;
             }
@@ -319,12 +345,11 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     DaiVM_executeIntBinary(vm, opType, a, b);
                     break;
                 } else {
-                    return DaiObjError_Newf(
-                        vm,
-                        "TypeError: unsupported operand type(s) for %s: '%s' and '%s'",
-                        DaiBinaryOpTypeToString(opType),
-                        dai_value_ts(a),
-                        dai_value_ts(b));
+                    return DaiObjError_Newf(vm,
+                                            "unsupported operand type(s) for %s: '%s' and '%s'",
+                                            DaiBinaryOpTypeToString(opType),
+                                            dai_value_ts(a),
+                                            dai_value_ts(b));
                 }
                 break;
             }
@@ -334,6 +359,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue result =
                     builtin_subscript_get.function(vm, receiver, 1, vm->stack_top - 1);
                 vm->stack_top = vm->stack_top - 2;   // 弹出 index, object
+                if (IS_ERROR(result)) {
+                    return AS_ERROR(result);
+                }
                 DaiVM_push(vm, result);
                 break;
             }
@@ -341,8 +369,12 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 // 从栈顶排列为 index, object, value (object[index] = value)
                 int argCount      = 3;
                 DaiValue receiver = DaiVM_peek(vm, 1);
-                builtin_subscript_set.function(vm, receiver, argCount, vm->stack_top - argCount);
+                DaiValue result   = builtin_subscript_set.function(
+                    vm, receiver, argCount, vm->stack_top - argCount);
                 vm->stack_top = vm->stack_top - argCount;   // 弹出 index, object, value
+                if (IS_ERROR(result)) {
+                    return AS_ERROR(result);
+                }
                 break;
             }
             case DaiOpTrue: {
@@ -387,11 +419,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
                 if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
-                    return DaiObjError_Newf(
-                        vm,
-                        "TypeError: unsupported operand type(s) for >/<: '%s' and '%s'",
-                        dai_value_ts(a),
-                        dai_value_ts(b));
+                    return DaiObjError_Newf(vm,
+                                            "unsupported operand type(s) for >/<: '%s' and '%s'",
+                                            dai_value_ts(a),
+                                            dai_value_ts(b));
                 }
                 DaiValue res = BOOL_VAL(AS_INTEGER(a) > AS_INTEGER(b));
                 DaiVM_push(vm, res);
@@ -401,11 +432,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
                 if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
-                    return DaiObjError_Newf(
-                        vm,
-                        "TypeError: unsupported operand type(s) for >=/<=: '%s' and '%s'",
-                        dai_value_ts(a),
-                        dai_value_ts(b));
+                    return DaiObjError_Newf(vm,
+                                            "unsupported operand type(s) for >=/<=: '%s' and '%s'",
+                                            dai_value_ts(a),
+                                            dai_value_ts(b));
                 }
                 DaiValue res = BOOL_VAL(AS_INTEGER(a) >= AS_INTEGER(b));
                 DaiVM_push(vm, res);
@@ -443,7 +473,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue a = DaiVM_pop(vm);
                 if (IS_NOT_INTEGER(a)) {
                     return DaiObjError_Newf(
-                        vm, "TypeError: unsupported operand type(s) for -: '%s'", dai_value_ts(a));
+                        vm, "unsupported operand type(s) for -: '%s'", dai_value_ts(a));
                 }
                 DaiVM_push(vm, INTEGER_VAL(-AS_INTEGER(a)));
                 break;
@@ -460,7 +490,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     DaiVM_push(vm, INTEGER_VAL(~AS_INTEGER(a)));
                 } else {
                     return DaiObjError_Newf(
-                        vm, "TypeError: unsupported operand type(s) for ~: '%s'", dai_value_ts(a));
+                        vm, "unsupported operand type(s) for ~: '%s'", dai_value_ts(a));
                 }
                 break;
             }
@@ -648,6 +678,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue receiver   = DaiVM_pop(vm);
                 if (IS_OBJ(receiver)) {
                     DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    if (IS_ERROR(res)) {
+                        return AS_ERROR(res);
+                    }
                     DaiVM_push(vm, res);
                 } else {
                     return DaiObjError_Newf(vm,
@@ -663,10 +696,13 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue receiver   = DaiVM_pop(vm);
                 DaiValue value      = DaiVM_pop(vm);
                 if (IS_OBJ(receiver)) {
-                    AS_OBJ(receiver)->set_property_func(vm, receiver, name, value);
+                    DaiValue res = AS_OBJ(receiver)->set_property_func(vm, receiver, name, value);
+                    if (IS_ERROR(res)) {
+                        return AS_ERROR(res);
+                    }
                 } else {
                     return DaiObjError_Newf(vm,
-                                            "'%s' object can not set property '%s'",
+                                            "'%s' object has not property '%s'",
                                             dai_value_ts(receiver),
                                             name->chars);
                 }
@@ -677,6 +713,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = frame->slots[0];
                 DaiValue res        = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                if (IS_ERROR(res)) {
+                    return AS_ERROR(res);
+                }
                 DaiVM_push(vm, res);
                 break;
             }
@@ -684,7 +723,11 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 uint16_t name_index = READ_UINT16();
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = frame->slots[0];
-                AS_OBJ(receiver)->set_property_func(vm, receiver, name, DaiVM_pop(vm));
+                DaiValue res =
+                    AS_OBJ(receiver)->set_property_func(vm, receiver, name, DaiVM_pop(vm));
+                if (IS_ERROR(res)) {
+                    return AS_ERROR(res);
+                }
                 break;
             }
             case DaiOpInherit: {
@@ -698,11 +741,17 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
             case DaiOpGetSuperProperty: {
-                assert(frame->function->superclass != NULL);
+                if (frame->function->superclass == NULL) {
+                    return DaiObjError_Newf(vm, "no superclass found");
+                }
                 uint16_t name_index             = READ_UINT16();
                 DaiObjString* name              = AS_STRING(chunk->constants.values[name_index]);
                 DaiObjBoundMethod* bound_method = DaiObjClass_get_super_method(
                     vm, frame->function->superclass, name, frame->slots[0]);
+                if (bound_method == NULL) {
+                    return DaiObjError_Newf(
+                        vm, "'super' object has not property '%s'", name->chars);
+                }
                 DaiVM_push(vm, OBJ_VAL(bound_method));
                 break;
             }
@@ -712,7 +761,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = DaiVM_peek(vm, argCount);
                 if (IS_OBJ(receiver)) {
-                    DaiValue res     = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    if (IS_ERROR(res)) {
+                        return AS_ERROR(res);
+                    }
                     DaiObjError* err = DaiVM_callValue(vm, res, argCount);
                     if (err != NULL) {
                         return err;
@@ -734,7 +786,10 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = frame->slots[0];
                 if (IS_OBJ(receiver)) {
-                    DaiValue res     = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    if (IS_ERROR(res)) {
+                        return AS_ERROR(res);
+                    }
                     DaiObjError* err = DaiVM_callValue(vm, res, argCount);
                     if (err != NULL) {
                         return err;
@@ -757,6 +812,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue receiver   = frame->slots[0];
                 DaiValue method;
                 DaiObj_get_method(vm, frame->function->superclass, receiver, name, &method);
+                if (IS_ERROR(method)) {
+                    return AS_ERROR(method);
+                }
                 DaiObjError* err = DaiVM_callValue(vm, method, argCount);
                 if (err != NULL) {
                     return err;
@@ -789,7 +847,9 @@ DaiVM_run(DaiVM* vm, DaiObjFunction* function) {
     // 把函数压入栈，然后调用他
     DaiVM_push(vm, OBJ_VAL(function));
     DaiObjError* err = DaiVM_call(vm, function, 0);
-    assert(err == NULL);
+    if (err != NULL) {
+        return err;
+    }
     return DaiVM_dorun(vm, false);
 }
 
@@ -850,7 +910,7 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
             dai_free(line);
         }
     }
-    dai_log("%s\n", err->message);
+    dai_log("Error: %s\n", err->message);
 }
 
 void
@@ -876,7 +936,7 @@ DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input) {
             dai_free(line);
         }
     }
-    dai_log("%s\n", err->message);
+    dai_log("Error: %s\n", err->message);
 }
 
 static void

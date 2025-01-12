@@ -13,16 +13,16 @@
 
 static DaiValue
 dai_default_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
-    dai_error(
-        "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
-    assert(false);
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_value_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 }
 
 static DaiValue
 dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
-    dai_error(
-        "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
-    assert(false);
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_value_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 }
 
 static DaiValue
@@ -34,8 +34,9 @@ static DaiValue
 builtin_subscript_get_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
                          DaiValue* argv) {
     if (!IS_OBJ(receiver)) {
-        dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
-        assert(false);
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
+        return OBJ_VAL(err);
     }
     const DaiObj* obj    = AS_OBJ(receiver);
     const DaiValue index = argv[0];
@@ -45,8 +46,9 @@ builtin_subscript_get_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, i
             break;
         }
         default: {
-            dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
-            assert(false);
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
+            return OBJ_VAL(err);
         }
     }
     return UNDEFINED_VAL;
@@ -55,8 +57,9 @@ static DaiValue
 builtin_subscript_set_fn(__attribute__((unused)) DaiVM* vm,
                          __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
     if (!IS_OBJ(receiver)) {
-        dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
-        assert(false);
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
+        return OBJ_VAL(err);
     }
     // argv 排列为 value, object, index
     const DaiObj* obj    = AS_OBJ(receiver);
@@ -68,8 +71,9 @@ builtin_subscript_set_fn(__attribute__((unused)) DaiVM* vm,
             break;
         }
         default: {
-            dai_error("'%s' object is not subscriptable\n", dai_value_ts(receiver));
-            assert(false);
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
+            return OBJ_VAL(err);
         }
     }
     return UNDEFINED_VAL;
@@ -161,22 +165,18 @@ DaiObjInstance_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
         return OBJ_VAL(bound_method);
     }
 
-    // todo Exception 将错误也作为一种值返回
-    dai_error(
-        "PropertyError: '%s' object has no property '%s'", dai_object_ts(receiver), name->chars);
-    assert(false);
-    return UNDEFINED_VAL;
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 };
 static DaiValue
 DaiObjInstance_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     assert(IS_OBJ(receiver));
     DaiObjInstance* instance = AS_INSTANCE(receiver);
     if (!DaiTable_set_if_exist(&instance->fields, name, value)) {
-        // todo Exception 将错误也作为一种值返回
-        dai_error("PropertyError: '%s' object has no property '%s'",
-                  dai_object_ts(receiver),
-                  name->chars);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+        return OBJ_VAL(err);
     }
     return NIL_VAL;
 }
@@ -206,22 +206,18 @@ DaiObjClass_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
         return OBJ_VAL(bound_method);
     }
 
-    // todo Exception 将错误也作为一种值返回
-    dai_error(
-        "PropertyError: '%s' object has no property '%s'", dai_object_ts(receiver), name->chars);
-    assert(false);
-    return UNDEFINED_VAL;
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 };
 static DaiValue
 DaiObjClass_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     assert(IS_OBJ(receiver));
     DaiObjClass* klass = AS_CLASS(receiver);
     if (!DaiTable_set_if_exist(&klass->class_fields, name, value)) {
-        // todo Exception 将错误也作为一种值返回
-        dai_error("PropertyError: '%s' object has no property '%s'",
-                  dai_object_ts(receiver),
-                  name->chars);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+        return OBJ_VAL(err);
     }
     return NIL_VAL;
 }
@@ -250,9 +246,9 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     vm->stack_top[-argc - 1]   = OBJ_VAL(instance);
     DaiValueArray* field_names = &(instance->klass->field_names);
     if (argc > field_names->count) {
-        // todo Exception 将错误也作为一种值返回
-        dai_error("Too many arguments, max expected=%d got=%d.\n", field_names->count, argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "Too many arguments, max expected=%d got=%d", field_names->count, argc);
+        return OBJ_VAL(err);
     }
     if (IS_NIL(instance->klass->init)) {
         for (int i = 0; i < argc; i++) {
@@ -260,8 +256,10 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
             DaiTable_set(&instance->fields, name, argv[i]);
         }
     } else {
-        // todo check return error
-        DaiVM_runCall2(vm, instance->klass->init, argc);
+        DaiValue res = DaiVM_runCall2(vm, instance->klass->init, argc);
+        if (IS_ERROR(res)) {
+            return res;
+        }
     }
     // check all fields are initialized
     for (int i = argc; i < field_names->count; i++) {
@@ -269,10 +267,11 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
         DaiValue value     = UNDEFINED_VAL;
         DaiTable_get(&instance->fields, name, &value);
         if (IS_UNDEFINED(value)) {
-            dai_error("'%s' object has uninitialized field '%s'\n",
-                      dai_object_ts(OBJ_VAL(instance)),
-                      name->chars);
-            assert(false);
+            DaiObjError* err = DaiObjError_Newf(vm,
+                                                "'%s' object has uninitialized field '%s'",
+                                                dai_object_ts(OBJ_VAL(instance)),
+                                                name->chars);
+            return OBJ_VAL(err);
         }
     }
     return OBJ_VAL(instance);
@@ -309,10 +308,6 @@ DaiObjClass_get_super_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, 
             return DaiObjBoundMethod_New(vm, receiver, method);
         }
     }
-
-    // todo Exception 将错误也作为一种值返回
-    dai_error("PropertyError: 'super' object has no property '%s'", name->chars);
-    assert(false);
     return NULL;
 }
 void
@@ -327,10 +322,8 @@ DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString
             return;
         }
     }
-    // todo Exception 将错误也作为一种值返回
-    dai_error("PropertyError: 'super' object has no property '%s'", name->chars);
-    assert(false);
-    return;
+    DaiObjError* err = DaiObjError_Newf(vm, "'super' object has not property '%s'", name->chars);
+    *method          = OBJ_VAL(err);
 }
 // #endregion
 
@@ -404,8 +397,8 @@ DaiObjArray_preverse(DaiObjArray* array) {
 static DaiValue
 DaiObjArray_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 0) {
-        dai_error("TypeError: length() expected no arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "length() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     return INTEGER_VAL(AS_ARRAY(receiver)->length);
 }
@@ -413,8 +406,9 @@ DaiObjArray_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
 static DaiValue
 DaiObjArray_add(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc == 0) {
-        dai_error("TypeError: add() expected one or more arguments, but got no arguments\n");
-        assert(false);
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "add() expected one or more arguments, but got no arguments");
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     int want           = array->length + argc;
@@ -436,13 +430,13 @@ DaiObjArray_add(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
 static DaiValue
 DaiObjArray_pop(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 0) {
-        dai_error("TypeError: pop() expected no arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "pop() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     if (array->length == 0) {
-        dai_error("IndexError: pop from empty list\n");
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "pop from empty array");
+        return OBJ_VAL(err);
     }
     DaiValue value = array->elements[array->length - 1];
     array->length--;
@@ -452,16 +446,18 @@ DaiObjArray_pop(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
 static DaiValue
 DaiObjArray_sub(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 1 && argc != 2) {
-        dai_error("TypeError: sub() expected 1-2 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "sub() expected 1-2 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     if (!IS_INTEGER(argv[0])) {
-        dai_error("TypeError: sub() expected int arguments, but got %s\n", dai_value_ts(argv[0]));
-        assert(false);
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "sub() expected int arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
     }
     if (argc == 2 && !IS_INTEGER(argv[1])) {
-        dai_error("TypeError: sub() expected int arguments, but got %s\n", dai_value_ts(argv[1]));
-        assert(false);
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "sub() expected int arguments, but got %s", dai_value_ts(argv[1]));
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     int start          = AS_INTEGER(argv[0]);
@@ -490,8 +486,8 @@ DaiObjArray_sub(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
 static DaiValue
 DaiObjArray_remove(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 1) {
-        dai_error("TypeError: remove() expected 1 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "remove() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     DaiValue value     = argv[0];
@@ -504,21 +500,22 @@ DaiObjArray_remove(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
             return receiver;
         }
     }
-    dai_error("ValueError: array.remove(x): x not in array\n");
-    assert(false);
+    DaiObjError* err = DaiObjError_Newf(vm, "array.remove(x): x not in array");
+    return OBJ_VAL(err);
 }
 
 static DaiValue
 DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
                         DaiValue* argv) {
     if (argc != 1) {
-        dai_error("TypeError: removeIndex() expected 1 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "removeIndex() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     if (!IS_INTEGER(argv[0])) {
-        dai_error("TypeError: removeIndex() expected int arguments, but got %s\n",
-                  dai_value_ts(argv[0]));
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "removeIndex() expected int arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     int index          = AS_INTEGER(argv[0]);
@@ -526,8 +523,8 @@ DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, in
         index += array->length;
     }
     if (index < 0 || index >= array->length) {
-        dai_error("IndexError: removeIndex() index out of bounds\n");
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "removeIndex() index out of bounds");
+        return OBJ_VAL(err);
     }
     for (int i = index; i < array->length - 1; i++) {
         array->elements[i] = array->elements[i + 1];
@@ -539,13 +536,13 @@ DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, in
 static DaiValue
 DaiObjArray_extend(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 1) {
-        dai_error("TypeError: extend() expected 1 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "extend() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     if (!IS_ARRAY(argv[0])) {
-        dai_error("TypeError: extend() expected array arguments, but got %s\n",
-                  dai_value_ts(argv[0]));
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "extend() expected array arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     DaiObjArray* other = AS_ARRAY(argv[0]);
@@ -568,8 +565,8 @@ DaiObjArray_extend(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
 static DaiValue
 DaiObjArray_has(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 1) {
-        dai_error("TypeError: has() expected 1 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "has() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     DaiValue value     = argv[0];
@@ -585,8 +582,9 @@ static DaiValue
 DaiObjArray_reversed(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
                      DaiValue* argv) {
     if (argc != 0) {
-        dai_error("TypeError: reversed() expected 0 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "reversed() expected 0 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     // copy array and reverse
@@ -599,8 +597,8 @@ static DaiValue
 DaiObjArray_reverse(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
                     DaiValue* argv) {
     if (argc != 0) {
-        dai_error("TypeError: reverse() expected 0 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "reverse() expected 0 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     DaiObjArray_preverse(array);
@@ -610,8 +608,8 @@ DaiObjArray_reverse(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int ar
 static DaiValue
 DaiObjArray_sort(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 1) {
-        dai_error("TypeError: sort() expected 1 arguments, but got %d\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "sort() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
     DaiValue cmp       = argv[0];
@@ -621,10 +619,13 @@ DaiObjArray_sort(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
         int j        = i - 1;
         for (; j >= 0; --j) {
             DaiValue ret = DaiVM_runCall(vm, cmp, 2, array->elements[j], val);
+            if (IS_ERROR(ret)) {
+                return ret;
+            }
             if (!IS_INTEGER(ret)) {
-                dai_error("TypeError: cmp() expected int return value, but got %s\n",
-                          dai_value_ts(ret));
-                assert(false);
+                DaiObjError* err = DaiObjError_Newf(
+                    vm, "sort cmp() expected int return value, but got %s", dai_value_ts(ret));
+                return OBJ_VAL(err);
             }
             if (AS_INTEGER(ret) > 0) {
                 array->elements[j + 1] = array->elements[j];   // 数据移动
@@ -780,9 +781,9 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
             break;
         }
     }
-    dai_error(
-        "PropertyError: '%s' object has no property '%s'\n", dai_value_ts(receiver), name->chars);
-    assert(false);
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_value_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 }
 
 DaiObjArray*
@@ -803,9 +804,8 @@ static DaiValue
 DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index) {
     assert(IS_ARRAY(receiver));
     if (!IS_INTEGER(index)) {
-        // todo return error
-        dai_error("array index must be integer\n");
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "array index must be integer");
+        return OBJ_VAL(err);
     }
     const DaiObjArray* array = AS_ARRAY(receiver);
     int64_t n                = AS_INTEGER(index);
@@ -813,9 +813,8 @@ DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, D
         n += array->length;
     }
     if (n < 0 || n >= array->length) {
-        // todo return error
-        dai_error("array index out of bounds\n");
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "array index out of bounds");
+        return OBJ_VAL(err);
     }
     return array->elements[n];
 }
@@ -825,9 +824,8 @@ DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, D
                          DaiValue value) {
     assert(IS_ARRAY(receiver));
     if (!IS_INTEGER(index)) {
-        // todo return error
-        dai_error("array index must be integer\n");
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "array index must be integer");
+        return OBJ_VAL(err);
     }
     const DaiObjArray* array = AS_ARRAY(receiver);
     int64_t n                = AS_INTEGER(index);
@@ -835,9 +833,8 @@ DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, D
         n += array->length;
     }
     if (n < 0 || n >= array->length) {
-        // todo return error
-        dai_error("array index out of bounds\n");
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "array index out of bounds");
+        return OBJ_VAL(err);
     }
     array->elements[n] = value;
     return receiver;
@@ -945,17 +942,17 @@ static DaiValue
 builtin_len(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
             DaiValue* argv) {
     if (argc != 1) {
-        // todo 将错误也作为一种值
-        dai_error("wrong number of arguments. got=%d, want=1\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "len() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
     }
     const DaiValue arg = argv[0];
     if (IS_STRING(arg)) {
         return INTEGER_VAL(AS_STRING(arg)->length);
+    } else if (IS_ARRAY(arg)) {
+        return INTEGER_VAL(AS_ARRAY(arg)->length);
     } else {
-        // todo 将错误也作为一种值
-        dai_error("TypeError: \"len\" not supported \"%s\"\n", dai_value_ts(arg));
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "'len' not supported '%s'", dai_value_ts(arg));
+        return OBJ_VAL(err);
     }
     return NIL_VAL;
 }
@@ -964,9 +961,8 @@ static DaiValue
 builtin_type(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
              DaiValue* argv) {
     if (argc != 1) {
-        // todo 将错误也作为一种值
-        dai_error("wrong number of arguments. got=%d, want=1\n", argc);
-        assert(false);
+        DaiObjError* err = DaiObjError_Newf(vm, "type() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
     }
     const DaiValue arg = argv[0];
     const char* s      = dai_value_ts(arg);
