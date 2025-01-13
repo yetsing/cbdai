@@ -328,12 +328,50 @@ DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString
 // #endregion
 
 // #region 字符串
+
+static DaiValue
+DaiObjString_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                    DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err = DaiObjError_Newf(vm, "length() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    return INTEGER_VAL(AS_STRING(receiver)->length);
+}
+
+enum DaiObjStringFunctionNo {
+    DaiObjStringFunctionNo_length = 0,
+};
+
+static DaiObjBuiltinFunction DaiObjStringBuiltins[] = {
+    [DaiObjStringFunctionNo_length] =
+        {
+            {.type = DaiObjType_builtinFn},
+            .name     = "length",
+            .function = &DaiObjString_length,
+        },
+};
+
+static DaiValue
+DaiObjString_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    const char* cname = name->chars;
+    if (strcmp(cname, "length") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_length]);
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
+};
+
+
 static DaiObjString*
 allocate_string(DaiVM* vm, char* chars, int length, uint32_t hash) {
-    DaiObjString* string = ALLOCATE_OBJ(vm, DaiObjString, DaiObjType_string);
-    string->length       = length;
-    string->chars        = chars;
-    string->hash         = hash;
+    DaiObjString* string          = ALLOCATE_OBJ(vm, DaiObjString, DaiObjType_string);
+    string->length                = length;
+    string->num_of_bytes          = length;
+    string->chars                 = chars;
+    string->hash                  = hash;
+    string->obj.get_property_func = DaiObjString_get_property;
     DaiTable_set(&vm->strings, string, NIL_VAL);
     return string;
 }

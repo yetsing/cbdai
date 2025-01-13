@@ -93,7 +93,7 @@ interpret2(DaiVM* vm, const char* input) {
     if (runtime_err) {
         DaiChunk_disassemble(&function->chunk, "<test>");
         DaiVM_printError2(vm, runtime_err, input);
-        munit_assert_null(err);
+        munit_assert_null(runtime_err);
     }
 }
 
@@ -442,27 +442,58 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
 }
 
 static MunitResult
-test_string_expressions(__attribute__((unused)) const MunitParameter params[],
-                        __attribute__((unused)) void* user_data) {
-    DaiObjString monkey =
-        (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
-    DaiObjString monkeybanana =
-        (DaiObjString){{.type = DaiObjType_string}, .chars = "monkeybanana", .length = 11};
+test_string_operation(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void* user_data) {
+    DaiVM vm;
+    DaiVM_init(&vm);
     DaiVMTestCase tests[] = {
+        // equal
+        {
+            "\"monkey\" == \"monkey\";",
+            dai_true,
+        },
+        {
+            "\"monkey\" == \"monkeybanana\";",
+            dai_false,
+        },
+        {
+            "\"monkey\" == \"monkey\" + \"banana\";",
+            dai_false,
+        },
+        {
+            "\"monkey\" == \"monkey\" + \"banana\" + \"apple\";",
+            dai_false,
+        },
+        {
+            "\"monkey\" != \"monkey\" + \"banana\" + \"apple\";",
+            dai_true,
+        },
+
+        // length
+        {
+            "\"\".length();",
+            INTEGER_VAL(0),
+        },
+        {
+            "\"monkey\".length();",
+            INTEGER_VAL(6),
+        },
+
         {
             "\"monkey\";",
-            OBJ_VAL(&monkey),
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
         },
         {
             "\"mon\" + \"key\";",
-            OBJ_VAL(&monkey),
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
         },
         {
             "\"mon\" + \"key\" + \"banana\";",
-            OBJ_VAL(&monkeybanana),
+            OBJ_VAL(dai_copy_string(&vm, "monkeybanana", 12)),
         },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    DaiVM_reset(&vm);
     return MUNIT_OK;
 }
 
@@ -1384,8 +1415,8 @@ MunitTest vm_tests[] = {
      NULL,
      MUNIT_TEST_OPTION_NONE,
      NULL},
-    {(char*)"/test_string_expressions",
-     test_string_expressions,
+    {(char*)"/test_string_operation",
+     test_string_operation,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

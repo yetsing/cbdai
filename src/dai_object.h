@@ -125,6 +125,7 @@ typedef struct {
 
 struct DaiObjString {
     DaiObj obj;
+    int num_of_bytes;
     int length;
     char* chars;
     uint32_t hash;
