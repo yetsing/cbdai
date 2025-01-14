@@ -21,3 +21,5 @@ dai_compile
 [Unicode Character Database Tools](https://github.com/rhdunn/ucd-tools)
 
 https://peps.python.org/pep-0456/#abstract
+
+[utf8.h](https://github.com/sheredom/utf8.h)
