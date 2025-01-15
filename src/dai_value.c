@@ -62,7 +62,7 @@ dai_value_equal(DaiValue a, DaiValue b) {
         case DaiValueType_int: return AS_INTEGER(a) == AS_INTEGER(b);
         case DaiValueType_float: return float_equals(AS_FLOAT(a), AS_FLOAT(b));
         case DaiValueType_bool: return AS_BOOL(a) == AS_BOOL(b);
-        case DaiValueType_obj: return AS_OBJ(a) == AS_OBJ(b);
+        case DaiValueType_obj: return AS_OBJ(a)->operation->equal_func(a, b);
         default: return true;
     }
 }

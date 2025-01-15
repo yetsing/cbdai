@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,85 +22,45 @@ dai_default_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
 static DaiValue
 dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object has not property '%s'", dai_value_ts(receiver), name->chars);
+        vm, "'%s' object can not set property '%s'", dai_value_ts(receiver), name->chars);
     return OBJ_VAL(err);
 }
 
 static DaiValue
-DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index);
-static DaiValue
-DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index,
-                         DaiValue value);
-static DaiValue
-builtin_subscript_get_fn(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
-                         DaiValue* argv) {
-    if (!IS_OBJ(receiver)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
-        return OBJ_VAL(err);
-    }
-    const DaiObj* obj    = AS_OBJ(receiver);
-    const DaiValue index = argv[0];
-    switch (obj->type) {
-        case DaiObjType_array: {
-            return DaiObjArray_subscriptGet(vm, receiver, index);
-            break;
-        }
-        default: {
-            DaiObjError* err =
-                DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
-            return OBJ_VAL(err);
-        }
-    }
-    return UNDEFINED_VAL;
-}
-static DaiValue
-builtin_subscript_set_fn(__attribute__((unused)) DaiVM* vm,
-                         __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
-    if (!IS_OBJ(receiver)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
-        return OBJ_VAL(err);
-    }
-    // argv 排列为 value, object, index
-    const DaiObj* obj    = AS_OBJ(receiver);
-    const DaiValue value = argv[0];
-    const DaiValue index = argv[2];
-    switch (obj->type) {
-        case DaiObjType_array: {
-            return DaiObjArray_subscriptSet(vm, receiver, index, value);
-            break;
-        }
-        default: {
-            DaiObjError* err =
-                DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
-            return OBJ_VAL(err);
-        }
-    }
-    return UNDEFINED_VAL;
+dai_default_subscript_get(DaiVM* vm, DaiValue receiver, DaiValue index) {
+    DaiObjError* err =
+        DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
+    return OBJ_VAL(err);
 }
 
-DaiObjBuiltinFunction builtin_subscript_get = {
-    {.type = DaiObjType_builtinFn},
-    .name     = "subscript_get",
-    .function = builtin_subscript_get_fn,
-};
+static DaiValue
+dai_default_subscript_set(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value) {
+    DaiObjError* err =
+        DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
+    return OBJ_VAL(err);
+}
 
-DaiObjBuiltinFunction builtin_subscript_set = {
-    {.type = DaiObjType_builtinFn},
-    .name     = "subscript_set",
-    .function = builtin_subscript_set_fn,
+static bool
+dai_default_equal(DaiValue a, DaiValue b) {
+    return AS_OBJ(a) == AS_OBJ(b);
+}
+
+static struct DaiOperation default_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .equal_func         = dai_default_equal,
 };
 
 static DaiObj*
 allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
-    DaiObj* object            = (DaiObj*)vm_reallocate(vm, NULL, 0, size);
-    object->type              = type;
-    object->is_marked         = false;
-    object->next              = vm->objects;
-    object->get_property_func = dai_default_get_property;
-    object->set_property_func = dai_default_set_property;
-    vm->objects               = object;
+    DaiObj* object    = (DaiObj*)vm_reallocate(vm, NULL, 0, size);
+    object->type      = type;
+    object->is_marked = false;
+    object->next      = vm->objects;
+    object->operation = &default_operation;
+    vm->objects       = object;
 #ifdef DEBUG_LOG_GC
     dai_log("%p allocate %zu for %d\n", (void*)object, size, type);
 
@@ -222,12 +183,17 @@ DaiObjClass_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiVa
     return NIL_VAL;
 }
 
+static struct DaiOperation class_operation = {
+    .get_property_func = DaiObjClass_get_property,
+    .set_property_func = DaiObjClass_set_property,
+    .equal_func        = dai_default_equal,
+};
+
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
-    DaiObjClass* klass           = ALLOCATE_OBJ(vm, DaiObjClass, DaiObjType_class);
-    klass->obj.get_property_func = DaiObjClass_get_property;
-    klass->obj.set_property_func = DaiObjClass_set_property;
-    klass->name                  = name;
+    DaiObjClass* klass   = ALLOCATE_OBJ(vm, DaiObjClass, DaiObjType_class);
+    klass->obj.operation = &class_operation;
+    klass->name          = name;
     DaiTable_init(&klass->class_fields);
     DaiTable_init(&klass->class_methods);
     DaiTable_init(&klass->methods);
@@ -277,13 +243,18 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     return OBJ_VAL(instance);
 }
 
+static struct DaiOperation instance_operation = {
+    .get_property_func = DaiObjInstance_get_property,
+    .set_property_func = DaiObjInstance_set_property,
+    .equal_func        = dai_default_equal,
+};
+
 
 DaiObjInstance*
 DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass) {
-    DaiObjInstance* instance        = ALLOCATE_OBJ(vm, DaiObjInstance, DaiObjType_instance);
-    instance->obj.get_property_func = DaiObjInstance_get_property;
-    instance->obj.set_property_func = DaiObjInstance_set_property;
-    instance->klass                 = klass;
+    DaiObjInstance* instance = ALLOCATE_OBJ(vm, DaiObjInstance, DaiObjType_instance);
+    instance->obj.operation  = &instance_operation;
+    instance->klass          = klass;
     DaiTable_init(&instance->fields);
     DaiTable_copy(&instance->klass->fields, &instance->fields);
     return instance;
@@ -329,6 +300,33 @@ DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString
 
 // #region 字符串
 
+// code from https://github.com/sheredom/utf8.h/blob/master/utf8.h#L542
+int
+utf8len(const char* str) {
+    size_t length = 0;
+
+    while ('\0' != *str) {
+        if (0xf0 == (0xf8 & *str)) {
+            /* 4-byte utf8 code point (began with 0b11110xxx) */
+            str += 4;
+        } else if (0xe0 == (0xf0 & *str)) {
+            /* 3-byte utf8 code point (began with 0b1110xxxx) */
+            str += 3;
+        } else if (0xc0 == (0xe0 & *str)) {
+            /* 2-byte utf8 code point (began with 0b110xxxxx) */
+            str += 2;
+        } else { /* if (0x00 == (0x80 & *s)) { */
+            /* 1-byte ascii (began with 0b0xxxxxxx) */
+            str += 1;
+        }
+
+        /* no matter the bytes we marched s forward by, it was
+         * only 1 utf8 codepoint */
+        length++;
+    }
+    return length;
+}
+
 static DaiValue
 DaiObjString_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
                     DaiValue* argv) {
@@ -336,7 +334,7 @@ DaiObjString_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int ar
         DaiObjError* err = DaiObjError_Newf(vm, "length() expected no arguments, but got %d", argc);
         return OBJ_VAL(err);
     }
-    return INTEGER_VAL(AS_STRING(receiver)->length);
+    return INTEGER_VAL(AS_STRING(receiver)->utf8_length);
 }
 
 enum DaiObjStringFunctionNo {
@@ -363,15 +361,24 @@ DaiObjString_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     return OBJ_VAL(err);
 };
 
+static struct DaiOperation string_operation = {
+    .get_property_func  = DaiObjString_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    // 因为相同的字符串会被重用，所以直接比较指针（字符串驻留）
+    .equal_func = dai_default_equal,
+};
+
 
 static DaiObjString*
 allocate_string(DaiVM* vm, char* chars, int length, uint32_t hash) {
-    DaiObjString* string          = ALLOCATE_OBJ(vm, DaiObjString, DaiObjType_string);
-    string->length                = length;
-    string->num_of_bytes          = length;
-    string->chars                 = chars;
-    string->hash                  = hash;
-    string->obj.get_property_func = DaiObjString_get_property;
+    DaiObjString* string  = ALLOCATE_OBJ(vm, DaiObjString, DaiObjType_string);
+    string->length        = length;
+    string->utf8_length   = utf8len(chars);
+    string->chars         = chars;
+    string->hash          = hash;
+    string->obj.operation = &string_operation;
     DaiTable_set(&vm->strings, string, NIL_VAL);
     return string;
 }
@@ -824,22 +831,23 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     return OBJ_VAL(err);
 }
 
-DaiObjArray*
-DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
-    DaiObjArray* array           = ALLOCATE_OBJ(vm, DaiObjArray, DaiObjType_array);
-    array->obj.get_property_func = DaiObjArray_get_property;
-    array->capacity              = length;
-    array->length                = length;
-    array->elements              = NULL;
-    if (length > 0) {
-        array->elements = GROW_ARRAY(DaiValue, NULL, 0, length);
-        memcpy(array->elements, elements, length * sizeof(DaiValue));
+static bool
+DaiObjArray_equal(DaiValue a, DaiValue b) {
+    DaiObjArray* array_a = AS_ARRAY(a);
+    DaiObjArray* array_b = AS_ARRAY(b);
+    if (array_a->length != array_b->length) {
+        return false;
     }
-    return array;
+    for (int i = 0; i < array_a->length; i++) {
+        if (!dai_value_equal(array_a->elements[i], array_b->elements[i])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 static DaiValue
-DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index) {
+DaiObjArray_subscript_get(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index) {
     assert(IS_ARRAY(receiver));
     if (!IS_INTEGER(index)) {
         DaiObjError* err = DaiObjError_Newf(vm, "array index must be integer");
@@ -858,8 +866,8 @@ DaiObjArray_subscriptGet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, D
 }
 
 static DaiValue
-DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index,
-                         DaiValue value) {
+DaiObjArray_subscript_set(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index,
+                          DaiValue value) {
     assert(IS_ARRAY(receiver));
     if (!IS_INTEGER(index)) {
         DaiObjError* err = DaiObjError_Newf(vm, "array index must be integer");
@@ -876,6 +884,28 @@ DaiObjArray_subscriptSet(__attribute__((unused)) DaiVM* vm, DaiValue receiver, D
     }
     array->elements[n] = value;
     return receiver;
+}
+
+static struct DaiOperation array_operation = {
+    .get_property_func  = DaiObjArray_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = DaiObjArray_subscript_get,
+    .subscript_set_func = DaiObjArray_subscript_set,
+    .equal_func         = DaiObjArray_equal,
+};
+
+DaiObjArray*
+DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
+    DaiObjArray* array   = ALLOCATE_OBJ(vm, DaiObjArray, DaiObjType_array);
+    array->obj.operation = &array_operation;
+    array->capacity      = length;
+    array->length        = length;
+    array->elements      = NULL;
+    if (length > 0) {
+        array->elements = GROW_ARRAY(DaiValue, NULL, 0, length);
+        memcpy(array->elements, elements, length * sizeof(DaiValue));
+    }
+    return array;
 }
 
 

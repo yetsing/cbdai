@@ -46,13 +46,23 @@ typedef enum {
 typedef DaiValue (*BuiltinFn)(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);
 typedef DaiValue (*GetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name);
 typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
+typedef DaiValue (*SubscriptGetFn)(DaiVM* vm, DaiValue receiver, DaiValue index);
+typedef DaiValue (*SubscriptSetFn)(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value);
+typedef bool (*EqualFn)(DaiValue a, DaiValue b);
+
+struct DaiOperation {
+    GetPropertyFn get_property_func;
+    SetPropertyFn set_property_func;
+    SubscriptGetFn subscript_get_func;
+    SubscriptSetFn subscript_set_func;
+    EqualFn equal_func;
+};
 
 struct DaiObj {
     DaiObjType type;
     bool is_marked;        // 是否被标记（标记-清除垃圾回收算法）
     struct DaiObj* next;   // 对象链表，会串起所有分配的对象
-    GetPropertyFn get_property_func;
-    SetPropertyFn set_property_func;
+    struct DaiOperation* operation;
 };
 
 typedef struct {
@@ -125,8 +135,8 @@ typedef struct {
 
 struct DaiObjString {
     DaiObj obj;
-    int num_of_bytes;
-    int length;
+    int length;   // bytes length
+    int utf8_length;
     char* chars;
     uint32_t hash;
 };
@@ -164,7 +174,4 @@ dai_is_obj_type(DaiValue value, DaiObjType type) {
 
 // 内置函数
 extern DaiObjBuiltinFunction builtin_funcs[256];
-// 特殊的内置函数
-extern DaiObjBuiltinFunction builtin_subscript_get;
-extern DaiObjBuiltinFunction builtin_subscript_set;
 #endif /* D772959F_7E3C_4B7E_B19F_7880710F99C0 */

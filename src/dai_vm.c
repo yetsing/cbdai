@@ -356,24 +356,33 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             case DaiOpSubscript: {
                 // 从栈顶排列为 index, object (object[index])
                 DaiValue receiver = DaiVM_peek(vm, 1);
-                DaiValue result =
-                    builtin_subscript_get.function(vm, receiver, 1, vm->stack_top - 1);
-                vm->stack_top = vm->stack_top - 2;   // 弹出 index, object
-                if (IS_ERROR(result)) {
-                    return AS_ERROR(result);
+                if (IS_OBJ(receiver)) {
+                    DaiValue result = AS_OBJ(receiver)->operation->subscript_get_func(
+                        vm, receiver, DaiVM_peek(vm, 0));
+                    if (IS_ERROR(result)) {
+                        return AS_ERROR(result);
+                    }
+                    vm->stack_top = vm->stack_top - 2;   // 弹出 index, object
+                    DaiVM_push(vm, result);
+                } else {
+                    return DaiObjError_Newf(
+                        vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
                 }
-                DaiVM_push(vm, result);
                 break;
             }
             case DaiOpSubscriptSet: {
                 // 从栈顶排列为 index, object, value (object[index] = value)
-                int argCount      = 3;
                 DaiValue receiver = DaiVM_peek(vm, 1);
-                DaiValue result   = builtin_subscript_set.function(
-                    vm, receiver, argCount, vm->stack_top - argCount);
-                vm->stack_top = vm->stack_top - argCount;   // 弹出 index, object, value
-                if (IS_ERROR(result)) {
-                    return AS_ERROR(result);
+                if (IS_OBJ(receiver)) {
+                    DaiValue result = AS_OBJ(receiver)->operation->subscript_set_func(
+                        vm, receiver, DaiVM_peek(vm, 0), DaiVM_peek(vm, 2));
+                    vm->stack_top = vm->stack_top - 3;   // 弹出 index, object, value
+                    if (IS_ERROR(result)) {
+                        return AS_ERROR(result);
+                    }
+                } else {
+                    return DaiObjError_Newf(
+                        vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
                 }
                 break;
             }
@@ -677,7 +686,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = DaiVM_pop(vm);
                 if (IS_OBJ(receiver)) {
-                    DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiValue res =
+                        AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
@@ -696,13 +706,14 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiValue receiver   = DaiVM_pop(vm);
                 DaiValue value      = DaiVM_pop(vm);
                 if (IS_OBJ(receiver)) {
-                    DaiValue res = AS_OBJ(receiver)->set_property_func(vm, receiver, name, value);
+                    DaiValue res =
+                        AS_OBJ(receiver)->operation->set_property_func(vm, receiver, name, value);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
                 } else {
                     return DaiObjError_Newf(vm,
-                                            "'%s' object has not property '%s'",
+                                            "'%s' object can not set property '%s'",
                                             dai_value_ts(receiver),
                                             name->chars);
                 }
@@ -712,7 +723,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 uint16_t name_index = READ_UINT16();
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = frame->slots[0];
-                DaiValue res        = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                DaiValue res = AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
                 if (IS_ERROR(res)) {
                     return AS_ERROR(res);
                 }
@@ -723,8 +734,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 uint16_t name_index = READ_UINT16();
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = frame->slots[0];
-                DaiValue res =
-                    AS_OBJ(receiver)->set_property_func(vm, receiver, name, DaiVM_pop(vm));
+                DaiValue res        = AS_OBJ(receiver)->operation->set_property_func(
+                    vm, receiver, name, DaiVM_pop(vm));
                 if (IS_ERROR(res)) {
                     return AS_ERROR(res);
                 }
@@ -761,7 +772,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = DaiVM_peek(vm, argCount);
                 if (IS_OBJ(receiver)) {
-                    DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiValue res =
+                        AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
@@ -786,7 +798,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = frame->slots[0];
                 if (IS_OBJ(receiver)) {
-                    DaiValue res = AS_OBJ(receiver)->get_property_func(vm, receiver, name);
+                    DaiValue res =
+                        AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }

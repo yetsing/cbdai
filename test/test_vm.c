@@ -1338,7 +1338,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = 1; a.nonexistent = 2;",
-            OBJ_VAL(DaiObjError_Newf(&vm, "'int' object has not property 'nonexistent'")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "'int' object can not set property 'nonexistent'")),
         },
         {
             "var a = [1]; a.nonexistent;",
@@ -1346,7 +1346,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = [1]; a.nonexistent = 2;",
-            OBJ_VAL(DaiObjError_Newf(&vm, "'array' object has not property 'nonexistent'")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "'array' object can not set property 'nonexistent'")),
         },
         {
             "class F { var a = 1; }; var f = F(); f.nonexistent;",
@@ -1382,6 +1382,23 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             OBJ_VAL(DaiObjError_Newf(&vm, "'super' object has not property 'a'")),
         },
 
+
+        {
+            "class F { var a; }; var f = F();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'a'")),
+        },
+        {
+            "class F { var a; var b; }; var f = F();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'a'")),
+        },
+        {
+            "class F { var age; var name; }; var f = F(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'name'")),
+        },
+        {
+            "class F { var age = 30; var name; }; var f = F();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'name'")),
+        },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     DaiVM_reset(&vm);
