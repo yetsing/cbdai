@@ -58,6 +58,8 @@ dai_print_value(DaiValue value);
 
 bool
 dai_value_equal(DaiValue a, DaiValue b);
+char*
+dai_value_string(DaiValue value);   // caller should free the returned string
 
 typedef struct {
     int capacity;

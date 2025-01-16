@@ -6,6 +6,7 @@
 
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_stringbuffer.h"
 #include "dai_table.h"
 #include "dai_value.h"
 #include "dai_vm.h"
@@ -40,6 +41,13 @@ dai_default_subscript_set(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue
     return OBJ_VAL(err);
 }
 
+static char*
+dai_default_string_func(DaiValue value) {
+    char buf[64];
+    int length = snprintf(buf, sizeof(buf), "<obj at %p>", AS_OBJ(value));
+    return strndup(buf, length);
+}
+
 static bool
 dai_default_equal(DaiValue a, DaiValue b) {
     return AS_OBJ(a) == AS_OBJ(b);
@@ -50,6 +58,25 @@ static struct DaiOperation default_operation = {
     .set_property_func  = dai_default_set_property,
     .subscript_get_func = dai_default_subscript_get,
     .subscript_set_func = dai_default_subscript_set,
+    .string_func        = dai_default_string_func,
+    .equal_func         = dai_default_equal,
+};
+
+static char*
+DaiObjBuiltinFunction_String(DaiValue value) {
+    DaiObjBuiltinFunction* builtin = AS_BUILTINFN(value);
+    int size                       = strlen(builtin->name) + 16;
+    char* buf                      = ALLOCATE(char, size);
+    snprintf(buf, size, "<builtin fn %s>", builtin->name);
+    return buf;
+}
+
+static struct DaiOperation builtin_function_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjBuiltinFunction_String,
     .equal_func         = dai_default_equal,
 };
 
@@ -69,9 +96,30 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
     return object;
 }
 
+// #region function
+
+static char*
+DaiObjFunction_String(DaiValue value) {
+    DaiObjFunction* function = AS_FUNCTION(value);
+    int size                 = function->name->length + 16;
+    char* buf                = ALLOCATE(char, size);
+    snprintf(buf, size, "<fn %s>", function->name->chars);
+    return buf;
+}
+
+static struct DaiOperation function_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjFunction_String,
+    .equal_func         = dai_default_equal,
+};
+
 DaiObjFunction*
 DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename) {
     DaiObjFunction* function = ALLOCATE_OBJ(vm, DaiObjFunction, DaiObjType_function);
+    function->obj.operation  = &function_operation;
     function->arity          = 0;
     function->name           = dai_copy_string(vm, name, strlen(name));
     DaiChunk_init(&function->chunk, filename);
@@ -84,9 +132,32 @@ DaiObjFunction_name(DaiObjFunction* function) {
     return function->name->chars;
 }
 
+// #endregion
+
+// #region closure
+
+static char*
+DaiObjClosure_String(DaiValue value) {
+    DaiObjClosure* closure = AS_CLOSURE(value);
+    int size               = closure->function->name->length + 16;
+    char* buf              = ALLOCATE(char, size);
+    snprintf(buf, size, "<closure %s>", closure->function->name->chars);
+    return buf;
+}
+
+static struct DaiOperation closure_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjClosure_String,
+    .equal_func         = dai_default_equal,
+};
+
 DaiObjClosure*
 DaiObjClosure_New(DaiVM* vm, DaiObjFunction* function) {
     DaiObjClosure* closure = ALLOCATE_OBJ(vm, DaiObjClosure, DaiObjType_closure);
+    closure->obj.operation = &closure_operation;
     closure->function      = function;
     closure->frees         = NULL;
     closure->free_count    = 0;
@@ -97,6 +168,8 @@ const char*
 DaiObjClosure_name(DaiObjClosure* closure) {
     return closure->function->name->chars;
 }
+
+// #endregion
 
 // #region 类与实例
 
@@ -183,10 +256,22 @@ DaiObjClass_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiVa
     return NIL_VAL;
 }
 
+static char*
+DaiObjClass_String(DaiValue value) {
+    DaiObjClass* klass = AS_CLASS(value);
+    int size           = klass->name->length + 16;
+    char* buf          = ALLOCATE(char, size);
+    snprintf(buf, size, "<class %s>", klass->name->chars);
+    return buf;
+}
+
 static struct DaiOperation class_operation = {
-    .get_property_func = DaiObjClass_get_property,
-    .set_property_func = DaiObjClass_set_property,
-    .equal_func        = dai_default_equal,
+    .get_property_func  = DaiObjClass_get_property,
+    .set_property_func  = DaiObjClass_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjClass_String,
+    .equal_func         = dai_default_equal,
 };
 
 DaiObjClass*
@@ -243,10 +328,22 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     return OBJ_VAL(instance);
 }
 
+static char*
+DaiObjInstance_String(DaiValue value) {
+    DaiObjInstance* instance = AS_INSTANCE(value);
+    int size                 = instance->klass->name->length + 64;
+    char* buf                = ALLOCATE(char, size);
+    snprintf(buf, size, "<instance of %s at %p>", instance->klass->name->chars, instance);
+    return buf;
+}
+
 static struct DaiOperation instance_operation = {
-    .get_property_func = DaiObjInstance_get_property,
-    .set_property_func = DaiObjInstance_set_property,
-    .equal_func        = dai_default_equal,
+    .get_property_func  = DaiObjInstance_get_property,
+    .set_property_func  = DaiObjInstance_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjInstance_String,
+    .equal_func         = dai_default_equal,
 };
 
 
@@ -260,9 +357,34 @@ DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass) {
     return instance;
 }
 
+static char*
+DaiObjBoundMethod_String(DaiValue value) {
+    DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(value);
+    char* instance_str              = dai_value_string(bound_method->receiver);
+    int size  = strlen(instance_str) + bound_method->method->function->name->length + 32;
+    char* buf = ALLOCATE(char, size);
+    snprintf(buf,
+             size,
+             "<bound method %s of %s>",
+             bound_method->method->function->name->chars,
+             instance_str);
+    FREE_ARRAY(char, instance_str, strlen(instance_str) + 1);
+    return buf;
+}
+
+static struct DaiOperation bound_method_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjBoundMethod_String,
+    .equal_func         = dai_default_equal,
+};
+
 DaiObjBoundMethod*
 DaiObjBoundMethod_New(DaiVM* vm, DaiValue receiver, DaiValue method) {
     DaiObjBoundMethod* bound_method = ALLOCATE_OBJ(vm, DaiObjBoundMethod, DaiObjType_boundMethod);
+    bound_method->obj.operation     = &bound_method_operation;
     bound_method->receiver          = receiver;
     bound_method->method            = AS_CLOSURE(method);
     return bound_method;
@@ -344,7 +466,7 @@ enum DaiObjStringFunctionNo {
 static DaiObjBuiltinFunction DaiObjStringBuiltins[] = {
     [DaiObjStringFunctionNo_length] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "length",
             .function = &DaiObjString_length,
         },
@@ -361,11 +483,17 @@ DaiObjString_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     return OBJ_VAL(err);
 };
 
+static char*
+DaiObjString_String(DaiValue value) {
+    return strdup(AS_STRING(value)->chars);
+}
+
 static struct DaiOperation string_operation = {
     .get_property_func  = DaiObjString_get_property,
     .set_property_func  = dai_default_set_property,
     .subscript_get_func = dai_default_subscript_get,
     .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjString_String,
     // 因为相同的字符串会被重用，所以直接比较指针（字符串驻留）
     .equal_func = dai_default_equal,
 };
@@ -701,67 +829,67 @@ enum DaiObjArrayFunctionNo {
 static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
     [DaiObjArrayFunctionNo_length] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "length",
             .function = &DaiObjArray_length,
         },
     [DaiObjArrayFunctionNo_add] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "add",
             .function = &DaiObjArray_add,
         },
     [DaiObjArrayFunctionNo_pop] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "pop",
             .function = &DaiObjArray_pop,
         },
     [DaiObjArrayFunctionNo_sub] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "sub",
             .function = &DaiObjArray_sub,
         },
     [DaiObjArrayFunctionNo_remove] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "remove",
             .function = &DaiObjArray_remove,
         },
     [DaiObjArrayFunctionNo_removeIndex] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "removeIndex",
             .function = &DaiObjArray_removeIndex,
         },
     [DaiObjArrayFunctionNo_extend] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "extend",
             .function = &DaiObjArray_extend,
         },
     [DaiObjArrayFunctionNo_has] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "has",
             .function = &DaiObjArray_has,
         },
     [DaiObjArrayFunctionNo_reversed] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "reversed",
             .function = &DaiObjArray_reversed,
         },
     [DaiObjArrayFunctionNo_reverse] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "reverse",
             .function = &DaiObjArray_reverse,
         },
     [DaiObjArrayFunctionNo_sort] =
         {
-            {.type = DaiObjType_builtinFn},
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
             .name     = "sort",
             .function = &DaiObjArray_sort,
         },
@@ -886,11 +1014,29 @@ DaiObjArray_subscript_set(__attribute__((unused)) DaiVM* vm, DaiValue receiver, 
     return receiver;
 }
 
+static char*
+DaiObjArray_String(DaiValue value) {
+    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiObjArray* array  = AS_ARRAY(value);
+    DaiStringBuffer_write(sb, "[");
+    for (int i = 0; i < array->length; i++) {
+        char* s = dai_value_string(array->elements[i]);
+        DaiStringBuffer_write(sb, s);
+        FREE_ARRAY(char, s, strlen(s) + 1);
+        if (i != array->length - 1) {
+            DaiStringBuffer_write(sb, ", ");
+        }
+    }
+    DaiStringBuffer_write(sb, "]");
+    return DaiStringBuffer_getAndFree(sb, NULL);
+}
+
 static struct DaiOperation array_operation = {
     .get_property_func  = DaiObjArray_get_property,
     .set_property_func  = dai_default_set_property,
     .subscript_get_func = DaiObjArray_subscript_get,
     .subscript_set_func = DaiObjArray_subscript_set,
+    .string_func        = DaiObjArray_String,
     .equal_func         = DaiObjArray_equal,
 };
 
@@ -911,10 +1057,29 @@ DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
 
 // #endregion
 
+// #region 错误
+
+static char*
+DaiObjError_String(DaiValue value) {
+    int size  = strlen(AS_ERROR(value)->message) + 16;
+    char* buf = ALLOCATE(char, size);
+    snprintf(buf, size, "Error: %s", AS_ERROR(value)->message);
+    return buf;
+}
+
+static struct DaiOperation error_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjError_String,
+    .equal_func         = dai_default_equal,
+};
 
 DaiObjError*
 DaiObjError_Newf(DaiVM* vm, const char* format, ...) {
-    DaiObjError* error = ALLOCATE_OBJ(vm, DaiObjError, DaiObjType_error);
+    DaiObjError* error   = ALLOCATE_OBJ(vm, DaiObjError, DaiObjType_error);
+    error->obj.operation = &error_operation;
     va_list args;
     va_start(args, format);
     vsnprintf(error->message, sizeof(error->message), format, args);
@@ -922,53 +1087,7 @@ DaiObjError_Newf(DaiVM* vm, const char* format, ...) {
     return error;
 }
 
-static void
-print_function(DaiObjFunction* function) {
-    if (function->name == NULL) {
-        dai_log("<script>");
-        return;
-    }
-    dai_log("<fn %s>", function->name->chars);
-}
-void
-dai_print_object(DaiValue value) {
-    switch (OBJ_TYPE(value)) {
-        case DaiObjType_boundMethod: {
-            DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(value);
-            dai_log("<bound method %s of <object at %p>>",
-                    DaiObjClosure_name(bound_method->method),
-                    bound_method);
-            break;
-        }
-        case DaiObjType_class: {
-            dai_log("%s", AS_CLASS(value)->name->chars);
-            break;
-        }
-        case DaiObjType_instance: {
-            DaiObjInstance* instance = AS_INSTANCE(value);
-            dai_log("<instance of %s at %p>", instance->klass->name->chars, instance);
-            break;
-        }
-        case DaiObjType_function: print_function(AS_FUNCTION(value)); break;
-        case DaiObjType_string: dai_log("%s", AS_CSTRING(value)); break;
-        case DaiObjType_builtinFn: dai_log("<builtin-fn %s>", AS_BUILTINFN(value)->name); break;
-        case DaiObjType_closure: {
-            print_function(AS_CLOSURE(value)->function);
-            break;
-        }
-        case DaiObjType_array: {
-            dai_log("[");
-            for (int i = 0; i < AS_ARRAY(value)->length; i++) {
-                dai_print_value(AS_ARRAY(value)->elements[i]);
-                dai_log(", ");
-            }
-            dai_log("]");
-            break;
-        }
-        case DaiObjType_error: dai_log("%s", AS_ERROR(value)->message); break;
-        default: dai_log("Unknown object type %d", OBJ_TYPE(value)); break;
-    }
-}
+// #endregion
 
 const char*
 dai_object_ts(DaiValue value) {
@@ -1039,17 +1158,17 @@ builtin_type(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue
 
 DaiObjBuiltinFunction builtin_funcs[256] = {
     {
-        {.type = DaiObjType_builtinFn},
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "print",
         .function = builtin_print,
     },
     {
-        {.type = DaiObjType_builtinFn},
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "len",
         .function = builtin_len,
     },
     {
-        {.type = DaiObjType_builtinFn},
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "type",
         .function = builtin_type,
     },

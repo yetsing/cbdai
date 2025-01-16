@@ -49,12 +49,14 @@ typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* na
 typedef DaiValue (*SubscriptGetFn)(DaiVM* vm, DaiValue receiver, DaiValue index);
 typedef DaiValue (*SubscriptSetFn)(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value);
 typedef bool (*EqualFn)(DaiValue a, DaiValue b);
+typedef char* (*StringFn)(DaiValue value);
 
 struct DaiOperation {
     GetPropertyFn get_property_func;
     SetPropertyFn set_property_func;
     SubscriptGetFn subscript_get_func;
     SubscriptSetFn subscript_set_func;
+    StringFn string_func;   // caller should free the returned string
     EqualFn equal_func;
 };
 
@@ -162,8 +164,6 @@ typedef struct {
 DaiObjError*
 DaiObjError_Newf(DaiVM* vm, const char* format, ...) __attribute__((format(printf, 2, 3)));
 
-void
-dai_print_object(DaiValue value);
 const char*
 dai_object_ts(DaiValue value);
 

@@ -3,6 +3,7 @@
 */
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dai_memory.h"
 #include "dai_object.h"
@@ -25,25 +26,9 @@ dai_value_ts(DaiValue value) {
 
 void
 dai_print_value(DaiValue value) {
-    switch (value.type) {
-        case DaiValueType_undefined: dai_log("undefined"); break;
-        case DaiValueType_nil: dai_log("nil"); break;
-        case DaiValueType_int: dai_log("%" PRId64, value.as.intval); break;
-        case DaiValueType_float: dai_log("%f", value.as.floatval); break;
-        case DaiValueType_bool:
-            if (AS_BOOL(value)) {
-                dai_log("true");
-            } else {
-                dai_log("false");
-            }
-            break;
-        case DaiValueType_obj: {
-            dai_print_object(value);
-            break;
-        }
-
-        default: dai_log("unknown"); break;
-    }
+    char* s = dai_value_string(value);
+    printf("%s", s);
+    FREE_ARRAY(char, s, strlen(s) + 1);
 }
 
 static bool
@@ -63,7 +48,27 @@ dai_value_equal(DaiValue a, DaiValue b) {
         case DaiValueType_float: return float_equals(AS_FLOAT(a), AS_FLOAT(b));
         case DaiValueType_bool: return AS_BOOL(a) == AS_BOOL(b);
         case DaiValueType_obj: return AS_OBJ(a)->operation->equal_func(a, b);
-        default: return true;
+        default: return false;
+    }
+}
+
+char*
+dai_value_string(DaiValue value) {
+    switch (value.type) {
+        case DaiValueType_nil: return strdup("nil");
+        case DaiValueType_int: {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%" PRId64, AS_INTEGER(value));
+            return strdup(buf);
+        }
+        case DaiValueType_float: {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%f", AS_FLOAT(value));
+            return strdup(buf);
+        }
+        case DaiValueType_bool: return AS_BOOL(value) ? strdup("true") : strdup("false");
+        case DaiValueType_obj: return AS_OBJ(value)->operation->string_func(value);
+        default: return strdup("unknown");
     }
 }
 
