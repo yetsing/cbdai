@@ -7,6 +7,20 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+typedef struct {
+    int capacity;
+    int count;
+    void** values;
+} DaiPtrArray;
+void
+DaiPtrArray_init(DaiPtrArray* array);
+void
+DaiPtrArray_write(DaiPtrArray* array, void* value);
+void
+DaiPtrArray_reset(DaiPtrArray* array);
+bool
+DaiPtrArray_contains(DaiPtrArray* array, void* value);
+
 typedef struct DaiObj DaiObj;
 typedef struct DaiObjString DaiObjString;
 
@@ -53,13 +67,49 @@ dai_value_ts(DaiValue value);
 #define FLOAT_VAL(value) ((DaiValue){DaiValueType_float, {.floatval = value}})
 #define OBJ_VAL(object) ((DaiValue){DaiValueType_obj, {.obj = (DaiObj*)object}})
 
+/**
+ * @brief 打印值
+ *
+ * @param value 值
+ */
 void
 dai_print_value(DaiValue value);
 
+/**
+ * @brief 比较两个值是否相等
+ *
+ * @param a 值
+ * @param b 值
+ *
+ * @return bool
+ */
 bool
 dai_value_equal(DaiValue a, DaiValue b);
+
+/**
+ * @brief 返回值的字符串表示
+ *
+ * @note  返回的字符串由调用者释放
+ *
+ * @param value 值
+ * @param visited 访问过的对象，用于检测循环引用
+ *
+ * @return char* 字符串
+ */
 char*
-dai_value_string(DaiValue value);   // caller should free the returned string
+dai_value_string_with_visited(DaiValue value, DaiPtrArray* visited);
+
+/**
+ * @brief 返回值的字符串表示
+ *
+ * @note  返回的字符串由调用者释放
+ *
+ * @param value 值
+ *
+ * @return char* 字符串
+ */
+char*
+dai_value_string(DaiValue value);
 
 typedef struct {
     int capacity;

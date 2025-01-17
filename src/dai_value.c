@@ -2,6 +2,7 @@
 栈虚拟机中的值
 */
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -53,7 +54,7 @@ dai_value_equal(DaiValue a, DaiValue b) {
 }
 
 char*
-dai_value_string(DaiValue value) {
+dai_value_string_with_visited(DaiValue value, DaiPtrArray* visited) {
     switch (value.type) {
         case DaiValueType_nil: return strdup("nil");
         case DaiValueType_int: {
@@ -67,10 +68,23 @@ dai_value_string(DaiValue value) {
             return strdup(buf);
         }
         case DaiValueType_bool: return AS_BOOL(value) ? strdup("true") : strdup("false");
-        case DaiValueType_obj: return AS_OBJ(value)->operation->string_func(value);
+        case DaiValueType_obj: {
+            return AS_OBJ(value)->operation->string_func(value, visited);
+        };
         default: return strdup("unknown");
     }
 }
+
+char*
+dai_value_string(DaiValue value) {
+    DaiPtrArray visited;
+    DaiPtrArray_init(&visited);
+    char* s = dai_value_string_with_visited(value, &visited);
+    DaiPtrArray_reset(&visited);
+    return s;
+}
+
+// #region DaiValueArray
 
 void
 DaiValueArray_init(DaiValueArray* array) {
@@ -105,3 +119,43 @@ DaiValueArray_copy(DaiValueArray* src, DaiValueArray* dst) {
         dst->values[i] = src->values[i];
     }
 }
+
+// #endregion
+
+// #region DaiPtrArray
+
+void
+DaiPtrArray_init(DaiPtrArray* array) {
+    array->capacity = 0;
+    array->count    = 0;
+    array->values   = NULL;
+}
+
+void
+DaiPtrArray_write(DaiPtrArray* array, void* value) {
+    if (array->capacity < array->count + 1) {
+        int old_capacity = array->capacity;
+        array->capacity  = GROW_CAPACITY(array->capacity);
+        array->values    = GROW_ARRAY(void*, array->values, old_capacity, array->capacity);
+    }
+    array->values[array->count] = value;
+    array->count++;
+}
+
+void
+DaiPtrArray_reset(DaiPtrArray* array) {
+    FREE_ARRAY(void*, array->values, array->capacity);
+    DaiPtrArray_init(array);
+}
+
+bool
+DaiPtrArray_contains(DaiPtrArray* array, void* value) {
+    for (int i = 0; i < array->count; i++) {
+        if (array->values[i] == value) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// #endregion

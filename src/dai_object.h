@@ -49,7 +49,7 @@ typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* na
 typedef DaiValue (*SubscriptGetFn)(DaiVM* vm, DaiValue receiver, DaiValue index);
 typedef DaiValue (*SubscriptSetFn)(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value);
 typedef bool (*EqualFn)(DaiValue a, DaiValue b);
-typedef char* (*StringFn)(DaiValue value);
+typedef char* (*StringFn)(DaiValue value, DaiPtrArray* visited);
 
 struct DaiOperation {
     GetPropertyFn get_property_func;

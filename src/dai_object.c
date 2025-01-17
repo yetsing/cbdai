@@ -42,7 +42,7 @@ dai_default_subscript_set(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue
 }
 
 static char*
-dai_default_string_func(DaiValue value) {
+dai_default_string_func(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     char buf[64];
     int length = snprintf(buf, sizeof(buf), "<obj at %p>", AS_OBJ(value));
     return strndup(buf, length);
@@ -63,11 +63,11 @@ static struct DaiOperation default_operation = {
 };
 
 static char*
-DaiObjBuiltinFunction_String(DaiValue value) {
+DaiObjBuiltinFunction_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjBuiltinFunction* builtin = AS_BUILTINFN(value);
     int size                       = strlen(builtin->name) + 16;
     char* buf                      = ALLOCATE(char, size);
-    snprintf(buf, size, "<builtin fn %s>", builtin->name);
+    snprintf(buf, size, "<builtin-fn %s>", builtin->name);
     return buf;
 }
 
@@ -99,7 +99,7 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
 // #region function
 
 static char*
-DaiObjFunction_String(DaiValue value) {
+DaiObjFunction_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjFunction* function = AS_FUNCTION(value);
     int size                 = function->name->length + 16;
     char* buf                = ALLOCATE(char, size);
@@ -137,7 +137,7 @@ DaiObjFunction_name(DaiObjFunction* function) {
 // #region closure
 
 static char*
-DaiObjClosure_String(DaiValue value) {
+DaiObjClosure_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjClosure* closure = AS_CLOSURE(value);
     int size               = closure->function->name->length + 16;
     char* buf              = ALLOCATE(char, size);
@@ -257,7 +257,7 @@ DaiObjClass_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiVa
 }
 
 static char*
-DaiObjClass_String(DaiValue value) {
+DaiObjClass_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjClass* klass = AS_CLASS(value);
     int size           = klass->name->length + 16;
     char* buf          = ALLOCATE(char, size);
@@ -329,7 +329,7 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
 }
 
 static char*
-DaiObjInstance_String(DaiValue value) {
+DaiObjInstance_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjInstance* instance = AS_INSTANCE(value);
     int size                 = instance->klass->name->length + 64;
     char* buf                = ALLOCATE(char, size);
@@ -358,7 +358,7 @@ DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass) {
 }
 
 static char*
-DaiObjBoundMethod_String(DaiValue value) {
+DaiObjBoundMethod_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(value);
     char* instance_str              = dai_value_string(bound_method->receiver);
     int size  = strlen(instance_str) + bound_method->method->function->name->length + 32;
@@ -484,7 +484,7 @@ DaiObjString_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
 };
 
 static char*
-DaiObjString_String(DaiValue value) {
+DaiObjString_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     return strdup(AS_STRING(value)->chars);
 }
 
@@ -963,6 +963,9 @@ static bool
 DaiObjArray_equal(DaiValue a, DaiValue b) {
     DaiObjArray* array_a = AS_ARRAY(a);
     DaiObjArray* array_b = AS_ARRAY(b);
+    if (array_a == array_b) {
+        return true;
+    }
     if (array_a->length != array_b->length) {
         return false;
     }
@@ -1015,12 +1018,16 @@ DaiObjArray_subscript_set(__attribute__((unused)) DaiVM* vm, DaiValue receiver, 
 }
 
 static char*
-DaiObjArray_String(DaiValue value) {
+DaiObjArray_String(DaiValue value, DaiPtrArray* visited) {
+    if (DaiPtrArray_contains(visited, AS_OBJ(value))) {
+        return strdup("[...]");
+    }
+    DaiPtrArray_write(visited, AS_OBJ(value));
     DaiStringBuffer* sb = DaiStringBuffer_New();
     DaiObjArray* array  = AS_ARRAY(value);
     DaiStringBuffer_write(sb, "[");
     for (int i = 0; i < array->length; i++) {
-        char* s = dai_value_string(array->elements[i]);
+        char* s = dai_value_string_with_visited(array->elements[i], visited);
         DaiStringBuffer_write(sb, s);
         FREE_ARRAY(char, s, strlen(s) + 1);
         if (i != array->length - 1) {
@@ -1060,7 +1067,7 @@ DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
 // #region 错误
 
 static char*
-DaiObjError_String(DaiValue value) {
+DaiObjError_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     int size  = strlen(AS_ERROR(value)->message) + 16;
     char* buf = ALLOCATE(char, size);
     snprintf(buf, size, "Error: %s", AS_ERROR(value)->message);
