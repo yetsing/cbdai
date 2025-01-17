@@ -48,7 +48,16 @@ typedef DaiValue (*GetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* na
 typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
 typedef DaiValue (*SubscriptGetFn)(DaiVM* vm, DaiValue receiver, DaiValue index);
 typedef DaiValue (*SubscriptSetFn)(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value);
-typedef bool (*EqualFn)(DaiValue a, DaiValue b);
+/**
+ * @brief 比较两个值是否相等
+ *
+ * @param a 值
+ * @param b 值
+ * @param limit 递归深度限制
+ *
+ * @return 1 相等，0 不相等， -1 错误
+ */
+typedef int (*EqualFn)(DaiValue a, DaiValue b, int* limit);
 typedef char* (*StringFn)(DaiValue value, DaiPtrArray* visited);
 
 struct DaiOperation {

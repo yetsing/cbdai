@@ -48,8 +48,8 @@ dai_default_string_func(DaiValue value, __attribute__((unused)) DaiPtrArray* vis
     return strndup(buf, length);
 }
 
-static bool
-dai_default_equal(DaiValue a, DaiValue b) {
+static int
+dai_default_equal(DaiValue a, DaiValue b, __attribute__((unused)) int* limit) {
     return AS_OBJ(a) == AS_OBJ(b);
 }
 
@@ -665,7 +665,13 @@ DaiObjArray_remove(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
     DaiObjArray* array = AS_ARRAY(receiver);
     DaiValue value     = argv[0];
     for (int i = 0; i < array->length; i++) {
-        if (dai_value_equal(array->elements[i], value)) {
+        int ret = dai_value_equal(array->elements[i], value);
+        if (ret == -1) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "maximum recursion depth exceeded in comparison");
+            return OBJ_VAL(err);
+        }
+        if (ret == 1) {
             for (int j = i; j < array->length - 1; j++) {
                 array->elements[j] = array->elements[j + 1];
             }
@@ -744,7 +750,13 @@ DaiObjArray_has(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
     DaiObjArray* array = AS_ARRAY(receiver);
     DaiValue value     = argv[0];
     for (int i = 0; i < array->length; i++) {
-        if (dai_value_equal(array->elements[i], value)) {
+        int ret = dai_value_equal(array->elements[i], value);
+        if (ret == -1) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "maximum recursion depth exceeded in comparison");
+            return OBJ_VAL(err);
+        }
+        if (ret == 1) {
             return dai_true;
         }
     }
@@ -959,8 +971,8 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     return OBJ_VAL(err);
 }
 
-static bool
-DaiObjArray_equal(DaiValue a, DaiValue b) {
+static int
+DaiObjArray_equal(DaiValue a, DaiValue b, int* limit) {
     DaiObjArray* array_a = AS_ARRAY(a);
     DaiObjArray* array_b = AS_ARRAY(b);
     if (array_a == array_b) {
@@ -970,7 +982,11 @@ DaiObjArray_equal(DaiValue a, DaiValue b) {
         return false;
     }
     for (int i = 0; i < array_a->length; i++) {
-        if (!dai_value_equal(array_a->elements[i], array_b->elements[i])) {
+        int ret = dai_value_equal_with_limit(array_a->elements[i], array_b->elements[i], limit);
+        if (ret == -1) {
+            return -1;
+        }
+        if (ret == 0) {
             return false;
         }
     }

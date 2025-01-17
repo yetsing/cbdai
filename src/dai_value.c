@@ -38,19 +38,29 @@ float_equals(double a, double b) {
     return fabs(a - b) < epsilon;
 }
 
-bool
-dai_value_equal(DaiValue a, DaiValue b) {
+int
+dai_value_equal_with_limit(DaiValue a, DaiValue b, int* limit) {
+    if (*limit <= 0) {
+        return -1;
+    }
+    (*limit)--;
     if (a.type != b.type) {
-        return false;
+        return 0;
     }
     switch (a.type) {
-        case DaiValueType_nil: return true;
+        case DaiValueType_nil: return 1;
         case DaiValueType_int: return AS_INTEGER(a) == AS_INTEGER(b);
         case DaiValueType_float: return float_equals(AS_FLOAT(a), AS_FLOAT(b));
         case DaiValueType_bool: return AS_BOOL(a) == AS_BOOL(b);
-        case DaiValueType_obj: return AS_OBJ(a)->operation->equal_func(a, b);
-        default: return false;
+        case DaiValueType_obj: return AS_OBJ(a)->operation->equal_func(a, b, limit);
+        default: return 0;
     }
+}
+
+int
+dai_value_equal(DaiValue a, DaiValue b) {
+    int limit = 256;
+    return dai_value_equal_with_limit(a, b, &limit);
 }
 
 char*

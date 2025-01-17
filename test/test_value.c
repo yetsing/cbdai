@@ -61,7 +61,7 @@ dai_assert_value_equal(DaiValue actual, DaiValue expected) {
             fprintf(stderr, "not support constant type %d\n", OBJ_TYPE(expected));
             munit_assert_true(false);
         }
-    } else if (!dai_value_equal(actual, expected)) {
+    } else if (dai_value_equal(actual, expected) != 1) {
         printf("actual=(%s)", dai_value_ts(actual));
         dai_print_value(actual);
         printf(" expected=(%s)", dai_value_ts(expected));

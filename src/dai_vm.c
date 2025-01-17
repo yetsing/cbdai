@@ -411,16 +411,24 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             }
 
             case DaiOpEqual: {
-                DaiValue b   = DaiVM_pop(vm);
-                DaiValue a   = DaiVM_pop(vm);
-                DaiValue res = BOOL_VAL(dai_value_equal(a, b));
+                DaiValue b = DaiVM_pop(vm);
+                DaiValue a = DaiVM_pop(vm);
+                int ret    = dai_value_equal(a, b);
+                if (ret == -1) {
+                    return DaiObjError_Newf(vm, "maximum recursion depth exceeded in comparison");
+                }
+                DaiValue res = BOOL_VAL(ret == 1);
                 DaiVM_push(vm, res);
                 break;
             }
             case DaiOpNotEqual: {
-                DaiValue b   = DaiVM_pop(vm);
-                DaiValue a   = DaiVM_pop(vm);
-                DaiValue res = BOOL_VAL(!dai_value_equal(a, b));
+                DaiValue b = DaiVM_pop(vm);
+                DaiValue a = DaiVM_pop(vm);
+                int ret    = dai_value_equal(a, b);
+                if (ret == -1) {
+                    return DaiObjError_Newf(vm, "maximum recursion depth exceeded in comparison");
+                }
+                DaiValue res = BOOL_VAL(ret == 0);
                 DaiVM_push(vm, res);
                 break;
             }

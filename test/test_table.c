@@ -55,7 +55,7 @@ test_crud(__attribute__((unused)) const MunitParameter params[],
         DaiValue got;
         bool found = DaiTable_get(&table, key, &got);
         munit_assert_true(found);
-        munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)));
+        munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)) == 1);
     }
     for (int i = 0; i < count; i++) {
         DaiObjString* key = keys[i];
@@ -64,7 +64,7 @@ test_crud(__attribute__((unused)) const MunitParameter params[],
         DaiValue got;
         bool found = DaiTable_get(&table, key, &got);
         munit_assert_true(found);
-        munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)));
+        munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)) == 1);
     }
 
     for (int i = 0; i < count; i++) {
@@ -81,7 +81,7 @@ test_crud(__attribute__((unused)) const MunitParameter params[],
         DaiValue got;
         bool found = DaiTable_get(&table, key, &got);
         munit_assert_true(found);
-        munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)));
+        munit_assert_true(dai_value_equal(got, INTEGER_VAL(i)) == 1);
     }
 
     for (int i = 0; i < count; i++) {

@@ -80,10 +80,22 @@ dai_print_value(DaiValue value);
  *
  * @param a 值
  * @param b 值
+ * @param limit 递归深度限制
  *
- * @return bool
+ * @return 1 相等，0 不相等， -1 错误
  */
-bool
+int
+dai_value_equal_with_limit(DaiValue a, DaiValue b, int* limit);
+
+/**
+ * @brief 比较两个值是否相等
+ *
+ * @param a 值
+ * @param b 值
+ *
+ * @return 1 相等，0 不相等， -1 错误
+ */
+int
 dai_value_equal(DaiValue a, DaiValue b);
 
 /**
