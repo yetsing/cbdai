@@ -67,10 +67,10 @@ function compile() {
 function test() {
 	compile "cbdai"
 	cp_compile_commands_json
-	time ./cmake-build-debug/cbdai
+	time ./cmake-build-debug/cbdai "$@"
 	# 运行包含 Sanitizer 检查的测试
 	compile "santest"
-	./cmake-build-debug/santest
+	./cmake-build-debug/santest "$@"
 }
 
 function test_atstr() {
@@ -170,7 +170,7 @@ function fmt() {
 	"${clang_format_command}" -i --verbose ./*.c
 	"${clang_format_command}" -i --verbose atstr/*.c
 	"${clang_format_command}" -i --verbose test/*.c test/*.h
-	"${clang_format_command}" -i --verbose src/*.c src/*.h
+	"${clang_format_command}" -i --verbose src/*.c src/dai_*.h
 	"${clang_format_command}" -i --verbose src/dai_ast/*.c src/dai_ast/*.h
 }
 

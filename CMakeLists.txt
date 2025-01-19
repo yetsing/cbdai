@@ -5,6 +5,7 @@ set(CMAKE_C_STANDARD 11)
 
 include_directories(.)
 include_directories(src)
+include_directories(src/utf8.h)
 # include_directories(src/utils)
 include_directories(test)
 
@@ -14,11 +15,11 @@ file(GLOB_RECURSE MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c)
 
 add_executable(cbdai main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
-add_executable(cbdai-debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
+add_executable(cbdai-debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)  # for clion debug
 add_executable(santest main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(mem main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(coverage main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
-add_executable(debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
+add_executable(debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)  # for cli debug
 
 add_executable(test_atstr atstr/test_atstr.c atstr/atstr.c munit/munit.c)
 

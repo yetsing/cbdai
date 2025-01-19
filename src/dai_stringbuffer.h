@@ -29,5 +29,7 @@ DaiStringBuffer_length(DaiStringBuffer* sb);
 // 返回分配的字符串，并释放 DaiStringBuffer
 char*
 DaiStringBuffer_getAndFree(DaiStringBuffer* sb, size_t* length);
+void
+DaiStringBuffer_free(DaiStringBuffer* sb);
 
 #endif /* C759BE44_71CA_4041_B259_9DC171208F59 */

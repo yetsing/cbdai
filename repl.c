@@ -56,7 +56,11 @@ main() {
         enable_time = false;
         // 自动在末尾加上 ';'
         size_t len = strlen(line);
-        if (line[len - 1] != ';') {
+        if (len == 1) {
+            printf("> ");
+            continue;
+        }
+        if (line[len - 1] != ';' && line[len - 2] != ';') {
             line[len - 1] = ';';
         }
         // 处理命令

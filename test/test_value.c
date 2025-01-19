@@ -57,6 +57,23 @@ dai_assert_value_equal(DaiValue actual, DaiValue expected) {
                 munit_assert_true(IS_ERROR(actual));
             }
             munit_assert_string_equal(AS_ERROR(actual)->message, AS_ERROR(expected)->message);
+        } else if (IS_ARRAY(expected)) {
+            if (!IS_ARRAY(actual)) {
+                fprintf(stderr, "expected a array, but got %d\n", OBJ_TYPE(actual));
+                munit_assert_true(IS_CLOSURE(actual));
+            }
+            DaiObjArray* expected_array = AS_ARRAY(expected);
+            DaiObjArray* actual_array   = AS_ARRAY(actual);
+            if (expected_array->length != actual_array->length) {
+                fprintf(stderr,
+                        "expected array length=%d, but got %d\n",
+                        expected_array->length,
+                        actual_array->length);
+                munit_assert_int(expected_array->length, ==, actual_array->length);
+            }
+            for (int i = 0; i < expected_array->length; i++) {
+                dai_assert_value_equal(actual_array->elements[i], expected_array->elements[i]);
+            }
         } else {
             fprintf(stderr, "not support constant type %d\n", OBJ_TYPE(expected));
             munit_assert_true(false);

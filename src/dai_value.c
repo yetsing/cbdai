@@ -29,7 +29,7 @@ void
 dai_print_value(DaiValue value) {
     char* s = dai_value_string(value);
     printf("%s", s);
-    FREE_ARRAY(char, s, strlen(s) + 1);
+    free(s);
 }
 
 static bool

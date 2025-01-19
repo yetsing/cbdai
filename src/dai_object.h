@@ -165,6 +165,10 @@ typedef struct {
 } DaiObjArray;
 DaiObjArray*
 DaiObjArray_New(DaiVM* vm, const DaiValue* elements, int length);
+DaiObjArray*
+DaiObjArray_append1(DaiVM* vm, DaiObjArray* array, int n, DaiValue* values);
+DaiObjArray*
+DaiObjArray_append2(DaiVM* vm, DaiObjArray* array, int n, ...);
 
 typedef struct {
     DaiObj obj;

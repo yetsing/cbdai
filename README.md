@@ -12,6 +12,8 @@ dai_compile
 
 #### References
 
+[gualang](https://gitee.com/kuaibiancheng/gualang)
+
 [Writing An Interpreter In Go](https://interpreterbook.com/)
 
 [craftinginterpreters](https://github.com/munificent/craftinginterpreters)

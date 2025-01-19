@@ -1,8 +1,11 @@
+#include <ctype.h>
+#include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "dai_memory.h"
 #include "dai_object.h"
@@ -10,6 +13,7 @@
 #include "dai_table.h"
 #include "dai_value.h"
 #include "dai_vm.h"
+#include "utf8.h"
 
 #define ALLOCATE_OBJ(vm, type, objectType) (type*)allocate_object(vm, sizeof(type), objectType)
 
@@ -422,31 +426,41 @@ DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString
 
 // #region 字符串
 
-// code from https://github.com/sheredom/utf8.h/blob/master/utf8.h#L542
-int
-utf8len(const char* str) {
-    size_t length = 0;
-
-    while ('\0' != *str) {
-        if (0xf0 == (0xf8 & *str)) {
-            /* 4-byte utf8 code point (began with 0b11110xxx) */
-            str += 4;
-        } else if (0xe0 == (0xf0 & *str)) {
-            /* 3-byte utf8 code point (began with 0b1110xxxx) */
-            str += 3;
-        } else if (0xc0 == (0xe0 & *str)) {
-            /* 2-byte utf8 code point (began with 0b110xxxxx) */
-            str += 2;
-        } else { /* if (0x00 == (0x80 & *s)) { */
-            /* 1-byte ascii (began with 0b0xxxxxxx) */
-            str += 1;
-        }
-
-        /* no matter the bytes we marched s forward by, it was
-         * only 1 utf8 codepoint */
-        length++;
+static int
+utf8_one_char_length(const char* s) {
+    // code copy from https://github.com/sheredom/utf8.h
+    if (0xf0 == (0xf8 & *s)) {
+        /* 4-byte utf8 code point (began with 0b11110xxx) */
+        return 4;
+    } else if (0xe0 == (0xf0 & *s)) {
+        /* 3-byte utf8 code point (began with 0b1110xxxx) */
+        return 3;
+    } else if (0xc0 == (0xe0 & *s)) {
+        /* 2-byte utf8 code point (began with 0b110xxxxx) */
+        return 2;
+    } else { /* if (0x00 == (0x80 & *s)) { */
+        /* 1-byte ascii (began with 0b0xxxxxxx) */
+        return 1;
     }
-    return length;
+}
+
+/**
+ * @brief 返回字符串的第n个字符的指针
+ *
+ * @note 该函数不检查n是否越界, 请确保n不会越界
+ *
+ * @param str 字符串
+ * @param n 第n个
+ *
+ * @return char*
+ */
+char*
+utf8offset(const char* str, int n) {
+    while (n > 0) {
+        str += utf8_one_char_length(str);
+        n--;
+    }
+    return (char*)str;
 }
 
 static DaiValue
@@ -459,8 +473,366 @@ DaiObjString_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int ar
     return INTEGER_VAL(AS_STRING(receiver)->utf8_length);
 }
 
+static DaiValue
+DaiObjString_format(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                    DaiValue* argv) {
+    DaiStringBuffer* sb  = DaiStringBuffer_New();
+    DaiObjString* string = AS_STRING(receiver);
+    const char* format   = string->chars;
+    int i                = 0;
+    int j                = 0;
+    while (format[i] != '\0') {
+        if (format[i] == '{' && format[i + 1] == '}') {
+            if (j >= argc) {
+                DaiStringBuffer_free(sb);
+                DaiObjError* err = DaiObjError_Newf(vm, "format() not enough arguments");
+                return OBJ_VAL(err);
+            }
+            DaiValue value = argv[j];
+            char* s        = dai_value_string(value);
+            DaiStringBuffer_write(sb, s);
+            free(s);
+            i += 2;
+            j++;
+        } else {
+            int step = utf8_one_char_length(format + i);
+            DaiStringBuffer_writen(sb, format + i, step);
+            i += step;
+        }
+    }
+    if (j != argc) {
+        DaiStringBuffer_free(sb);
+        DaiObjError* err = DaiObjError_Newf(vm, "format() too many arguments");
+        return OBJ_VAL(err);
+    }
+    size_t length = 0;
+    char* res     = DaiStringBuffer_getAndFree(sb, &length);
+    return OBJ_VAL(dai_take_string(vm, res, length));
+}
+
+static DaiValue
+DaiObjString_sub(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc == 0 || argc > 2) {
+        DaiObjError* err = DaiObjError_Newf(vm, "sub() expected 1-2 arguments, but got 0");
+        return OBJ_VAL(err);
+    }
+    if (!IS_INTEGER(argv[0])) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "sub() expected int arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    if (argc == 2 && !IS_INTEGER(argv[1])) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "sub() expected int arguments, but got %s", dai_value_ts(argv[1]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    int start            = AS_INTEGER(argv[0]);
+    int end              = argc == 1 ? string->utf8_length : AS_INTEGER(argv[1]);
+    if (start < 0) {
+        start += string->utf8_length;
+        if (start < 0) {
+            start = 0;
+        }
+    }
+    if (end < 0) {
+        end += string->utf8_length;
+    } else if (end > string->utf8_length) {
+        end = string->utf8_length;
+    }
+    if (start >= end) {
+        return OBJ_VAL(dai_copy_string(vm, "", 0));
+    }
+    char* s = utf8offset(string->chars, start);
+    char* e = utf8offset(string->chars, end);
+    return OBJ_VAL(dai_copy_string(vm, s, e - s));
+}
+
+static DaiValue
+DaiObjString_find(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "find() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "find() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    DaiObjString* sub    = AS_STRING(argv[0]);
+    if (string->length < sub->length) {
+        return INTEGER_VAL(-1);
+    }
+    char* s = strstr(string->chars, sub->chars);
+    if (s == NULL) {
+        return INTEGER_VAL(-1);
+    }
+    return INTEGER_VAL(utf8nlen(string->chars, s - string->chars));
+}
+
+static char*
+DaiObjString_replacen(DaiObjString* s, DaiObjString* old, DaiObjString* new, int max_replacements) {
+    DaiStringBuffer* sb = DaiStringBuffer_New();
+    const char* p       = s->chars;
+    const char* end     = s->chars + s->length;
+    int old_len         = old->length;
+    int new_len         = new->length;
+    while (p < end) {
+        if (max_replacements == 0) {
+            DaiStringBuffer_writen(sb, p, end - p);
+            break;
+        }
+        const char* q = strstr(p, old->chars);
+        if (q == NULL) {
+            DaiStringBuffer_writen(sb, p, end - p);
+            break;
+        }
+        DaiStringBuffer_writen(sb, p, q - p);
+        DaiStringBuffer_writen(sb, new->chars, new_len);
+        p = q + old_len;
+        max_replacements--;
+    }
+    size_t length = 0;
+    char* res     = DaiStringBuffer_getAndFree(sb, &length);
+    return res;
+}
+
+static DaiValue
+DaiObjString_replace(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                     DaiValue* argv) {
+    if ((argc != 2) && (argc != 3)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "replace() expected 2-3 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "replace() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[1])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "replace() expected string arguments, but got %s", dai_value_ts(argv[1]));
+        return OBJ_VAL(err);
+    }
+    if (argc == 3 && !IS_INTEGER(argv[2])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "replace() expected int arguments, but got %s", dai_value_ts(argv[2]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    DaiObjString* old    = AS_STRING(argv[0]);
+    if (old->length == 0) {
+        DaiObjError* err = DaiObjError_Newf(vm, "replace() empty old string");
+        return OBJ_VAL(err);
+    }
+    DaiObjString* new = AS_STRING(argv[1]);
+    int count         = argc == 3 ? AS_INTEGER(argv[2]) : INT_MAX;
+    char* res         = DaiObjString_replacen(string, old, new, count);
+    return OBJ_VAL(dai_take_string(vm, res, strlen(res)));
+}
+
+static DaiValue
+DaiObjString_splitn(DaiVM* vm, DaiObjString* s, DaiObjString* sep, int max_splits) {
+    DaiObjArray* array = DaiObjArray_New(vm, NULL, 0);
+    const char* p      = s->chars;
+    const char* end    = s->chars + s->length;
+    int sep_len        = sep->length;
+    while (p < end) {
+        if (max_splits <= 0) {
+            DaiObjArray_append1(vm, array, 1, &OBJ_VAL(dai_copy_string(vm, p, end - p)));
+            break;
+        }
+        const char* q = strstr(p, sep->chars);
+        if (q == NULL) {
+            DaiObjArray_append1(vm, array, 1, &OBJ_VAL(dai_copy_string(vm, p, end - p)));
+            break;
+        }
+        DaiObjString* sub = dai_copy_string(vm, p, q - p);
+        DaiObjArray_append1(vm, array, 1, &OBJ_VAL(sub));
+        p = q + sep_len;
+        max_splits--;
+    }
+    return OBJ_VAL(array);
+}
+
+static DaiValue
+DaiObjString_split_whitespace(DaiVM* vm, DaiObjString* s) {
+    DaiObjArray* array = DaiObjArray_New(vm, NULL, 0);
+    const char* p      = s->chars;
+    const char* end    = s->chars + s->length;
+    while (p < end) {
+        while (p < end && isspace(*p)) {
+            p++;
+        }
+        const char* q = p;
+        while (q < end && !isspace(*q)) {
+            q++;
+        }
+        if (p < q) {
+            DaiObjString* sub = dai_copy_string(vm, p, q - p);
+            DaiObjArray_append1(vm, array, 1, &OBJ_VAL(sub));
+        }
+        p = q;
+    }
+    return OBJ_VAL(array);
+}
+
+static DaiValue
+DaiObjString_split(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc == 0) {
+        return DaiObjString_split_whitespace(vm, AS_STRING(receiver));
+    }
+    if ((argc != 1) && (argc != 2)) {
+        DaiObjError* err = DaiObjError_Newf(vm, "split() expected 0-2 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "split() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    if (argc == 2 && !IS_INTEGER(argv[1])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "split() expected int arguments, but got %s", dai_value_ts(argv[1]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    DaiObjString* sep    = AS_STRING(argv[0]);
+    if (sep->length == 0) {
+        DaiObjError* err = DaiObjError_Newf(vm, "split() empty separator");
+        return OBJ_VAL(err);
+    }
+    // split 的 count 参数表示结果数组的最大长度，对应分割次数需要减一
+    int count = argc == 2 ? AS_INTEGER(argv[1]) - 1 : INT_MAX;
+    return DaiObjString_splitn(vm, string, sep, count);
+}
+
+static DaiValue
+DaiObjString_join(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "join() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_ARRAY(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "join() expected array arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* sep  = AS_STRING(receiver);
+    DaiObjArray* array = AS_ARRAY(argv[0]);
+    if (array->length == 0) {
+        return OBJ_VAL(dai_copy_string(vm, "", 0));
+    }
+    DaiStringBuffer* sb = DaiStringBuffer_New();
+    for (int i = 0; i < array->length; i++) {
+        if (!IS_STRING(array->elements[i])) {
+            DaiStringBuffer_free(sb);
+            DaiObjError* err =
+                DaiObjError_Newf(vm,
+                                 "join() expected array of string arguments, but got %s at %d",
+                                 dai_value_ts(array->elements[i]),
+                                 i);
+            return OBJ_VAL(err);
+        }
+        DaiStringBuffer_write(sb, AS_STRING(array->elements[i])->chars);
+        if (i != array->length - 1) {
+            DaiStringBuffer_write(sb, sep->chars);
+        }
+    }
+    size_t length = 0;
+    char* res     = DaiStringBuffer_getAndFree(sb, &length);
+    return OBJ_VAL(dai_take_string(vm, res, length));
+}
+
+static DaiValue
+DaiObjString_has(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "has() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "has() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    DaiObjString* sub    = AS_STRING(argv[0]);
+    char* s              = strstr(string->chars, sub->chars);
+    return BOOL_VAL(s != NULL);
+}
+
+static DaiValue
+DaiObjString_strip(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err = DaiObjError_Newf(vm, "strip() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    const char* p        = string->chars;
+    const char* end      = string->chars + string->length;
+    while (p < end && isspace(*p)) {
+        p++;
+    }
+    while (end > p && isspace(*(end - 1))) {
+        end--;
+    }
+    if (p == string->chars && end == string->chars + string->length) {
+        return receiver;
+    }
+    return OBJ_VAL(dai_copy_string(vm, p, end - p));
+}
+
+static DaiValue
+DaiObjString_startswith(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                        DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "startswith() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "startswith() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    DaiObjString* sub    = AS_STRING(argv[0]);
+    return BOOL_VAL(strncmp(string->chars, sub->chars, sub->length) == 0);
+}
+
+static DaiValue
+DaiObjString_endswith(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
+                      DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "endswith() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "endswith() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    DaiObjString* sub    = AS_STRING(argv[0]);
+    return BOOL_VAL(
+        strncmp(string->chars + string->length - sub->length, sub->chars, sub->length) == 0);
+}
+
 enum DaiObjStringFunctionNo {
     DaiObjStringFunctionNo_length = 0,
+    DaiObjStringFunctionNo_format,
+    DaiObjStringFunctionNo_sub,
+    DaiObjStringFunctionNo_find,
+    DaiObjStringFunctionNo_replace,
+    DaiObjStringFunctionNo_split,
+    DaiObjStringFunctionNo_join,
+    DaiObjStringFunctionNo_has,
+    DaiObjStringFunctionNo_strip,
+    DaiObjStringFunctionNo_startswith,
+    DaiObjStringFunctionNo_endswith,
 };
 
 static DaiObjBuiltinFunction DaiObjStringBuiltins[] = {
@@ -470,6 +842,66 @@ static DaiObjBuiltinFunction DaiObjStringBuiltins[] = {
             .name     = "length",
             .function = &DaiObjString_length,
         },
+    [DaiObjStringFunctionNo_format] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "format",
+            .function = &DaiObjString_format,
+        },
+    [DaiObjStringFunctionNo_sub] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "sub",
+            .function = &DaiObjString_sub,
+        },
+    [DaiObjStringFunctionNo_find] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "find",
+            .function = &DaiObjString_find,
+        },
+    [DaiObjStringFunctionNo_replace] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "replace",
+            .function = &DaiObjString_replace,
+        },
+    [DaiObjStringFunctionNo_split] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "split",
+            .function = &DaiObjString_split,
+        },
+    [DaiObjStringFunctionNo_join] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "join",
+            .function = &DaiObjString_join,
+        },
+    [DaiObjStringFunctionNo_has] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "has",
+            .function = &DaiObjString_has,
+        },
+    [DaiObjStringFunctionNo_strip] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "strip",
+            .function = &DaiObjString_strip,
+        },
+    [DaiObjStringFunctionNo_startswith] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "startswith",
+            .function = &DaiObjString_startswith,
+        },
+    [DaiObjStringFunctionNo_endswith] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "endswith",
+            .function = &DaiObjString_endswith,
+        },
 };
 
 static DaiValue
@@ -477,6 +909,36 @@ DaiObjString_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     const char* cname = name->chars;
     if (strcmp(cname, "length") == 0) {
         return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_length]);
+    }
+    if (strcmp(cname, "format") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_format]);
+    }
+    if (strcmp(cname, "sub") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_sub]);
+    }
+    if (strcmp(cname, "find") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_find]);
+    }
+    if (strcmp(cname, "replace") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_replace]);
+    }
+    if (strcmp(cname, "split") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_split]);
+    }
+    if (strcmp(cname, "join") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_join]);
+    }
+    if (strcmp(cname, "has") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_has]);
+    }
+    if (strcmp(cname, "strip") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_strip]);
+    }
+    if (strcmp(cname, "startswith") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_startswith]);
+    }
+    if (strcmp(cname, "endswith") == 0) {
+        return OBJ_VAL(&DaiObjStringBuiltins[DaiObjStringFunctionNo_endswith]);
     }
     DaiObjError* err = DaiObjError_Newf(
         vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
@@ -488,11 +950,37 @@ DaiObjString_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited
     return strdup(AS_STRING(value)->chars);
 }
 
+static DaiValue
+DaiObjString_subscript_get(DaiVM* vm, DaiValue receiver, DaiValue index) {
+    if (!IS_INTEGER(index)) {
+        DaiObjError* err = DaiObjError_Newf(vm, "index must be integer");
+        return OBJ_VAL(err);
+    }
+    DaiObjString* string = AS_STRING(receiver);
+    int i                = AS_INTEGER(index);
+    if (i < 0) {
+        i += string->utf8_length;
+    }
+    if (i < 0 || i >= string->utf8_length) {
+        DaiObjError* err = DaiObjError_Newf(vm, "index out of range");
+        return OBJ_VAL(err);
+    }
+    char* s = utf8offset(string->chars, i);
+    return OBJ_VAL(dai_copy_string(vm, s, utf8_one_char_length(s)));
+}
+
+static DaiValue
+DaiObjString_subscript_set(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index,
+                           DaiValue value) {
+    DaiObjError* err = DaiObjError_Newf(vm, "'string' object does not support item assignment");
+    return OBJ_VAL(err);
+}
+
 static struct DaiOperation string_operation = {
     .get_property_func  = DaiObjString_get_property,
     .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+    .subscript_get_func = DaiObjString_subscript_get,
+    .subscript_set_func = DaiObjString_subscript_set,
     .string_func        = DaiObjString_String,
     // 因为相同的字符串会被重用，所以直接比较指针（字符串驻留）
     .equal_func = dai_default_equal,
@@ -577,26 +1065,14 @@ DaiObjArray_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
 }
 
 static DaiValue
-DaiObjArray_add(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+DaiObjArray_append(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc == 0) {
         DaiObjError* err =
             DaiObjError_Newf(vm, "add() expected one or more arguments, but got no arguments");
         return OBJ_VAL(err);
     }
     DaiObjArray* array = AS_ARRAY(receiver);
-    int want           = array->length + argc;
-    if (want > array->capacity) {
-        int old_capacity = array->capacity;
-        array->capacity  = GROW_CAPACITY(array->capacity);
-        if (want > array->capacity) {
-            array->capacity = want;
-        }
-        array->elements = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
-    }
-    for (int i = 0; i < argc; i++) {
-        array->elements[array->length + i] = argv[i];
-    }
-    array->length += argc;
+    DaiObjArray_append1(vm, array, argc, argv);
     return receiver;
 }
 
@@ -702,7 +1178,7 @@ DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, in
         index += array->length;
     }
     if (index < 0 || index >= array->length) {
-        DaiObjError* err = DaiObjError_Newf(vm, "removeIndex() index out of bounds");
+        DaiObjError* err = DaiObjError_Newf(vm, "removeIndex() index out of range");
         return OBJ_VAL(err);
     }
     for (int i = index; i < array->length - 1; i++) {
@@ -826,7 +1302,7 @@ DaiObjArray_sort(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
 
 enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_length = 0,
-    DaiObjArrayFunctionNo_add,
+    DaiObjArrayFunctionNo_append,
     DaiObjArrayFunctionNo_pop,
     DaiObjArrayFunctionNo_sub,
     DaiObjArrayFunctionNo_remove,
@@ -845,11 +1321,11 @@ static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
             .name     = "length",
             .function = &DaiObjArray_length,
         },
-    [DaiObjArrayFunctionNo_add] =
+    [DaiObjArrayFunctionNo_append] =
         {
             {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-            .name     = "add",
-            .function = &DaiObjArray_add,
+            .name     = "append",
+            .function = &DaiObjArray_append,
         },
     [DaiObjArrayFunctionNo_pop] =
         {
@@ -912,8 +1388,8 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     const char* cname = name->chars;
     switch (cname[0]) {
         case 'a': {
-            if (strcmp(cname, "add") == 0) {
-                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_add]);
+            if (strcmp(cname, "append") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_append]);
             }
             break;
         }
@@ -1006,7 +1482,7 @@ DaiObjArray_subscript_get(__attribute__((unused)) DaiVM* vm, DaiValue receiver, 
         n += array->length;
     }
     if (n < 0 || n >= array->length) {
-        DaiObjError* err = DaiObjError_Newf(vm, "array index out of bounds");
+        DaiObjError* err = DaiObjError_Newf(vm, "array index out of range");
         return OBJ_VAL(err);
     }
     return array->elements[n];
@@ -1026,7 +1502,7 @@ DaiObjArray_subscript_set(__attribute__((unused)) DaiVM* vm, DaiValue receiver, 
         n += array->length;
     }
     if (n < 0 || n >= array->length) {
-        DaiObjError* err = DaiObjError_Newf(vm, "array index out of bounds");
+        DaiObjError* err = DaiObjError_Newf(vm, "array index out of range");
         return OBJ_VAL(err);
     }
     array->elements[n] = value;
@@ -1045,7 +1521,7 @@ DaiObjArray_String(DaiValue value, DaiPtrArray* visited) {
     for (int i = 0; i < array->length; i++) {
         char* s = dai_value_string_with_visited(array->elements[i], visited);
         DaiStringBuffer_write(sb, s);
-        FREE_ARRAY(char, s, strlen(s) + 1);
+        free(s);
         if (i != array->length - 1) {
             DaiStringBuffer_write(sb, ", ");
         }
@@ -1074,6 +1550,38 @@ DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
         array->elements = GROW_ARRAY(DaiValue, NULL, 0, length);
         memcpy(array->elements, elements, length * sizeof(DaiValue));
     }
+    return array;
+}
+
+
+DaiObjArray*
+DaiObjArray_append1(DaiVM* vm, DaiObjArray* array, int n, DaiValue* values) {
+
+    int want = array->length + n;
+    if (want > array->capacity) {
+        int old_capacity = array->capacity;
+        array->capacity  = GROW_CAPACITY(array->capacity);
+        if (want > array->capacity) {
+            array->capacity = want;
+        }
+        array->elements = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
+    }
+    for (int i = 0; i < n; i++) {
+        array->elements[array->length + i] = values[i];
+    }
+    array->length += n;
+    return array;
+}
+
+DaiObjArray*
+DaiObjArray_append2(DaiVM* vm, DaiObjArray* array, int n, ...) {
+    va_list args;
+    va_start(args, n);
+    for (int i = 0; i < n; i++) {
+        DaiValue value = va_arg(args, DaiValue);
+        DaiObjArray_append1(vm, array, 1, &value);
+    }
+    va_end(args);
     return array;
 }
 

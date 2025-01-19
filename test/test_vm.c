@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "dai_value.h"
@@ -106,7 +107,7 @@ void
 dai_assert_value_equal(DaiValue actual, DaiValue expected);
 
 static void
-run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
+run_vm_tests2(const DaiVMTestCase* tests, const size_t count, bool verbose) {
     for (int i = 0; i < count; i++) {
         DaiVM vm;
         DaiVM_init(&vm);
@@ -117,6 +118,9 @@ run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
         } else {
             interpret2(&vm, tests[i].input);
             DaiValue actual = DaiVM_lastPopedStackElem(&vm);
+            if (verbose) {
+                printf("input: %s\n", tests[i].input);
+            }
             dai_assert_value_equal(actual, tests[i].expected);
             if (!DaiVM_isEmptyStack(&vm)) {
                 for (DaiValue* slot = vm.stack; slot < vm.stack_top; slot++) {
@@ -153,6 +157,11 @@ run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
 
         DaiVM_reset(&vm);
     }
+}
+
+static void
+run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
+    run_vm_tests2(tests, count, false);
 }
 
 static void
@@ -479,6 +488,7 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
             INTEGER_VAL(6),
         },
 
+        // string concat operation
         {
             "\"monkey\";",
             OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
@@ -491,8 +501,558 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
             "\"mon\" + \"key\" + \"banana\";",
             OBJ_VAL(dai_copy_string(&vm, "monkeybanana", 12)),
         },
+
+        // #region format (use {})
+        {
+            "\"{}\".format(1);",
+            OBJ_VAL(dai_copy_string(&vm, "1", 1)),
+        },
+        {
+            "\"{{}}\".format(1);",
+            OBJ_VAL(dai_copy_string(&vm, "{1}", 3)),
+        },
+        {
+            "\"{}\".format(1);",
+            OBJ_VAL(dai_copy_string(&vm, "1", 1)),
+        },
+        {
+            "\"{}{}\".format(1, 2);",
+            OBJ_VAL(dai_copy_string(&vm, "12", 2)),
+        },
+        {
+            "\"{}{}\".format(1, 2);",
+            OBJ_VAL(dai_copy_string(&vm, "12", 2)),
+        },
+        {
+            "\"{}{}{}\".format(1, 2, 3);",
+            OBJ_VAL(dai_copy_string(&vm, "123", 3)),
+        },
+        {
+            "\"{}{}{}\".format(1, 2, 3);",
+            OBJ_VAL(dai_copy_string(&vm, "123", 3)),
+        },
+        {
+            "\"{}{}{}{}\".format(1, 2, 3, 4);",
+            OBJ_VAL(dai_copy_string(&vm, "1234", 4)),
+        },
+        {
+            "\"{}{}{}{}\".format(1, 2, 3, 4);",
+            OBJ_VAL(dai_copy_string(&vm, "1234", 4)),
+        },
+        {
+            "\"{}{}{}{}{}\".format(1, 2, 3, 4, 5);",
+            OBJ_VAL(dai_copy_string(&vm, "12345", 5)),
+        },
+        {
+            "\"{}{}{}{}{}\".format(1, 2, 3, 4, 5, );",
+            OBJ_VAL(dai_copy_string(&vm, "12345", 5)),
+        },
+        {
+            "\"{}{}{}{}{}{}\".format(1, 2, 3, 4, 5, 6);",
+            OBJ_VAL(dai_copy_string(&vm, "123456", 6)),
+        },
+        {
+            "\"{}{}{}{}{}{}\".format(1, 2, 3, 4, 5, 6, );",
+            OBJ_VAL(dai_copy_string(&vm, "123456", 6)),
+        },
+        {
+            "\"{} is {}\".format(1, 'good');",
+            OBJ_VAL(dai_copy_string(&vm, "1 is good", 9)),
+        },
+        {
+            "\"{} is {} {}\".format(1, 'good', []);",
+            OBJ_VAL(dai_copy_string(&vm, "1 is good []", 12)),
+        },
+        {
+            "\"{} is {} {}\".format('中文', 'good', []);",
+            OBJ_VAL(dai_copy_string(&vm, "中文 is good []", 17)),
+        },
+        // #endregion
+
+        // string index access
+        {
+            "\"monkey\"[0];",
+            OBJ_VAL(dai_copy_string(&vm, "m", 1)),
+        },
+        {
+            "\"monkey\"[1];",
+            OBJ_VAL(dai_copy_string(&vm, "o", 1)),
+        },
+        {
+            "\"monkey\"[2];",
+            OBJ_VAL(dai_copy_string(&vm, "n", 1)),
+        },
+        {
+            "\"monkey\"[3];",
+            OBJ_VAL(dai_copy_string(&vm, "k", 1)),
+        },
+        {
+            "\"monkey\"[4];",
+            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+        },
+        {
+            "\"monkey\"[5];",
+            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+        },
+        {
+            "\"monkey\"[-1];",
+            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+        },
+        {
+            "\"monkey\"[-2];",
+            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+        },
+        {
+            "\"monkey\"[-3];",
+            OBJ_VAL(dai_copy_string(&vm, "k", 1)),
+        },
+        {
+            "\"monkey\"[-4];",
+            OBJ_VAL(dai_copy_string(&vm, "n", 1)),
+        },
+        {
+            "\"monkey\"[-5];",
+            OBJ_VAL(dai_copy_string(&vm, "o", 1)),
+        },
+        {
+            "\"monkey\"[-6];",
+            OBJ_VAL(dai_copy_string(&vm, "m", 1)),
+        },
+
+        // #region sub method
+        {
+            "\"monkey\".sub(0, 1);",
+            OBJ_VAL(dai_copy_string(&vm, "m", 1)),
+        },
+        {
+            "\"monkey\".sub(1, 2);",
+            OBJ_VAL(dai_copy_string(&vm, "o", 1)),
+        },
+        {
+            "\"monkey\".sub(2, 3);",
+            OBJ_VAL(dai_copy_string(&vm, "n", 1)),
+        },
+        {
+            "\"monkey\".sub(3, 4);",
+            OBJ_VAL(dai_copy_string(&vm, "k", 1)),
+        },
+        {
+            "\"monkey\".sub(4, 5);",
+            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+        },
+        {
+            "\"monkey\".sub(5, 6);",
+            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+        },
+        {
+            "\"monkey\".sub(0, 2);",
+            OBJ_VAL(dai_copy_string(&vm, "mo", 2)),
+        },
+        {
+            "\"monkey\".sub(1, 3);",
+            OBJ_VAL(dai_copy_string(&vm, "on", 2)),
+        },
+        {
+            "\"monkey\".sub(2, 4);",
+            OBJ_VAL(dai_copy_string(&vm, "nk", 2)),
+        },
+        {
+            "\"monkey\".sub(3, 5);",
+            OBJ_VAL(dai_copy_string(&vm, "ke", 2)),
+        },
+        {
+            "\"monkey\".sub(4, 6);",
+            OBJ_VAL(dai_copy_string(&vm, "ey", 2)),
+        },
+        {
+            "\"monkey\".sub(5, 7);",
+            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+        },
+        {
+            "\"monkey\".sub(0, 0);",
+            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+        },
+        {
+            "\"monkey\".sub(0, 6);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".sub(0, 7);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".sub(0, 100);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".sub(0, -1);",
+            OBJ_VAL(dai_copy_string(&vm, "monke", 5)),
+        },
+        {
+            "\"monkey\".sub(0);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".sub(1);",
+            OBJ_VAL(dai_copy_string(&vm, "onkey", 5)),
+        },
+        {
+            "\"monkey\".sub(2);",
+            OBJ_VAL(dai_copy_string(&vm, "nkey", 4)),
+        },
+        {
+            "\"monkey\".sub(3);",
+            OBJ_VAL(dai_copy_string(&vm, "key", 3)),
+        },
+        {
+            "\"monkey\".sub(4);",
+            OBJ_VAL(dai_copy_string(&vm, "ey", 2)),
+        },
+        {
+            "\"monkey\".sub(5);",
+            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+        },
+        {
+            "\"monkey\".sub(6);",
+            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+        },
+        {
+            "\"monkey\".sub(7);",
+            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+        },
+        {
+            "\"monkey\".sub(100);",
+            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+        },
+        {
+            "\"monkey\".sub(-1);",
+            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+        },
+        {
+            "\"monkey\".sub(-2);",
+            OBJ_VAL(dai_copy_string(&vm, "ey", 2)),
+        },
+        {
+            "\"monkey\".sub(-3);",
+            OBJ_VAL(dai_copy_string(&vm, "key", 3)),
+        },
+        {
+            "\"monkey\".sub(-4);",
+            OBJ_VAL(dai_copy_string(&vm, "nkey", 4)),
+        },
+        {
+            "\"monkey\".sub(-5);",
+            OBJ_VAL(dai_copy_string(&vm, "onkey", 5)),
+        },
+        {
+            "\"monkey\".sub(-6);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".sub(-7);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".sub(-100);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".sub(-1, -1);",
+            OBJ_VAL(dai_copy_string(&vm, "", 1)),
+        },
+        {
+            "\"monkey\".sub(-2, -1);",
+            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+        },
+        {
+            "\"monkey\".sub(-2, -2);",
+            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+        },
+        {
+            "\"monkey\".sub(-2, -3);",
+            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+        },
+        // #endregion
+
+        // #region find method
+        {
+            "\"monkey\".find(\"m\");",
+            INTEGER_VAL(0),
+        },
+        {
+            "\"monkey\".find(\"o\");",
+            INTEGER_VAL(1),
+        },
+        {
+            "\"monkey\".find(\"n\");",
+            INTEGER_VAL(2),
+        },
+        {
+            "\"monkey\".find(\"k\");",
+            INTEGER_VAL(3),
+        },
+        {
+            "\"monkey\".find(\"e\");",
+            INTEGER_VAL(4),
+        },
+        {
+            "\"monkey\".find(\"y\");",
+            INTEGER_VAL(5),
+        },
+        {
+            "\"monkey\".find(\"a\");",
+            INTEGER_VAL(-1),
+        },
+        {
+            "\"monkey\".find(\"monkey\");",
+            INTEGER_VAL(0),
+        },
+        {
+            "\"monkey\".find(\"monkeybanana\");",
+            INTEGER_VAL(-1),
+        },
+        {
+            "\"monkey中文\".find(\"中文\");",
+            INTEGER_VAL(6),
+        },
+        {
+            "\"monkey中文end\".find(\"end\");",
+            INTEGER_VAL(8),
+        },
+        // #endregion
+
+        // #region replace method
+        {
+            "\"monkey\".replace(\"m\", \"M\");",
+            OBJ_VAL(dai_copy_string(&vm, "Monkey", 6)),
+        },
+        {
+            "\"monkey\".replace(\"o\", \"O\");",
+            OBJ_VAL(dai_copy_string(&vm, "mOnkey", 6)),
+        },
+        {
+            "\"monkey\".replace(\"n\", \"N\");",
+            OBJ_VAL(dai_copy_string(&vm, "moNkey", 6)),
+        },
+        {
+            "\"monkey\".replace(\"k\", \"K\");",
+            OBJ_VAL(dai_copy_string(&vm, "monKey", 6)),
+        },
+        {
+            "\"monkey\".replace(\"e\", \"E\");",
+            OBJ_VAL(dai_copy_string(&vm, "monkEy", 6)),
+        },
+        {
+            "\"monkey\".replace(\"y\", \"Y\");",
+            OBJ_VAL(dai_copy_string(&vm, "monkeY", 6)),
+        },
+        {
+            "\"monkey\".replace(\"a\", \"A\");",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkey\".replace(\"monkey\", \"MONKEY\");",
+            OBJ_VAL(dai_copy_string(&vm, "MONKEY", 6)),
+        },
+        {
+            "\"monkey中文\".replace(\"中文\", \"Chinese\");",
+            OBJ_VAL(dai_copy_string(&vm, "monkeyChinese", 13)),
+        },
+        {
+            "\"monkey中文end\".replace(\"end\", \"END\");",
+            OBJ_VAL(dai_copy_string(&vm, "monkey中文END", 15)),
+        },
+        {
+            "\"monkey\".replace(\"monkeybanana\", \"MONKEY\");",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"monkeymonkey\".replace(\"monkey\", \"MONKEY\");",
+            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEY", 12)),
+        },
+        {
+            "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\");",
+            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYMONKEY", 18)),
+        },
+        {
+            "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 0);",
+            OBJ_VAL(dai_copy_string(&vm, "monkeymonkeymonkey", 18)),
+        },
+        {
+            "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 1);",
+            OBJ_VAL(dai_copy_string(&vm, "MONKEYmonkeymonkey", 18)),
+        },
+        {
+            "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 2);",
+            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYmonkey", 18)),
+        },
+        {
+            "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 3);",
+            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYMONKEY", 18)),
+        },
+        {
+            "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 4);",
+            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYMONKEY", 18)),
+        },
+        // #endregion
+
+        // #region join method
+        {
+            "''.join([]);",
+            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+        },
+        {
+            "''.join(['monkey']);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "''.join(['mon', 'key']);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "''.join(['mo', 'n', 'key']);",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        // #endregion
+
+        // #region has method
+        {
+            "\"monkey\".has(\"m\");",
+            dai_true,
+        },
+        {
+            "\"monkey\".has(\"mon\");",
+            dai_true,
+        },
+        {
+            "\"monkey\".has(\"abc\");",
+            dai_false,
+        },
+        // #endregion
+
+        // #region strip method
+        {
+            "\"monkey\".strip();",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        {
+            "\"   monkey   \".strip();",
+            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+        },
+        // #endregion
+
+        // #region startswith method
+        {
+            "\"monkey\".startswith(\"m\");",
+            dai_true,
+        },
+        {
+            "\"monkey\".startswith(\"mon\");",
+            dai_true,
+        },
+        {
+            "\"monkey\".startswith(\"abc\");",
+            dai_false,
+        },
+        // #endregion
+
+        // #region endswith method
+        {
+            "\"monkey\".endswith(\"y\");",
+            dai_true,
+        },
+        {
+            "\"monkey\".endswith(\"ey\");",
+            dai_true,
+        },
+        {
+            "\"monkey\".endswith(\"abc\");",
+            dai_false,
+        },
+        // #endregion
     };
-    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    run_vm_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+
+    // #region split method
+    DaiObjArray* array1 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm,
+                        array1,
+                        2,
+                        OBJ_VAL(dai_copy_string(&vm, "mon", 3)),
+                        OBJ_VAL(dai_copy_string(&vm, "key", 3)));
+    DaiObjArray* array2 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm,
+                        array2,
+                        2,
+                        OBJ_VAL(dai_copy_string(&vm, "", 0)),
+                        OBJ_VAL(dai_copy_string(&vm, "onkey", 5)));
+    DaiObjArray* array3 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm,
+                        array3,
+                        2,
+                        OBJ_VAL(dai_copy_string(&vm, "mo", 2)),
+                        OBJ_VAL(dai_copy_string(&vm, "ey", 2)));
+    DaiObjArray* array4 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm, array4, 1, OBJ_VAL(dai_copy_string(&vm, "i am good", 9)));
+    DaiObjArray* array5 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm,
+                        array5,
+                        2,
+                        OBJ_VAL(dai_copy_string(&vm, "i", 1)),
+                        OBJ_VAL(dai_copy_string(&vm, "am good", 8)));
+    DaiObjArray* array6 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm,
+                        array6,
+                        3,
+                        OBJ_VAL(dai_copy_string(&vm, "i", 1)),
+                        OBJ_VAL(dai_copy_string(&vm, "am", 2)),
+                        OBJ_VAL(dai_copy_string(&vm, "good", 4)));
+    DaiVMTestCase split_tests[] = {
+        {
+            "\"mon key\".split();",   // [ "mon", "key" ]
+            OBJ_VAL(array1),
+        },
+        {
+            "\"mon    key\".split();",   // [ "mon", "key" ]
+            OBJ_VAL(array1),
+        },
+        {
+            "\"mon  \tkey\".split();",   // [ "mon", "key" ]
+            OBJ_VAL(array1),
+        },
+        {
+            "\"monkey\".split(\"m\");",   // [ "", "onkey" ]
+            OBJ_VAL(array2),
+        },
+        {
+            "\"monkey\".split(\"nk\");",   // [ "mo", "ey" ]
+            OBJ_VAL(array3),
+        },
+        {
+            "'i am good'.split(' ', 0);",   // [ "i am good" ]
+            OBJ_VAL(array4),
+        },
+        {
+            "'i am good'.split(' ', 1);",   // [ "i am good" ]
+            OBJ_VAL(array4),
+        },
+        {
+            "'i am good'.split(' ', 2);",   // [ "i", "am good" ]
+            OBJ_VAL(array5),
+        },
+        {
+            "'i am good'.split(' ', 3);",   // [ "i", "am", "good" ]
+            OBJ_VAL(array6),
+        },
+        {
+            "'i am good'.split(' ');",   // [ "i", "am", "good" ]
+            OBJ_VAL(array6),
+        },
+
+    };
+    run_vm_tests2(split_tests, sizeof(split_tests) / sizeof(split_tests[0]), false);
+    // #endregion
+
     DaiVM_reset(&vm);
     return MUNIT_OK;
 }
@@ -844,19 +1404,19 @@ test_array_method(__attribute__((unused)) const MunitParameter params[],
 
         // add
         {
-            "var m = []; m.add(0); m.length();",
+            "var m = []; m.append(0); m.length();",
             INTEGER_VAL(1),
         },
         {
-            "var m = []; m.add(0, 1); m.length();",
+            "var m = []; m.append(0, 1); m.length();",
             INTEGER_VAL(2),
         },
         {
-            "var m = []; m.add(0, 1, 2); m.length();",
+            "var m = []; m.append(0, 1, 2); m.length();",
             INTEGER_VAL(3),
         },
         {
-            "var m = []; m.add(0, 1, 2); m[-1];",
+            "var m = []; m.append(0, 1, 2); m[-1];",
             INTEGER_VAL(2),
         },
 
@@ -1154,6 +1714,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
     DaiVM vm;
     DaiVM_init(&vm);
     const DaiVMTestCase tests[] = {
+        // 数字运算
         {
             "var a = 1 / 0;",
             OBJ_VAL(DaiObjError_Newf(&vm, "division by zero")),
@@ -1230,20 +1791,21 @@ test_error(__attribute__((unused)) const MunitParameter params[],
                 DaiObjError_Newf(&vm, "unsupported operand type(s) for >>: 'int' and 'string'")),
         },
 
+        // 数组
         {
             "var a = [1, 2, 3]; a[3];",
-            OBJ_VAL(DaiObjError_Newf(&vm, "array index out of bounds")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "array index out of range")),
         },
         {
             "var a = []; a[0] = 1;",
-            OBJ_VAL(DaiObjError_Newf(&vm, "array index out of bounds")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "array index out of range")),
         },
         {
             "var a = []; a.length(1);",
             OBJ_VAL(DaiObjError_Newf(&vm, "length() expected no arguments, but got 1")),
         },
         {
-            "var a = []; a.add();",
+            "var a = []; a.append();",
             OBJ_VAL(DaiObjError_Newf(&vm,
                                      "add() expected one or more arguments, but got no arguments")),
         },
@@ -1281,7 +1843,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = []; a.removeIndex(1);",
-            OBJ_VAL(DaiObjError_Newf(&vm, "removeIndex() index out of bounds")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "removeIndex() index out of range")),
         },
         {
             "var a = []; a.extend();",
@@ -1312,12 +1874,123 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             OBJ_VAL(DaiObjError_Newf(&vm, "sort cmp() expected int return value, but got string")),
         },
 
+        // #region 字符串
+        {
+            "'a'.format(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "format() too many arguments")),
+        },
+        {
+            "'a {} {}'.format(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "format() not enough arguments")),
+        },
+        {
+            "var a = 'string'; a[6];",
+            OBJ_VAL(DaiObjError_Newf(&vm, "index out of range")),
+        },
+        {
+            "var a = 'string'; a[1] = 'a';",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'string' object does not support item assignment")),
+        },
+        {
+            "var a = 'string'; a.length(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "length() expected no arguments, but got 1")),
+        },
+        {
+            "var a = 'string'; a.sub();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "sub() expected 1-2 arguments, but got 0")),
+        },
+        {
+            "var a = 'string'; a.sub('a');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "sub() expected int arguments, but got string")),
+        },
+        {
+            "var a = 'string'; a.sub(1, 'a');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "sub() expected int arguments, but got string")),
+        },
+        {
+            "var a = 'string'; a.find();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "find() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = 'string'; a.replace();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "replace() expected 2-3 arguments, but got 0")),
+        },
+        {
+            "var a = 'string'; a.replace('', 'a');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "replace() empty old string")),
+        },
+        {
+            "var a = 'string'; a.replace('a', 'a', '');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "replace() expected int arguments, but got string")),
+        },
+        {
+            "var a = 'string'; a.split('a', 1, 2);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "split() expected 0-2 arguments, but got 3")),
+        },
+        {
+            "var a = 'string'; a.split('a', '1');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "split() expected int arguments, but got string")),
+        },
+        {
+            "var a = 'string'; a.split('');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "split() empty separator")),
+        },
+        {
+            "var a = 'string'; a.join();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "join() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = 'string'; a.join(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "join() expected array arguments, but got int")),
+        },
+        {
+            "var a = 'string'; a.join([1]);",
+            OBJ_VAL(DaiObjError_Newf(
+                &vm, "join() expected array of string arguments, but got int at 0")),
+        },
+        {
+            "var a = 'string'; a.join(['1', 2]);",
+            OBJ_VAL(DaiObjError_Newf(
+                &vm, "join() expected array of string arguments, but got int at 1")),
+        },
+        {
+            "var a = 'string'; a.has();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "has() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = 'string'; a.has(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "has() expected string arguments, but got int")),
+        },
+        {
+            "var a = 'string'; a.strip('a', 'b');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "strip() expected no arguments, but got 2")),
+        },
+        {
+            "var a = 'string'; a.startswith();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "startswith() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = 'string'; a.startswith(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "startswith() expected string arguments, but got int")),
+        },
+        {
+            "var a = 'string'; a.endswith();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "endswith() expected 1 arguments, but got 0")),
+        },
+        {
+            "var a = 'string'; a.endswith(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "endswith() expected string arguments, but got int")),
+        },
+        // #endregion
+
+        // 内置函数
         {
             "len(1);",
             OBJ_VAL(DaiObjError_Newf(&vm, "'len' not supported 'int'")),
         },
 
 
+        // 函数调用
         {
             "var a = fn() { return 1 + 'string'; }; a(1);",
             OBJ_VAL(DaiObjError_Newf(&vm, "<anonymous 0>() expected 0 arguments but got 1")),
@@ -1331,7 +2004,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             OBJ_VAL(DaiObjError_Newf(&vm, "'string' object is not callable")),
         },
 
-
+        // 属性访问
         {
             "var a = 1; a.nonexistent;",
             OBJ_VAL(DaiObjError_Newf(&vm, "'int' object has not property 'nonexistent'")),
@@ -1383,6 +2056,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
 
 
+        // 类实例化
         {
             "class F { var a; }; var f = F();",
             OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'a'")),

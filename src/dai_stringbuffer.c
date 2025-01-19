@@ -131,3 +131,9 @@ DaiStringBuffer_getAndFree(DaiStringBuffer* sb, size_t* length) {
     dai_free(sb);
     return s;
 }
+
+void
+DaiStringBuffer_free(DaiStringBuffer* sb) {
+    dai_free(sb->data);
+    dai_free(sb);
+}
