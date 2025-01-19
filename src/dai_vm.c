@@ -27,17 +27,6 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount);
 DaiValue dai_true  = {.type = DaiValueType_bool, .as.boolean = true};
 DaiValue dai_false = {.type = DaiValueType_bool, .as.boolean = false};
 
-
-static bool
-dai_value_is_truthy(const DaiValue value) {
-    switch (value.type) {
-        case DaiValueType_nil: return false;
-        case DaiValueType_bool: return AS_BOOL(value);
-        case DaiValueType_int: return AS_INTEGER(value) != 0;
-        default: return true;
-    }
-}
-
 void
 DaiVM_resetStack(DaiVM* vm) {
     vm->stack_top  = vm->stack;

@@ -123,6 +123,17 @@ dai_value_string_with_visited(DaiValue value, DaiPtrArray* visited);
 char*
 dai_value_string(DaiValue value);
 
+/**
+ * @brief 返回值是否为真
+ *
+ * @param value 值
+ *
+ * @return true 真，false 假
+ */
+bool
+dai_value_is_truthy(const DaiValue value);
+
+
 typedef struct {
     int capacity;
     int count;

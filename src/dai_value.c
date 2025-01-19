@@ -94,6 +94,16 @@ dai_value_string(DaiValue value) {
     return s;
 }
 
+bool
+dai_value_is_truthy(const DaiValue value) {
+    switch (value.type) {
+        case DaiValueType_nil: return false;
+        case DaiValueType_bool: return AS_BOOL(value);
+        case DaiValueType_int: return AS_INTEGER(value) != 0;
+        default: return true;
+    }
+}
+
 // #region DaiValueArray
 
 void

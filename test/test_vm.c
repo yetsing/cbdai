@@ -1209,6 +1209,10 @@ test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
         {"len([1]);", INTEGER_VAL(1)},
         {"var m = [1, 2, 3]; len(m);", INTEGER_VAL(3)},
         {"print(\"hello\");", NIL_VAL},
+        {"assert(true);", NIL_VAL},
+        {"assert(true, 'error message');", NIL_VAL},
+        {"assert_eq(1, 1);", NIL_VAL},
+        {"assert_eq(1, 1, 'error message');", NIL_VAL},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
@@ -1983,11 +1987,28 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
         // #endregion
 
-        // 内置函数
+        // #region 内置函数
         {
             "len(1);",
             OBJ_VAL(DaiObjError_Newf(&vm, "'len' not supported 'int'")),
         },
+        {
+            "assert(0);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "assertion failed")),
+        },
+        {
+            "assert(0, 'error message');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "assertion failed: error message")),
+        },
+        {
+            "assert_eq(0, 1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "assertion failed: 0 != 1")),
+        },
+        {
+            "assert_eq(0, 1, 'error message');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "assertion failed: 0 != 1 error message")),
+        },
+        // #endregion
 
 
         // 函数调用

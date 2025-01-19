@@ -1687,6 +1687,57 @@ builtin_type(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue
     return OBJ_VAL(dai_copy_string(vm, s, strlen(s)));
 }
 
+static DaiValue
+builtin_assert(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+               int argc, DaiValue* argv) {
+    if ((argc != 1) && (argc != 2)) {
+        DaiObjError* err = DaiObjError_Newf(vm, "assert() expected 2 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (argc == 2 && !IS_STRING(argv[1])) {
+        DaiObjError* err = DaiObjError_Newf(vm, "assert() expected string as second argument");
+        return OBJ_VAL(err);
+    }
+    if (!dai_value_is_truthy(argv[0])) {
+        if (argc == 1) {
+            DaiObjError* err = DaiObjError_Newf(vm, "assertion failed");
+            return OBJ_VAL(err);
+        }
+        DaiObjError* err = DaiObjError_Newf(vm, "assertion failed: %s", AS_STRING(argv[1])->chars);
+        return OBJ_VAL(err);
+    }
+    return NIL_VAL;
+}
+
+static DaiValue
+builtin_assert_eq(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                  int argc, DaiValue* argv) {
+    if ((argc != 2) && (argc != 3)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "assert_eq() expected 2 or 3 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (argc == 3 && !IS_STRING(argv[2])) {
+        DaiObjError* err = DaiObjError_Newf(vm, "assert_eq() expected string as third argument");
+        return OBJ_VAL(err);
+    }
+    if (!dai_value_equal(argv[0], argv[1])) {
+        char* s1         = dai_value_string(argv[0]);
+        char* s2         = dai_value_string(argv[1]);
+        DaiObjError* err = NULL;
+        if (argc == 2) {
+            err = DaiObjError_Newf(vm, "assertion failed: %s != %s", s1, s2);
+        } else {
+            err = DaiObjError_Newf(
+                vm, "assertion failed: %s != %s %s", s1, s2, AS_STRING(argv[2])->chars);
+        }
+        free(s1);
+        free(s2);
+        return OBJ_VAL(err);
+    }
+    return NIL_VAL;
+}
+
 DaiObjBuiltinFunction builtin_funcs[256] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -1702,6 +1753,16 @@ DaiObjBuiltinFunction builtin_funcs[256] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "type",
         .function = builtin_type,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "assert",
+        .function = builtin_assert,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "assert_eq",
+        .function = builtin_assert_eq,
     },
 
     {
