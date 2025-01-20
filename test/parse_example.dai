@@ -85,3 +85,8 @@ var mynil = nil;
 x = 3.1415926;
 x = [1, 3.2, "abc"];
 x[0];
+
+{
+    var a = 2;
+    print(a);
+};

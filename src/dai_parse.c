@@ -161,6 +161,8 @@ static DaiAstStatement*
 Parser_parseStatement(Parser* p);
 static DaiAstBlockStatement*
 Parser_parseBlockStatement(Parser* p);
+static DaiAstBlockStatement*
+Parser_parseBlockStatement1(Parser* p);
 static DaiAstStatement*
 Parser_parseStatementOfClass(Parser* p);
 // #endregion
@@ -228,12 +230,8 @@ Parser_expectPeek(Parser* p, const DaiTokenType type) {
              "expected token to be \"%s\" but got \"%s\"",
              DaiTokenType_string(type),
              DaiTokenType_string(p->peek_token->type));
-    int line   = p->peek_token->start_line;
-    int column = p->peek_token->start_column;
-    if (p->peek_token->type == DaiTokenType_eof) {
-        line   = p->cur_token->end_line;
-        column = p->cur_token->end_column;
-    }
+    int line        = p->peek_token->start_line;
+    int column      = p->peek_token->start_column;
     p->syntax_error = DaiSyntaxError_New(buf, line, column);
     return false;
 }
@@ -438,12 +436,8 @@ Parser_parseInteger(Parser* p) {
     if (error != NULL) {
         char buf[256];
         snprintf(buf, sizeof(buf), "%s \"%s\"", error, p->cur_token->literal);
-        int line   = p->cur_token->start_line;
-        int column = p->cur_token->start_column;
-        if (p->cur_token->type == DaiTokenType_eof) {
-            line   = p->prev_token->end_line;
-            column = p->prev_token->end_column;
-        }
+        int line        = p->cur_token->start_line;
+        int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New(buf, line, column);
         return NULL;
     }
@@ -479,12 +473,8 @@ Parser_parseFloat(Parser* p) {
     if (errno == ERANGE) {
         char buf[256];
         snprintf(buf, sizeof(buf), "Out of range \"%s\"", p->cur_token->literal);
-        int line   = p->cur_token->start_line;
-        int column = p->cur_token->start_column;
-        if (p->cur_token->type == DaiTokenType_eof) {
-            line   = p->prev_token->end_line;
-            column = p->prev_token->end_column;
-        }
+        int line        = p->cur_token->start_line;
+        int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New(buf, line, column);
         return NULL;
     }
@@ -602,7 +592,7 @@ Parser_parseFunctionLiteral(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->body = Parser_parseBlockStatement(p);
+    func->body = Parser_parseBlockStatement1(p);
     if (func->body == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
@@ -789,12 +779,8 @@ Parser_parseExpression(Parser* p, Precedence precedence) {
                      sizeof(buf),
                      "no prefix parse function for \"%s\" found",
                      DaiTokenType_string(p->cur_token->type));
-            int line   = p->cur_token->start_line;
-            int column = p->cur_token->start_column;
-            if (p->cur_token->type == DaiTokenType_eof) {
-                line   = p->prev_token->end_line;
-                column = p->prev_token->end_column;
-            }
+            int line        = p->cur_token->start_line;
+            int column      = p->cur_token->start_column;
             p->syntax_error = DaiSyntaxError_New(buf, line, column);
             return NULL;
         }
@@ -832,18 +818,14 @@ Parser_parseBlockStatementOfClass(Parser* p) {
         Parser_nextToken(p);
     }
     if (!Parser_curTokenIs(p, DaiTokenType_rbrace)) {
-        int line   = p->cur_token->start_line;
-        int column = p->cur_token->start_column;
-        if (p->cur_token->type == DaiTokenType_eof) {
-            line   = p->prev_token->end_line;
-            column = p->prev_token->end_column;
-        }
+        int line        = p->cur_token->start_line;
+        int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New("expected '}'", line, column);
         blockstatement->free_fn((DaiAstBase*)blockstatement, true);
         return NULL;
     }
-    blockstatement->start_line   = p->cur_token->start_line;
-    blockstatement->start_column = p->cur_token->start_column;
+    blockstatement->end_line   = p->cur_token->end_line;
+    blockstatement->end_column = p->cur_token->end_column;
     return blockstatement;
 }
 
@@ -879,7 +861,7 @@ Parser_parseClassMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->body = Parser_parseBlockStatement(p);
+    func->body = Parser_parseBlockStatement1(p);
     if (func->body == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
@@ -1013,7 +995,7 @@ Parser_parseMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->body = Parser_parseBlockStatement(p);
+    func->body = Parser_parseBlockStatement1(p);
     if (func->body == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
@@ -1169,7 +1151,7 @@ Parser_parseFunctionStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->body = Parser_parseBlockStatement(p);
+    func->body = Parser_parseBlockStatement1(p);
     if (func->body == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
@@ -1356,7 +1338,7 @@ Parser_parseIfStatement(Parser* p) {
         ifstatement->free_fn((DaiAstBase*)ifstatement, true);
         return NULL;
     }
-    ifstatement->then_branch = Parser_parseBlockStatement(p);
+    ifstatement->then_branch = Parser_parseBlockStatement1(p);
     if (ifstatement->then_branch == NULL) {
         ifstatement->free_fn((DaiAstBase*)ifstatement, true);
         return NULL;
@@ -1385,7 +1367,7 @@ Parser_parseIfStatement(Parser* p) {
             ifstatement->free_fn((DaiAstBase*)ifstatement, true);
             return NULL;
         }
-        DaiAstBlockStatement* elif_branch = Parser_parseBlockStatement(p);
+        DaiAstBlockStatement* elif_branch = Parser_parseBlockStatement1(p);
         if (elif_branch == NULL) {
             condition->free_fn((DaiAstBase*)condition, true);
             ifstatement->free_fn((DaiAstBase*)ifstatement, true);
@@ -1400,7 +1382,7 @@ Parser_parseIfStatement(Parser* p) {
             ifstatement->free_fn((DaiAstBase*)ifstatement, true);
             return NULL;
         }
-        ifstatement->else_branch = Parser_parseBlockStatement(p);
+        ifstatement->else_branch = Parser_parseBlockStatement1(p);
         if (ifstatement->else_branch == NULL) {
             ifstatement->free_fn((DaiAstBase*)ifstatement, true);
             return NULL;
@@ -1444,7 +1426,7 @@ Parser_parseWhileStatement(Parser* p) {
         while_stmt->free_fn((DaiAstBase*)while_stmt, true);
         return NULL;
     }
-    while_stmt->body = Parser_parseBlockStatement(p);
+    while_stmt->body = Parser_parseBlockStatement1(p);
     if (while_stmt->body == NULL) {
         while_stmt->free_fn((DaiAstBase*)while_stmt, true);
         return NULL;
@@ -1460,7 +1442,7 @@ Parser_parseWhileStatement(Parser* p) {
 }
 
 static DaiAstBlockStatement*
-Parser_parseBlockStatement(Parser* p) {
+Parser_parseBlockStatement1(Parser* p) {
     DaiAstBlockStatement* blockstatement = DaiAstBlockStatement_New();
     blockstatement->start_line           = p->cur_token->start_line;
     blockstatement->start_column         = p->cur_token->start_column;
@@ -1476,18 +1458,29 @@ Parser_parseBlockStatement(Parser* p) {
         Parser_nextToken(p);
     }
     if (!Parser_curTokenIs(p, DaiTokenType_rbrace)) {
-        int line   = p->cur_token->start_line;
-        int column = p->cur_token->start_column;
-        if (p->cur_token->type == DaiTokenType_eof) {
-            line   = p->prev_token->end_line;
-            column = p->prev_token->end_column;
-        }
+        int line        = p->cur_token->start_line;
+        int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New("expected '}'", line, column);
         blockstatement->free_fn((DaiAstBase*)blockstatement, true);
         return NULL;
     }
-    blockstatement->start_line   = p->cur_token->start_line;
-    blockstatement->start_column = p->cur_token->start_column;
+    blockstatement->end_line   = p->cur_token->end_line;
+    blockstatement->end_column = p->cur_token->end_column;
+    return blockstatement;
+}
+
+static DaiAstBlockStatement*
+Parser_parseBlockStatement(Parser* p) {
+    DaiAstBlockStatement* blockstatement = Parser_parseBlockStatement1(p);
+    if (blockstatement == NULL) {
+        return NULL;
+    }
+    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
+        blockstatement->free_fn((DaiAstBase*)blockstatement, true);
+        return NULL;
+    }
+    blockstatement->end_line   = p->cur_token->end_line;
+    blockstatement->end_column = p->cur_token->end_column;
     return blockstatement;
 }
 
@@ -1535,6 +1528,9 @@ Parser_parseStatement(Parser* p) {
         case DaiTokenType_super:
         case DaiTokenType_ident: {
             return Parser_parseExpressionOrAssignStatement(p);
+        }
+        case DaiTokenType_lbrace: {
+            return (DaiAstStatement*)Parser_parseBlockStatement(p);
         }
         default: {
             return (DaiAstStatement*)Parser_parseExpressionStatement(p);

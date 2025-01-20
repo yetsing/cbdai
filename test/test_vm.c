@@ -2100,6 +2100,42 @@ test_error(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_block_statement(__attribute__((unused)) const MunitParameter params[],
+                     __attribute__((unused)) void* user_data) {
+    const DaiVMTestCase tests[] = {
+        {
+            "var a = 1; { var a = 2; }; a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var a = 1; { a = 2; }; a;",
+            INTEGER_VAL(2),
+        },
+        {
+            "var a = 1; { a = 2; var a = 3; }; a;",
+            INTEGER_VAL(2),
+        },
+        {
+            "var a = 1; { a = 2; var a = 3; }; a;",
+            INTEGER_VAL(2),
+        },
+        {
+            "var a = 1; { a = 2; { var a = 3; }; }; a;",
+            INTEGER_VAL(2),
+        },
+        {
+            "var a = 1; { a = 2; { a = 3; }; }; a;",
+            INTEGER_VAL(3),
+        },
+        {
+            "var a = 1; { a = 2; { a = 3; }; a = 4; }; a;",
+            INTEGER_VAL(4),
+        },
+    };
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
 
 MunitTest vm_tests[] = {
     {(char*)"/test_number_arithmetic",
@@ -2175,5 +2211,11 @@ MunitTest vm_tests[] = {
      MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_error", test_error, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_block_statement",
+     test_block_statement,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

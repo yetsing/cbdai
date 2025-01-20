@@ -18,10 +18,4 @@ dai_compile
 
 [craftinginterpreters](https://github.com/munificent/craftinginterpreters)
 
-[µnit is a small but full-featured unit testing framework for C](https://github.com/nemequ/munit)
-
-[Unicode Character Database Tools](https://github.com/rhdunn/ucd-tools)
-
 https://peps.python.org/pep-0456/#abstract
-
-[utf8.h](https://github.com/sheredom/utf8.h)

@@ -519,6 +519,10 @@ test_class_statements(__attribute__((unused)) const MunitParameter params[],
         munit_assert_int(stmt->end_line, ==, 10);
         munit_assert_int(stmt->end_column, ==, 3);
         munit_assert_int(stmt->body->length, ==, 6);
+        munit_assert_int(stmt->body->start_line, ==, 1);
+        munit_assert_int(stmt->body->start_column, ==, 11);
+        munit_assert_int(stmt->body->end_line, ==, 10);
+        munit_assert_int(stmt->body->end_column, ==, 2);
         check_ins_var_statement((DaiAstInsVarStatement*)stmt->body->statements[0], "a1");
         munit_assert_null(((DaiAstInsVarStatement*)stmt->body->statements[0])->value);
 
@@ -1618,7 +1622,7 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "a = ",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:4",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:5",
         },
         {
             "a = -",
@@ -1646,7 +1650,7 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "this.a = ",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:9",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:10",
         },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
@@ -2139,6 +2143,70 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
 }
 
 
+static MunitResult
+test_block_statement(__attribute__((unused)) const MunitParameter params[],
+                     __attribute__((unused)) void* user_data) {
+    const char* input = "{ var a = 5; var b = 10; var c = 15; };";
+    DaiAstProgram prog;
+    DaiAstProgram_init(&prog);
+    DaiAstProgram* program = &prog;
+    parse_helper(input, program);
+
+    munit_assert_int(program->length, ==, 1);
+    DaiAstStatement* stmt = program->statements[0];
+    munit_assert_int(stmt->type, ==, DaiAstType_BlockStatement);
+    {
+        munit_assert_int(stmt->start_line, ==, 1);
+        munit_assert_int(stmt->start_column, ==, 1);
+        munit_assert_int(stmt->end_line, ==, 1);
+        munit_assert_int(stmt->end_column, ==, 40);
+    }
+    DaiAstBlockStatement* block = (DaiAstBlockStatement*)stmt;
+    munit_assert_int(block->length, ==, 3);
+    {
+        DaiAstStatement* stmt = block->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
+        {
+            munit_assert_int(stmt->start_line, ==, 1);
+            munit_assert_int(stmt->start_column, ==, 3);
+            munit_assert_int(stmt->end_line, ==, 1);
+            munit_assert_int(stmt->end_column, ==, 13);
+        }
+        DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
+        check_identifier((DaiAstExpression*)var_stmt->name, "a");
+        check_integer_literal(var_stmt->value, 5);
+    }
+    {
+        DaiAstStatement* stmt = block->statements[1];
+        munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
+        {
+            munit_assert_int(stmt->start_line, ==, 1);
+            munit_assert_int(stmt->start_column, ==, 14);
+            munit_assert_int(stmt->end_line, ==, 1);
+            munit_assert_int(stmt->end_column, ==, 25);
+        }
+        DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
+        check_identifier((DaiAstExpression*)var_stmt->name, "b");
+        check_integer_literal(var_stmt->value, 10);
+    }
+    {
+        DaiAstStatement* stmt = block->statements[2];
+        munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
+        {
+            munit_assert_int(stmt->start_line, ==, 1);
+            munit_assert_int(stmt->start_column, ==, 26);
+            munit_assert_int(stmt->end_line, ==, 1);
+            munit_assert_int(stmt->end_column, ==, 37);
+        }
+        DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
+        check_identifier((DaiAstExpression*)var_stmt->name, "c");
+        check_integer_literal(var_stmt->value, 15);
+    }
+    program->free_fn((DaiAstBase*)program, true);
+    return MUNIT_OK;
+};
+
+
 MunitTest parse_tests[] = {
     {(char*)"/test_var_statements", test_var_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_return_statements",
@@ -2261,6 +2329,12 @@ MunitTest parse_tests[] = {
     {(char*)"/test_parse_example", test_parse_example, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_array_literal_expression",
      test_array_literal_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_block_statement",
+     test_block_statement,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

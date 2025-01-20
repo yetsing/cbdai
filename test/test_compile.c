@@ -2896,6 +2896,60 @@ test_subscript_set_expression(__attribute__((unused)) const MunitParameter param
     return MUNIT_OK;
 }
 
+static MunitResult
+test_block_statement(__attribute__((unused)) const MunitParameter params[],
+                     __attribute__((unused)) void* user_data) {
+    const DaiCompilerTestCase tests[] = {
+        {
+            "{1;};",
+            4,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+            },
+            {INTEGER_VAL(1)},
+        },
+        {
+            "{1; 2;};",
+            8,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpPop,
+            },
+            {INTEGER_VAL(1), INTEGER_VAL(2)},
+        },
+        {
+            "{1; 2; 3;};",
+            12,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpPop,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpPop,
+                DaiOpConstant,
+                0,
+                2,
+                DaiOpPop,
+            },
+            {INTEGER_VAL(1), INTEGER_VAL(2), INTEGER_VAL(3)},
+        },
+    };
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
 
 MunitTest compile_tests[] = {
     {(char*)"/test_integer_arithmetic",
@@ -2950,6 +3004,12 @@ MunitTest compile_tests[] = {
      NULL},
     {(char*)"/test_subscript_set_expression",
      test_subscript_set_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_block_statement",
+     test_block_statement,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,
