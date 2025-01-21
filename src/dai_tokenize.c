@@ -31,9 +31,10 @@ static const char* DaiTokenTypeStrings[] = {
     "DaiTokenType_bitwise_or",  "DaiTokenType_bitwise_not", "DaiTokenType_lt",
     "DaiTokenType_gt",          "DaiTokenType_lte",         "DaiTokenType_gte",
     "DaiTokenType_eq",          "DaiTokenType_not_eq",      "DaiTokenType_dot",
-    "DaiTokenType_comma",       "DaiTokenType_semicolon",   "DaiTokenType_lparen",
-    "DaiTokenType_rparen",      "DaiTokenType_lbracket",    "DaiTokenType_rbracket",
-    "DaiTokenType_lbrace",      "DaiTokenType_rbrace",      "DaiTokenType_end",
+    "DaiTokenType_comma",       "DaiTokenType_semicolon",   "DaiTokenType_colon",
+    "DaiTokenType_lparen",      "DaiTokenType_rparen",      "DaiTokenType_lbracket",
+    "DaiTokenType_rbracket",    "DaiTokenType_lbrace",      "DaiTokenType_rbrace",
+    "DaiTokenType_end",
 };
 
 __attribute__((unused)) const char*
@@ -43,17 +44,25 @@ DaiTokenType_string(const DaiTokenType type) {
 
 static DaiToken autos[] = {
     {DaiTokenType_assign, "="},       {DaiTokenType_plus, "+"},
-    {DaiTokenType_minus, "-"},        {DaiTokenType_asterisk, "*"},
-    {DaiTokenType_slash, "/"},        {DaiTokenType_comma, ","},
-    {DaiTokenType_semicolon, ";"},    {DaiTokenType_lparen, "("},
-    {DaiTokenType_rparen, ")"},       {DaiTokenType_lbrace, "{"},
-    {DaiTokenType_rbrace, "}"},       {DaiTokenType_bang, "!"},
-    {DaiTokenType_dot, "."},          {DaiTokenType_percent, "%"},
-    {DaiTokenType_bitwise_and, "&"},  {DaiTokenType_bitwise_or, "|"},
-    {DaiTokenType_bitwise_not, "~"},  {DaiTokenType_left_shift, "<<"},
-    {DaiTokenType_right_shift, ">>"}, {DaiTokenType_bitwise_xor, "^"},
-    {DaiTokenType_lbracket, "["},     {DaiTokenType_rbracket, "]"},
+    {DaiTokenType_minus, "-"},        {DaiTokenType_bang, "!"},
+    {DaiTokenType_asterisk, "*"},     {DaiTokenType_slash, "/"},
+    {DaiTokenType_percent, "%"},      {DaiTokenType_left_shift, "<<"},
+    {DaiTokenType_right_shift, ">>"}, {DaiTokenType_bitwise_and, "&"},
+    {DaiTokenType_bitwise_or, "|"},   {DaiTokenType_bitwise_not, "~"},
+    {DaiTokenType_bitwise_xor, "^"},
 
+    {DaiTokenType_lt, "<"},           {DaiTokenType_gt, ">"},
+    {DaiTokenType_lte, "<="},         {DaiTokenType_gte, ">="},
+    {DaiTokenType_not_eq, "!="},      {DaiTokenType_eq, "=="},
+
+    {DaiTokenType_dot, "."},
+
+    {DaiTokenType_comma, ","},        {DaiTokenType_semicolon, ";"},
+    {DaiTokenType_colon, ":"},
+
+    {DaiTokenType_lparen, "("},       {DaiTokenType_rparen, ")"},
+    {DaiTokenType_lbrace, "{"},       {DaiTokenType_rbrace, "}"},
+    {DaiTokenType_lbracket, "["},     {DaiTokenType_rbracket, "]"},
 };
 
 static DaiToken keywords[] = {
@@ -507,6 +516,8 @@ Tokenizer_readIdentifier(Tokenizer* tker) {
     return tok;
 }
 
+
+// // 或者 # 开头直至行尾的注释
 static DaiToken*
 Tokenizer_readComment(Tokenizer* tker) {
     while (tker->ch != '\n' && tker->ch != 0) {
@@ -515,6 +526,8 @@ Tokenizer_readComment(Tokenizer* tker) {
     return Tokenizer_buildToken(tker, DaiTokenType_comment);
 }
 
+// "" '' 之间的单行字符串
+// `` 之间的多行字符串
 static DaiToken*
 Tokenizer_readString(Tokenizer* tker, const dai_rune_t quote) {
     bool multiline = quote == '`';
@@ -539,6 +552,7 @@ Tokenizer_nextToken(Tokenizer* tker) {
     Tokenizer_mark(tker);
     dai_rune_t ch = tker->ch;
     switch (ch) {
+        case ':':
         case '^':
         case '&':
         case '|':
@@ -574,7 +588,7 @@ Tokenizer_nextToken(Tokenizer* tker) {
                 return Tokenizer_buildToken(tker, DaiTokenType_not_eq);
             } else {
                 Tokenizer_readChar(tker);
-                return Tokenizer_buildToken(tker, DaiTokenType_bang);
+                return Tokenizer_buildToken(tker, DaiTokenType_auto);
             }
         }
         case '=': {
@@ -584,7 +598,7 @@ Tokenizer_nextToken(Tokenizer* tker) {
                 return Tokenizer_buildToken(tker, DaiTokenType_eq);
             } else {
                 Tokenizer_readChar(tker);
-                return Tokenizer_buildToken(tker, DaiTokenType_assign);
+                return Tokenizer_buildToken(tker, DaiTokenType_auto);
             }
         }
         case '<': {
@@ -598,7 +612,7 @@ Tokenizer_nextToken(Tokenizer* tker) {
                 return Tokenizer_buildToken(tker, DaiTokenType_left_shift);
             }
             Tokenizer_readChar(tker);
-            return Tokenizer_buildToken(tker, DaiTokenType_lt);
+            return Tokenizer_buildToken(tker, DaiTokenType_auto);
         }
         case '>': {
             if (Tokenizer_peekChar(tker) == '=') {
@@ -611,7 +625,7 @@ Tokenizer_nextToken(Tokenizer* tker) {
                 return Tokenizer_buildToken(tker, DaiTokenType_right_shift);
             }
             Tokenizer_readChar(tker);
-            return Tokenizer_buildToken(tker, DaiTokenType_gt);
+            return Tokenizer_buildToken(tker, DaiTokenType_auto);
         }
         case '#': {
             return Tokenizer_readComment(tker);

@@ -170,7 +170,7 @@ function fmt() {
 	"${clang_format_command}" -i --verbose ./*.c
 	"${clang_format_command}" -i --verbose atstr/*.c
 	"${clang_format_command}" -i --verbose test/*.c test/*.h
-	"${clang_format_command}" -i --verbose src/*.c src/dai_*.h
+	"${clang_format_command}" -i --verbose src/dai_*.c src/dai_*.h
 	"${clang_format_command}" -i --verbose src/dai_ast/*.c src/dai_ast/*.h
 }
 

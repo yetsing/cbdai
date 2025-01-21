@@ -160,6 +160,7 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpNil: return simple_instruction("OP_NIL", offset);
         case DaiOpUndefined: return simple_instruction("OP_UNDEFINED", offset);
         case DaiOpArray: return simple_instruction2("OP_ARRAY", chunk, offset);
+        case DaiOpMap: return simple_instruction2("OP_MAP", chunk, offset);
 
         case DaiOpEqual: return simple_instruction("OP_EQUAL", offset);
         case DaiOpNotEqual: return simple_instruction("OP_NOT_EQUAL", offset);

@@ -59,11 +59,10 @@ typedef enum {
     DaiTokenType_bitwise_or,    // "bitwise_or|"
     DaiTokenType_bitwise_not,   // "bitwise_not~"
 
-    DaiTokenType_lt,    // "lt<"
-    DaiTokenType_gt,    // "gt>"
-    DaiTokenType_lte,   // "lte<="
-    DaiTokenType_gte,   // "gte>="
-
+    DaiTokenType_lt,       // "lt<"
+    DaiTokenType_gt,       // "gt>"
+    DaiTokenType_lte,      // "lte<="
+    DaiTokenType_gte,      // "gte>="
     DaiTokenType_eq,       // "eq=="
     DaiTokenType_not_eq,   // "not_eq!="
 
@@ -72,6 +71,7 @@ typedef enum {
     // 分隔符
     DaiTokenType_comma,       // "comma,"
     DaiTokenType_semicolon,   // "semicolon;"
+    DaiTokenType_colon,       // "colon:"
 
     DaiTokenType_lparen,     // "lparen("
     DaiTokenType_rparen,     // "rparen)"

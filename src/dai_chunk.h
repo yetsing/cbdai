@@ -49,6 +49,7 @@ typedef enum __attribute__((__packed__)) {
     DaiOpNil,
     DaiOpUndefined,
     DaiOpArray,
+    DaiOpMap,
 
     DaiOpEqual,
     DaiOpNotEqual,

@@ -1235,6 +1235,22 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             DaiCompiler_emit(compiler, DaiOpSubscript, sub->start_line);
             break;
         }
+        case DaiAstType_MapLiteral: {
+            DaiAstMapLiteral* lit = (DaiAstMapLiteral*)node;
+            for (int i = 0; i < lit->length; i++) {
+                DaiCompileError* err =
+                    DaiCompiler_compile(compiler, (DaiAstBase*)lit->pairs[i].key);
+                if (err != NULL) {
+                    return err;
+                }
+                err = DaiCompiler_compile(compiler, (DaiAstBase*)lit->pairs[i].value);
+                if (err != NULL) {
+                    return err;
+                }
+            }
+            DaiCompiler_emit2(compiler, DaiOpMap, lit->length, lit->start_line);
+            break;
+        }
         default: {
             fprintf(stderr, "unknown node type: %s\n", DaiAstType_string(node->type));
             abort();

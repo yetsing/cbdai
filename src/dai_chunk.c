@@ -33,6 +33,8 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpUndefined] = {.name = "DaiOpUndefined", .operand_bytes = 0},
     // 操作数: uint16 数组元素数量
     [DaiOpArray] = {.name = "DaiOpArray", .operand_bytes = 2},
+    // 操作数: uint16 map 元素数量
+    [DaiOpMap] = {.name = "DaiOpMap", .operand_bytes = 2},
 
     [DaiOpEqual]            = {.name = "DaiOpEqual", .operand_bytes = 0},
     [DaiOpNotEqual]         = {.name = "DaiOpNotEqual", .operand_bytes = 0},

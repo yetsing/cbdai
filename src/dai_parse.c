@@ -5,6 +5,7 @@
 
 #include "dai_assert.h"
 #include "dai_ast.h"
+#include "dai_ast/dai_astMapLiteral.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
 #include "dai_parseint.h"
@@ -153,6 +154,8 @@ Parser_parseStringLiteral(Parser* p);
 static DaiAstExpression*
 Parser_parseArrayLiteral(Parser* p);
 static DaiAstExpression*
+Parser_parseMapLiteral(Parser* p);
+static DaiAstExpression*
 Parser_parseSubscriptExpression(Parser* p, DaiAstExpression* left);
 static DaiAstExpression*
 Parser_parseExpression(Parser* p, Precedence precedence);
@@ -291,6 +294,7 @@ Parser_register(Parser* p) {
         Parser_registerPrefix(p, DaiTokenType_self, Parser_parseSelfExpression);
         Parser_registerPrefix(p, DaiTokenType_super, Parser_parseSuperExpression);
         Parser_registerPrefix(p, DaiTokenType_lbracket, Parser_parseArrayLiteral);
+        Parser_registerPrefix(p, DaiTokenType_lbrace, Parser_parseMapLiteral);
     }
 
     // 注册中缀表达式解析函数
@@ -319,6 +323,10 @@ Parser_register(Parser* p) {
     }
 }
 
+// #endregion
+
+// #region 解析表达式
+
 static void
 Parser_FreeExpressionList(DaiAstExpression** list, size_t count) {
     for (size_t i = 0; i < count; i++) {
@@ -326,10 +334,6 @@ Parser_FreeExpressionList(DaiAstExpression** list, size_t count) {
     }
     dai_free(list);
 }
-
-// #endregion
-
-// #region 解析表达式
 
 // 返回 NULL 表示解析失败
 static DaiAstExpression**
@@ -344,7 +348,7 @@ Parser_parseExpressionList(Parser* p, const DaiTokenType end, size_t* arg_count)
         *arg_count = 0;
         return args;
     }
-    // 跳过 ( 括号 token
+    // 跳过 ([ 括号 token
     Parser_nextToken(p);
     DaiAstExpression* arg = Parser_parseExpression(p, Precedence_Lowest);
     if (arg == NULL) {
@@ -354,13 +358,14 @@ Parser_parseExpressionList(Parser* p, const DaiTokenType end, size_t* arg_count)
     args[*arg_count] = arg;
     (*arg_count)++;
     while (Parser_peekTokenIs(p, DaiTokenType_comma)) {
-        // 跳过 , 逗号 token
         {
+            // 跳过 , 逗号 token
             Parser_nextToken(p);
             if (Parser_peekTokenIs(p, end)) {
                 // 支持参数末尾多余的逗号，例如 (a, b,) b 后面的逗号
                 break;
             }
+            // 再 next 一次，让当前 token 是表达式的开始
             Parser_nextToken(p);
         }
         {
@@ -377,7 +382,7 @@ Parser_parseExpressionList(Parser* p, const DaiTokenType end, size_t* arg_count)
         args[*arg_count] = arg;
         (*arg_count)++;
     }
-    // 结尾的 ) 括号 token
+    // 结尾的 )] 括号 token
     if (!Parser_expectPeek(p, end)) {
         Parser_FreeExpressionList(args, *arg_count);
         return NULL;
@@ -402,6 +407,121 @@ Parser_parseArrayLiteral(Parser* p) {
         array->end_column = p->cur_token->end_column;
     }
     return (DaiAstExpression*)array;
+}
+
+static void
+Parser_FreeMapPairList(DaiAstMapLiteralPair* list, size_t count) {
+    for (size_t i = 0; i < count; i++) {
+        if (list[i].key) {
+            list[i].key->free_fn((DaiAstBase*)list[i].key, true);
+        }
+        if (list[i].value) {
+            list[i].value->free_fn((DaiAstBase*)list[i].value, true);
+        }
+    }
+    dai_free(list);
+}
+
+// 返回 NULL 表示解析失败
+static DaiAstMapLiteralPair*
+Parser_parseMapPairList(Parser* p, const DaiTokenType end, size_t* pair_count) {
+    size_t size = 4;
+    DaiAstMapLiteralPair* pairs =
+        (DaiAstMapLiteralPair*)dai_malloc(sizeof(DaiAstMapLiteralPair) * size);
+    memset(pairs, 0, sizeof(DaiAstMapLiteralPair) * size);
+    *pair_count = 0;
+
+    // 没有调用参数
+    if (Parser_peekTokenIs(p, end)) {
+        Parser_nextToken(p);
+        *pair_count = 0;
+        return pairs;
+    }
+    // 跳过 { 括号 token
+    Parser_nextToken(p);
+    DaiAstExpression* key = Parser_parseExpression(p, Precedence_Lowest);
+    if (key == NULL) {
+        Parser_FreeMapPairList(pairs, *pair_count);
+        return NULL;
+    }
+    pairs[*pair_count].key = key;
+    if (!Parser_expectPeek(p, DaiTokenType_colon)) {
+        Parser_FreeMapPairList(pairs, *pair_count);
+        return NULL;
+    }
+    // 跳过 : 冒号 token
+    Parser_nextToken(p);
+    DaiAstExpression* val = Parser_parseExpression(p, Precedence_Lowest);
+    if (val == NULL) {
+        Parser_FreeMapPairList(pairs, *pair_count);
+        return NULL;
+    }
+    pairs[*pair_count].value = val;
+    (*pair_count)++;
+    while (Parser_peekTokenIs(p, DaiTokenType_comma)) {
+        {
+            // 跳过 , 逗号 token
+            Parser_nextToken(p);
+            if (Parser_peekTokenIs(p, end)) {
+                // 支持参数末尾多余的逗号，例如 (a, b,) b 后面的逗号
+                break;
+            }
+            // 再 next 一次，让当前 token 是表达式的开始
+            Parser_nextToken(p);
+        }
+        {
+            // 扩容
+            if (*pair_count == size) {
+                size *= 2;
+                pairs =
+                    (DaiAstMapLiteralPair*)dai_realloc(pairs, sizeof(DaiAstMapLiteralPair) * size);
+            }
+        }
+        DaiAstExpression* key = Parser_parseExpression(p, Precedence_Lowest);
+        if (key == NULL) {
+            Parser_FreeMapPairList(pairs, *pair_count);
+            return NULL;
+        }
+        pairs[*pair_count].key = key;
+        if (!Parser_expectPeek(p, DaiTokenType_colon)) {
+            Parser_FreeMapPairList(pairs, *pair_count);
+            return NULL;
+        }
+        // 跳过 : 冒号 token
+        Parser_nextToken(p);
+        DaiAstExpression* val = Parser_parseExpression(p, Precedence_Lowest);
+        if (val == NULL) {
+            Parser_FreeMapPairList(pairs, *pair_count);
+            return NULL;
+        }
+        pairs[*pair_count].value = val;
+        (*pair_count)++;
+    }
+    // 结尾的 } 括号 token
+    if (!Parser_expectPeek(p, end)) {
+        Parser_FreeMapPairList(pairs, *pair_count);
+        return NULL;
+    }
+    return pairs;
+}
+
+DaiAstExpression*
+Parser_parseMapLiteral(Parser* p) {
+    DaiAstMapLiteral* map = DaiAstMapLiteral_New();
+    {
+        map->start_line   = p->cur_token->start_line;
+        map->start_column = p->cur_token->start_column;
+    }
+    map->pairs = Parser_parseMapPairList(p, DaiTokenType_rbrace, &map->length);
+    if (map->pairs == NULL) {
+        map->free_fn((DaiAstBase*)map, true);
+        return NULL;
+    }
+    {
+        map->end_line   = p->cur_token->end_line;
+        map->end_column = p->cur_token->end_column;
+    }
+    return (DaiAstExpression*)map;
 }
 
 static DaiAstExpression*

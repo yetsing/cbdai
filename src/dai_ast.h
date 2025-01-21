@@ -12,6 +12,7 @@
 #include "dai_ast/dai_astDotExpression.h"
 #include "dai_ast/dai_astFloatLiteral.h"
 #include "dai_ast/dai_astFunctionStatement.h"
+#include "dai_ast/dai_astMapLiteral.h"
 #include "dai_ast/dai_astMethodStatement.h"
 #include "dai_ast/dai_astSelfExpression.h"
 #include "dai_ast/dai_astSubscriptExpression.h"
