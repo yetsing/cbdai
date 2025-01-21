@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "dai_ast/dai_asttype.h"
 #include "munit/munit.h"
 
 #include "dai_common.h"
@@ -61,6 +62,15 @@ check_integer_literal(DaiAstExpression* expr, int64_t value) {
     munit_assert_int(integ->value, ==, value);
     munit_assert_int(integ->start_line, ==, integ->end_line);
     munit_assert_int(integ->start_column + strlen(integ->literal), ==, integ->end_column);
+}
+
+static void
+check_string_literal(DaiAstExpression* expr, const char* value) {
+    DaiAstStringLiteral* str = (DaiAstStringLiteral*)expr;
+    munit_assert_int(str->type, ==, DaiAstType_StringLiteral);
+    munit_assert_string_equal(str->value, value);
+    munit_assert_int(str->start_line, ==, str->end_line);
+    munit_assert_int(str->start_column + strlen(value), ==, str->end_column);
 }
 
 static void
@@ -1428,7 +1438,6 @@ test_nil_expression(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
-
 static MunitResult
 test_syntax_error(__attribute__((unused)) const MunitParameter params[],
                   __attribute__((unused)) void* user_data) {
@@ -1447,14 +1456,12 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
             "\"DaiTokenType_var\" in "
             "<test>:1:5",
-
         },
         {
             "var a a 5;",
             "SyntaxError: expected token to be \"DaiTokenType_assign\" but got "
             "\"DaiTokenType_ident\" in "
             "<test>:1:7",
-
         },
         {
             "* 3 + 5;",
@@ -1622,35 +1629,42 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "a = ",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:5",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" "
+            "found in <test>:1:5",
         },
         {
             "a = -",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:6",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" "
+            "found in <test>:1:6",
         },
         {
             "a = 3 + 4 * 5",
-            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but got "
+            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "
+            "got "
             "\"DaiTokenType_eof\" in <test>:1:14",
         },
         {
             "this.",
-            "SyntaxError: expected token to be \"DaiTokenType_ident\" but got \"DaiTokenType_eof\" "
+            "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
+            "\"DaiTokenType_eof\" "
             "in <test>:1:6",
         },
         {
             "a.123",
-            "SyntaxError: expected token to be \"DaiTokenType_ident\" but got \"DaiTokenType_int\" "
+            "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
+            "\"DaiTokenType_int\" "
             "in <test>:1:3",
         },
         {
             "super.a.",
-            "SyntaxError: expected token to be \"DaiTokenType_ident\" but got \"DaiTokenType_eof\" "
+            "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
+            "\"DaiTokenType_eof\" "
             "in <test>:1:9",
         },
         {
             "this.a = ",
-            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" found in <test>:1:10",
+            "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" "
+            "found in <test>:1:10",
         },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
@@ -1967,7 +1981,7 @@ recursive_string_and_free(DaiAstBase* ast) {
             char* s                     = literal->string_fn((DaiAstBase*)literal, false);
             free(s);
             s = literal->literal_fn((DaiAstExpression*)literal);
-            printf("array literal: %s\n", s);
+            munit_assert_string_equal(s, "[1, 3.2, \"abc\", ]");
             free(s);
             literal->free_fn((DaiAstBase*)literal, true);
             break;
@@ -1981,6 +1995,20 @@ recursive_string_and_free(DaiAstBase* ast) {
             recursive_string_and_free((DaiAstBase*)expression->left);
             recursive_string_and_free((DaiAstBase*)expression->right);
             expression->free_fn((DaiAstBase*)expression, false);
+            break;
+        }
+        case DaiAstType_MapLiteral: {
+            DaiAstMapLiteral* literal = (DaiAstMapLiteral*)ast;
+            char* s                   = literal->string_fn((DaiAstBase*)literal, false);
+            free(s);
+            s = literal->literal_fn((DaiAstExpression*)literal);
+            munit_assert_string_equal(s, "{1: 2, 2: 3, }");
+            free(s);
+            for (size_t i = 0; i < literal->length; i++) {
+                recursive_string_and_free((DaiAstBase*)literal->pairs[i].key);
+                recursive_string_and_free((DaiAstBase*)literal->pairs[i].value);
+            }
+            literal->free_fn((DaiAstBase*)literal, false);
             break;
         }
 
@@ -2015,7 +2043,6 @@ test_parse_example(__attribute__((unused)) const MunitParameter params[],
     free(input);
     return MUNIT_OK;
 }
-
 
 static MunitResult
 test_array_literal_expression(__attribute__((unused)) const MunitParameter params[],
@@ -2138,10 +2165,8 @@ test_array_literal_expression(__attribute__((unused)) const MunitParameter param
         program->free_fn((DaiAstBase*)program, true);
     }
 
-
     return MUNIT_OK;
 }
-
 
 static MunitResult
 test_block_statement(__attribute__((unused)) const MunitParameter params[],
@@ -2206,6 +2231,124 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 };
 
+static MunitResult
+test_map_literal_expression(__attribute__((unused)) const MunitParameter params[],
+                            __attribute__((unused)) void* user_data) {
+    {
+
+        const char* input = "var m = {};";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
+        DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
+        check_identifier((DaiAstExpression*)var_stmt->name, "m");
+        DaiAstExpression* expr = var_stmt->value;
+        munit_assert_int(expr->type, ==, DaiAstType_MapLiteral);
+        const DaiAstMapLiteral* map = (DaiAstMapLiteral*)expr;
+        munit_assert_size(map->length, ==, 0);
+        {
+            munit_assert_int(map->start_line, ==, 1);
+            munit_assert_int(map->start_column, ==, 9);
+            munit_assert_int(map->end_line, ==, 1);
+            munit_assert_int(map->end_column, ==, 11);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+
+    {
+        const char* input = "var m = {\"foo\": 1};";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
+        DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
+        check_identifier((DaiAstExpression*)var_stmt->name, "m");
+        DaiAstExpression* expr = var_stmt->value;
+        munit_assert_int(expr->type, ==, DaiAstType_MapLiteral);
+        const DaiAstMapLiteral* map = (DaiAstMapLiteral*)expr;
+        munit_assert_size(map->length, ==, 1);
+        check_string_literal(map->pairs[0].key, "\"foo\"");
+        check_integer_literal(map->pairs[0].value, 1);
+        {
+            munit_assert_int(map->start_line, ==, 1);
+            munit_assert_int(map->start_column, ==, 9);
+            munit_assert_int(map->end_line, ==, 1);
+            munit_assert_int(map->end_column, ==, 19);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+
+    {
+        const char* input = "var m = {\"foo\": 1, \"bar\": 2};";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
+        DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
+        check_identifier((DaiAstExpression*)var_stmt->name, "m");
+        DaiAstExpression* expr = var_stmt->value;
+        munit_assert_int(expr->type, ==, DaiAstType_MapLiteral);
+        const DaiAstMapLiteral* map = (DaiAstMapLiteral*)expr;
+        munit_assert_size(map->length, ==, 2);
+        check_string_literal(map->pairs[0].key, "\"foo\"");
+        check_integer_literal(map->pairs[0].value, 1);
+        check_string_literal(map->pairs[1].key, "\"bar\"");
+        check_integer_literal(map->pairs[1].value, 2);
+        {
+            munit_assert_int(map->start_line, ==, 1);
+            munit_assert_int(map->start_column, ==, 9);
+            munit_assert_int(map->end_line, ==, 1);
+            munit_assert_int(map->end_column, ==, 29);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+
+    {
+        const char* input = "var m = {\"foo\": 1, \"bar\": 2, \"baz\": 3};";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_VarStatement);
+        DaiAstVarStatement* var_stmt = (DaiAstVarStatement*)stmt;
+        check_identifier((DaiAstExpression*)var_stmt->name, "m");
+        DaiAstExpression* expr = var_stmt->value;
+        munit_assert_int(expr->type, ==, DaiAstType_MapLiteral);
+        const DaiAstMapLiteral* map = (DaiAstMapLiteral*)expr;
+        munit_assert_size(map->length, ==, 3);
+        check_string_literal(map->pairs[0].key, "\"foo\"");
+        check_integer_literal(map->pairs[0].value, 1);
+        check_string_literal(map->pairs[1].key, "\"bar\"");
+        check_integer_literal(map->pairs[1].value, 2);
+        check_string_literal(map->pairs[2].key, "\"baz\"");
+        check_integer_literal(map->pairs[2].value, 3);
+        {
+            munit_assert_int(map->start_line, ==, 1);
+            munit_assert_int(map->start_column, ==, 9);
+            munit_assert_int(map->end_line, ==, 1);
+            munit_assert_int(map->end_column, ==, 39);
+        }
+        program->free_fn((DaiAstBase*)program, true);
+    }
+
+    return MUNIT_OK;
+}
 
 MunitTest parse_tests[] = {
     {(char*)"/test_var_statements", test_var_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
@@ -2335,6 +2478,12 @@ MunitTest parse_tests[] = {
      NULL},
     {(char*)"/test_block_statement",
      test_block_statement,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_map_literal_expression",
+     test_map_literal_expression,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

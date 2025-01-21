@@ -2825,6 +2825,28 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
             },
         },
 
+        {
+            "var m = {}; m[0];",
+            14,
+            {
+                DaiOpMap,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpSubscript,
+                DaiOpPop,
+            },
+            {INTEGER_VAL(0)},
+        },
+
     };
     run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
@@ -2950,6 +2972,97 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_map(__attribute__((unused)) const MunitParameter params[],
+         __attribute__((unused)) void* user_data) {
+    const DaiCompilerTestCase tests[] = {
+        {
+            "var m = {};",
+            6,
+            {
+                DaiOpMap,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+            },
+            {},
+        },
+        {
+            "var m = {1: 2};",
+            12,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpMap,
+                0,
+                1,
+                DaiOpDefineGlobal,
+                0,
+                0,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+            },
+        },
+        {
+            "var m = {1: 2, 3: 4};",
+            18,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpConstant,
+                0,
+                2,
+                DaiOpConstant,
+                0,
+                3,
+                DaiOpMap,
+                0,
+                2,
+                DaiOpDefineGlobal,
+                0,
+                0,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+                INTEGER_VAL(3),
+                INTEGER_VAL(4),
+            },
+        },
+        {
+            "var m = {1: 2, 3: 4, 5: 6};",
+            24,
+            {
+                DaiOpConstant, 0, 0, DaiOpConstant,     0, 1, DaiOpConstant, 0, 2,
+                DaiOpConstant, 0, 3, DaiOpConstant,     0, 4, DaiOpConstant, 0, 5,
+                DaiOpMap,      0, 3, DaiOpDefineGlobal, 0, 0,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+                INTEGER_VAL(3),
+                INTEGER_VAL(4),
+                INTEGER_VAL(5),
+                INTEGER_VAL(6),
+            },
+        },
+    };
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
 
 MunitTest compile_tests[] = {
     {(char*)"/test_integer_arithmetic",
@@ -3014,5 +3127,6 @@ MunitTest compile_tests[] = {
      NULL,
      MUNIT_TEST_OPTION_NONE,
      NULL},
+    {(char*)"/test_map", test_map, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
