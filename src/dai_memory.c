@@ -50,6 +50,11 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     printf("%p free type %d\n", (void*)object, object->type);
 #endif
     switch (object->type) {
+        case DaiObjType_map: {
+            DaiObjMap* map = (DaiObjMap*)object;
+            DaiObjMap_Free(vm, map);
+            break;
+        }
         case DaiObjType_error: {
             VM_FREE(vm, DaiObjError, object);
             break;
@@ -174,6 +179,19 @@ blackenObject(DaiVM* vm, DaiObj* object) {
     printf("\n");
 #endif
     switch (object->type) {
+        case DaiObjType_map: {
+            DaiObjMap* map = (DaiObjMap*)object;
+            DaiValue key, value;
+            while (DaiObjMap_iter(map, &key, &value)) {
+                if (IS_OBJ(key)) {
+                    blackenObject(vm, AS_OBJ(key));
+                }
+                if (IS_OBJ(value)) {
+                    blackenObject(vm, AS_OBJ(value));
+                }
+            }
+            break;
+        }
         case DaiObjType_array: {
             const DaiObjArray* array = (DaiObjArray*)object;
             for (int i = 0; i < array->length; i++) {

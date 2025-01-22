@@ -6,6 +6,7 @@ set(CMAKE_C_STANDARD 11)
 include_directories(.)
 include_directories(src)
 include_directories(src/utf8.h)
+include_directories(src/hashmap.c)
 # include_directories(src/utils)
 include_directories(test)
 

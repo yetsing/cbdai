@@ -398,6 +398,17 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 DaiVM_push(vm, OBJ_VAL(array));
                 break;
             }
+            case DaiOpMap: {
+                uint16_t length = READ_UINT16();
+                DaiObjError* err;
+                DaiObjMap* map = DaiObjMap_New(vm, vm->stack_top - length * 2, length, &err);
+                if (err != NULL) {
+                    return err;
+                }
+                vm->stack_top -= length * 2;
+                DaiVM_push(vm, OBJ_VAL(map));
+                break;
+            }
 
             case DaiOpEqual: {
                 DaiValue b = DaiVM_pop(vm);

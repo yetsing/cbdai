@@ -1,9 +1,12 @@
 #ifndef D772959F_7E3C_4B7E_B19F_7880710F99C0
 #define D772959F_7E3C_4B7E_B19F_7880710F99C0
 
+#include "hashmap.h"
+
 #include "dai_chunk.h"
 #include "dai_table.h"
 #include "dai_value.h"
+#include <stdbool.h>
 
 typedef struct _DaiVM DaiVM;
 typedef struct _DaiObjClass DaiObjClass;
@@ -18,6 +21,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_CLASS(value) dai_is_obj_type(value, DaiObjType_class)
 #define IS_STRING(value) dai_is_obj_type(value, DaiObjType_string)
 #define IS_ARRAY(value) dai_is_obj_type(value, DaiObjType_array)
+#define IS_MAP(value) dai_is_obj_type(value, DaiObjType_map)
 #define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
@@ -29,6 +33,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_STRING(value) ((DaiObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((DaiObjString*)AS_OBJ(value))->chars)
 #define AS_ARRAY(value) ((DaiObjArray*)AS_OBJ(value))
+#define AS_MAP(value) ((DaiObjMap*)AS_OBJ(value))
 #define AS_ERROR(value) ((DaiObjError*)AS_OBJ(value))
 
 typedef enum {
@@ -40,6 +45,7 @@ typedef enum {
     DaiObjType_instance,
     DaiObjType_boundMethod,
     DaiObjType_array,
+    DaiObjType_map,
     DaiObjType_error,
 } DaiObjType;
 
@@ -48,6 +54,7 @@ typedef DaiValue (*GetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* na
 typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
 typedef DaiValue (*SubscriptGetFn)(DaiVM* vm, DaiValue receiver, DaiValue index);
 typedef DaiValue (*SubscriptSetFn)(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value);
+typedef uint64_t (*HashFn)(DaiValue value);
 /**
  * @brief 比较两个值是否相等
  *
@@ -67,6 +74,7 @@ struct DaiOperation {
     SubscriptSetFn subscript_set_func;
     StringFn string_func;   // caller should free the returned string
     EqualFn equal_func;
+    HashFn hash_func;
 };
 
 struct DaiObj {
@@ -176,6 +184,33 @@ typedef struct {
 } DaiObjError;
 DaiObjError*
 DaiObjError_Newf(DaiVM* vm, const char* format, ...) __attribute__((format(printf, 2, 3)));
+
+typedef struct {
+    DaiValue key;
+    DaiValue value;
+} DaiObjMapEntry;
+
+typedef struct {
+    DaiObj obj;
+    size_t iter;   // 迭代计数，用来传给 hashmap_iter
+    struct hashmap* map;
+} DaiObjMap;
+DaiObjMap*
+DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjError** error);
+// 释放 map 对象
+void
+DaiObjMap_Free(DaiVM* vm, DaiObjMap* map);
+/**
+ * @brief 迭代 map 中的 kv 对
+ *
+ * @param map map 对象
+ * @param key 用于存储 key
+ * @param value 用于存储 value
+ *
+ * @return true 拿到一个 kv 对，false 迭代结束
+ */
+bool
+DaiObjMap_iter(DaiObjMap* map, DaiValue* key, DaiValue* value);
 
 const char*
 dai_object_ts(DaiValue value);

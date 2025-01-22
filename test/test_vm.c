@@ -567,6 +567,22 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
             "\"{} is {} {}\".format('中文', 'good', []);",
             OBJ_VAL(dai_copy_string(&vm, "中文 is good []", 17)),
         },
+        {
+            "\"{} is {} {} {}\".format('中文', 'good', [], {});",
+            OBJ_VAL(dai_copy_string(&vm, "中文 is good [] {}", 20)),
+        },
+        {
+            "\"{} is {} {} {}\".format('中文', 'good', [1], {1: 1});",
+            OBJ_VAL(dai_copy_string(&vm, "中文 is good [1] {1: 1, }", 27)),
+        },
+        {
+            "\"{} is {} {} {}\".format('中文', 'good', [1, 2], {1: 1, 2: 2});",
+            OBJ_VAL(dai_copy_string(&vm, "中文 is good [1, 2] {1: 1, 2: 2, }", 36)),
+        },
+        {
+            "\"{} is {} {} {}\".format('中文', 'good', [1, 2, 3], {1: 1, 2: 2, 3: 3});",
+            OBJ_VAL(dai_copy_string(&vm, "中文 is good [1, 2, 3] {1: 1, 2: 2, 3: 3, }", 45)),
+        },
         // #endregion
 
         // string index access
@@ -1346,6 +1362,7 @@ __attribute__((unused)) static MunitResult
 test_array(__attribute__((unused)) const MunitParameter params[],
            __attribute__((unused)) void* user_data) {
     const DaiVMTestCase tests[] = {
+        // #region array subscript
         {
             "[0, 1, 2][0];",
             INTEGER_VAL(0),
@@ -1378,16 +1395,40 @@ test_array(__attribute__((unused)) const MunitParameter params[],
             "var m = [0 + 0 - 0, 1, 2]; m[- 3];",
             INTEGER_VAL(0),
         },
+        // #endregion
 
-    };
-    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
-    return MUNIT_OK;
-}
+        // #region array subscript set
 
-__attribute__((unused)) static MunitResult
-test_array_method(__attribute__((unused)) const MunitParameter params[],
-                  __attribute__((unused)) void* user_data) {
-    const DaiVMTestCase tests[] = {
+        {
+            "var m = [0, 1, 2]; m[0] = 1; m[0];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [0, 1, 2]; m[1] = 2; m[1];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [0, 1, 2]; m[2] = 3; m[2];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[1 + 1] = 3; m[2];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[1 - 1] = 3; m[0];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[- 1] = 3; m[2];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [0, 1, 2]; m[- 3] = 3; m[0];",
+            INTEGER_VAL(3),
+        },
+        // #endregion
+
         // length
         {
             "var m = []; m.length();",
@@ -1668,43 +1709,6 @@ test_array_method(__attribute__((unused)) const MunitParameter params[],
         {
             "var m = [1, 1, 1, 1]; m.sort(fn(e1, e2) {return e2 - e1;}); m[-1];",
             INTEGER_VAL(1),
-        },
-    };
-    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
-    return MUNIT_OK;
-}
-
-static MunitResult
-test_array_subscript_set(__attribute__((unused)) const MunitParameter params[],
-                         __attribute__((unused)) void* user_data) {
-    const DaiVMTestCase tests[] = {
-        {
-            "var m = [0, 1, 2]; m[0] = 1; m[0];",
-            INTEGER_VAL(1),
-        },
-        {
-            "var m = [0, 1, 2]; m[1] = 2; m[1];",
-            INTEGER_VAL(2),
-        },
-        {
-            "var m = [0, 1, 2]; m[2] = 3; m[2];",
-            INTEGER_VAL(3),
-        },
-        {
-            "var m = [0, 1, 2]; m[1 + 1] = 3; m[2];",
-            INTEGER_VAL(3),
-        },
-        {
-            "var m = [0, 1, 2]; m[1 - 1] = 3; m[0];",
-            INTEGER_VAL(3),
-        },
-        {
-            "var m = [0, 1, 2]; m[- 1] = 3; m[2];",
-            INTEGER_VAL(3),
-        },
-        {
-            "var m = [0, 1, 2]; m[- 3] = 3; m[0];",
-            INTEGER_VAL(3),
         },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
@@ -2025,7 +2029,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             OBJ_VAL(DaiObjError_Newf(&vm, "'string' object is not callable")),
         },
 
-        // 属性访问
+        // #region 属性访问
         {
             "var a = 1; a.nonexistent;",
             OBJ_VAL(DaiObjError_Newf(&vm, "'int' object has not property 'nonexistent'")),
@@ -2075,9 +2079,10 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             "var f = F(); f.get();",
             OBJ_VAL(DaiObjError_Newf(&vm, "'super' object has not property 'a'")),
         },
+        // #endregion
 
 
-        // 类实例化
+        // #region 类实例化
         {
             "class F { var a; }; var f = F();",
             OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'a'")),
@@ -2094,6 +2099,74 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             "class F { var age = 30; var name; }; var f = F();",
             OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'name'")),
         },
+        // #endregion
+
+        // #region map
+        {
+            "var m = {}; m[1];",
+            OBJ_VAL(DaiObjError_Newf(&vm, "KeyError: 1")),
+        },
+        {
+            "var m = {}; m[[]];",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unhashable type: 'array'")),
+        },
+        {
+            "var m = {}; m[[]] = 1;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unhashable type: 'array'")),
+        },
+        {
+            "var m = {[1]: 1}; m[1] = 1;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unhashable type: 'array'")),
+        },
+        {
+            "var m = {}; m.length(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "length() expected no arguments, but got 1")),
+        },
+        {
+            "var m = {}; m.append();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'map' object has not property 'append'")),
+        },
+        {
+            "var m = {}; m.get();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "get() expected 1-2 arguments, but got 0")),
+        },
+        {
+            "var m = {}; m.get([]);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unhashable type: 'array'")),
+        },
+        {
+            "var m = {}; m.get(1, 2, 3);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "get() expected 1-2 arguments, but got 3")),
+        },
+        {
+            "var m = {}; m.keys(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "keys() expected no arguments, but got 1")),
+        },
+        {
+            "var m = {}; m.pop();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "pop() expected 1-2 arguments, but got 0")),
+        },
+        {
+            "var m = {}; m.pop(1, 2, 3);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "pop() expected 1-2 arguments, but got 3")),
+        },
+        {
+            "var m = {}; m.pop([]);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unhashable type: 'array'")),
+        },
+        {
+            "var m = {}; m.has();",
+            OBJ_VAL(DaiObjError_Newf(&vm, "has() expected 1 arguments, but got 0")),
+        },
+        {
+            "var m = {}; m.has(1, 2);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "has() expected 1 arguments, but got 2")),
+        },
+        {
+            "var m = {}; m.has([]);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "unhashable type: 'array'")),
+        },
+        // #endregion
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     DaiVM_reset(&vm);
@@ -2134,6 +2207,251 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
         },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
+static MunitResult
+test_map(__attribute__((unused)) const MunitParameter params[],
+         __attribute__((unused)) void* user_data) {
+    DaiVM vm;
+    DaiVM_init(&vm);
+    DaiObjArray* array1 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray* array2 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm, array2, 1, INTEGER_VAL(1));
+    DaiObjArray* array3 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm, array3, 2, INTEGER_VAL(1), INTEGER_VAL(2));
+    DaiObjArray* array4 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm, array4, 3, INTEGER_VAL(1), INTEGER_VAL(2), INTEGER_VAL(3));
+    DaiObjArray* array5 = DaiObjArray_New(&vm, NULL, 0);
+    DaiObjArray_append2(&vm,
+                        array5,
+                        4,
+                        INTEGER_VAL(1),
+                        INTEGER_VAL(2),
+                        INTEGER_VAL(3),
+                        OBJ_VAL(dai_copy_string(&vm, "four", 4)));
+
+    const DaiVMTestCase tests[] = {
+        // #region map subscript get
+        {
+            "var m = {1: 1}; m[1];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2}; m[2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m[1];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m[2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m[3];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3, 'four': 4}; m['four'];",
+            INTEGER_VAL(4),
+        },
+        // #endregion
+
+        // #region map subscript set
+        {
+            "var m = {}; m[1] = 1; m[1];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {}; m[1] = 1; m[2] = 2; m[2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {}; m[1] = 1; m[2] = 2; m[1];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {}; m[1] = 1; m[2] = 2; m[3] = 3; m[3];",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = {}; m[1] = 1; m[2] = 2; m[3] = 3; m[2];",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {}; m[1] = 1; m[2] = 2; m[3] = 3; m[1];",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {}; m[1] = 1; m[2] = 2; m[3] = 3; m['four'] = 4; m['four'];",
+            INTEGER_VAL(4),
+        },
+        // #endregion
+
+        // #region length method
+        {
+            "var m = {}; m.length();",
+            INTEGER_VAL(0),
+        },
+        {
+            "var m = {1: 1}; m.length();",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2}; m.length();",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m.length();",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3, 'four': 4}; m.length();",
+            INTEGER_VAL(4),
+        },
+        // #endregion
+
+        // #region get method
+        {
+            "var m = {1: 1}; m.get(1);",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2}; m.get(2);",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m.get(1);",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m.get(2);",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m.get(3);",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3, 'four': 4}; m.get('four');",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = {1: 1}; m.get(2);",
+            NIL_VAL,
+        },
+        {
+            "var m = {1: 1}; m.get(2, 3);",
+            INTEGER_VAL(3),
+        },
+        // #endregion
+
+        // #region keys method
+        {
+            "var m = {}; m.keys();",
+            OBJ_VAL(array1),
+        },
+        {
+            "var m = {1: 1}; m.keys();",
+            OBJ_VAL(array2),
+        },
+        {
+            "var m = {1: 1, 2: 2}; m.keys();",
+            OBJ_VAL(array3),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; m.keys();",
+            OBJ_VAL(array4),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3, 'four': 4}; m.keys();",
+            OBJ_VAL(array5),
+        },
+
+        // #endregion
+
+        // #region pop method
+        {
+            "var m = {1: 1}; m.pop(1);",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1}; m.pop(1); m.length();",
+            INTEGER_VAL(0),
+        },
+        {
+            "var m = {1: 1}; m.pop(2);",
+            NIL_VAL,
+        },
+        {
+            "var m = {1: 1}; m.pop(2, 3);",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = {1: 1}; m.pop(2, 3); m.length();",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2}; m.pop('four', 4);",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = {1: 1, 2: 2}; m.pop('four', 4); m.length();",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = {1: 1, 2: 2}; m.pop(1); m.pop(2); m.pop(3); m.pop(4); m.length();",
+            INTEGER_VAL(0),
+        },
+        // #endregion
+
+        // #region has method
+        {
+            "var m = {}; m.has(1);",
+            dai_false,
+        },
+        {
+            "var m = {1: 1}; m.has(1);",
+            dai_true,
+        },
+        {
+            "var m = {1: 1}; m.has(2);",
+            dai_false,
+        },
+        {
+            "var m = {1: 1, 'four': 4}; m.has('four');",
+            dai_true,
+        },
+        {
+            "var m = {1: 1, 'four': 4}; m.has('nonexistent');",
+            dai_false,
+        },
+        // #endregion
+
+        // #region equal
+        {
+            "var m1 = {1: 1}; var m2 = {1: 1}; m1 == m2;",
+            dai_true,
+        },
+        {
+            "var m1 = {1: 1}; var m2 = {1: 1, 2: 2}; m1 == m2;",
+            dai_false,
+        },
+        {
+            "var m1 = {1: 1}; var m2 = {1: 1}; m1 != m2;",
+            dai_false,
+        },
+        {
+            "var m1 = {1: 1}; var m2 = {1: 1, 2: 2}; m1 != m2;",
+            dai_true,
+        }
+        // #endregion
+
+    };
+    run_vm_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    DaiVM_reset(&vm);
     return MUNIT_OK;
 }
 
@@ -2203,13 +2521,6 @@ MunitTest vm_tests[] = {
     {(char*)"/test_class_instance", test_class_instance, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_fibonacci", test_fibonacci, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_array", test_array, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_array_method", test_array_method, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_array_subscript_set",
-     test_array_subscript_set,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
     {(char*)"/test_error", test_error, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_block_statement",
      test_block_statement,
@@ -2217,5 +2528,6 @@ MunitTest vm_tests[] = {
      NULL,
      MUNIT_TEST_OPTION_NONE,
      NULL},
+    {(char*)"/test_map", test_map, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

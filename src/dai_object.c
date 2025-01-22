@@ -2,6 +2,7 @@
 #include <limits.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +14,7 @@
 #include "dai_table.h"
 #include "dai_value.h"
 #include "dai_vm.h"
+#include "hashmap.h"
 #include "utf8.h"
 
 #define ALLOCATE_OBJ(vm, type, objectType) (type*)allocate_object(vm, sizeof(type), objectType)
@@ -57,6 +59,11 @@ dai_default_equal(DaiValue a, DaiValue b, __attribute__((unused)) int* limit) {
     return AS_OBJ(a) == AS_OBJ(b);
 }
 
+static uint64_t
+dai_default_hash(DaiValue value) {
+    return (uint64_t)(uintptr_t)AS_OBJ(value);
+}
+
 static struct DaiOperation default_operation = {
     .get_property_func  = dai_default_get_property,
     .set_property_func  = dai_default_set_property,
@@ -64,6 +71,7 @@ static struct DaiOperation default_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = dai_default_string_func,
     .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
 };
 
 static char*
@@ -82,6 +90,7 @@ static struct DaiOperation builtin_function_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = DaiObjBuiltinFunction_String,
     .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
 };
 
 static DaiObj*
@@ -118,6 +127,7 @@ static struct DaiOperation function_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = DaiObjFunction_String,
     .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
 };
 
 DaiObjFunction*
@@ -156,6 +166,7 @@ static struct DaiOperation closure_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = DaiObjClosure_String,
     .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
 };
 
 DaiObjClosure*
@@ -276,6 +287,7 @@ static struct DaiOperation class_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = DaiObjClass_String,
     .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
 };
 
 DaiObjClass*
@@ -348,6 +360,7 @@ static struct DaiOperation instance_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = DaiObjInstance_String,
     .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
 };
 
 
@@ -383,6 +396,7 @@ static struct DaiOperation bound_method_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = DaiObjBoundMethod_String,
     .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
 };
 
 DaiObjBoundMethod*
@@ -976,6 +990,11 @@ DaiObjString_subscript_set(__attribute__((unused)) DaiVM* vm, DaiValue receiver,
     return OBJ_VAL(err);
 }
 
+static uint64_t
+DaiObjString_hash(DaiValue value) {
+    return AS_STRING(value)->hash;
+}
+
 static struct DaiOperation string_operation = {
     .get_property_func  = DaiObjString_get_property,
     .set_property_func  = dai_default_set_property,
@@ -984,6 +1003,7 @@ static struct DaiOperation string_operation = {
     .string_func        = DaiObjString_String,
     // 因为相同的字符串会被重用，所以直接比较指针（字符串驻留）
     .equal_func = dai_default_equal,
+    .hash_func  = DaiObjString_hash,
 };
 
 
@@ -1537,20 +1557,28 @@ static struct DaiOperation array_operation = {
     .subscript_set_func = DaiObjArray_subscript_set,
     .string_func        = DaiObjArray_String,
     .equal_func         = DaiObjArray_equal,
+    .hash_func          = NULL,
 };
 
 DaiObjArray*
-DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
+DaiObjArray_New2(DaiVM* vm, const DaiValue* elements, const int length, const int capacity) {
     DaiObjArray* array   = ALLOCATE_OBJ(vm, DaiObjArray, DaiObjType_array);
     array->obj.operation = &array_operation;
-    array->capacity      = length;
+    array->capacity      = capacity;
     array->length        = length;
     array->elements      = NULL;
-    if (length > 0) {
-        array->elements = GROW_ARRAY(DaiValue, NULL, 0, length);
+    if (capacity > 0) {
+        array->elements = GROW_ARRAY(DaiValue, NULL, 0, capacity);
+    }
+    if (elements != NULL) {
         memcpy(array->elements, elements, length * sizeof(DaiValue));
     }
     return array;
+}
+
+DaiObjArray*
+DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
+    return DaiObjArray_New2(vm, elements, length, length);
 }
 
 
@@ -1588,6 +1616,330 @@ DaiObjArray_append2(DaiVM* vm, DaiObjArray* array, int n, ...) {
 
 // #endregion
 
+
+// #region 字典 DaiObjMap
+
+static DaiValue
+DaiObjMap_length(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err = DaiObjError_Newf(vm, "length() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    return INTEGER_VAL(hashmap_count(AS_MAP(receiver)->map));
+}
+
+static DaiValue
+DaiObjMap_get(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1 && argc != 2) {
+        DaiObjError* err = DaiObjError_Newf(vm, "get() expected 1-2 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjMap* map = AS_MAP(receiver);
+    if (!dai_value_is_hashable(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    const DaiObjMapEntry* entry = hashmap_get(map->map, &(DaiObjMapEntry){argv[0]});
+    if (entry != NULL) {
+        return entry->value;
+    }
+    return argc == 2 ? argv[1] : NIL_VAL;
+}
+
+static DaiValue
+DaiObjMap_keys(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err = DaiObjError_Newf(vm, "keys() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjMap* map    = AS_MAP(receiver);
+    DaiObjArray* keys = DaiObjArray_New2(vm, NULL, 0, hashmap_count(map->map));
+    void* item;
+    size_t iter = 0;
+    while (hashmap_iter(map->map, &iter, &item)) {
+        DaiObjMapEntry* entry = (DaiObjMapEntry*)item;
+        DaiObjArray_append1(vm, keys, 1, &entry->key);
+    }
+    return OBJ_VAL(keys);
+}
+
+static DaiValue
+DaiObjMap_pop(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1 && argc != 2) {
+        DaiObjError* err = DaiObjError_Newf(vm, "pop() expected 1-2 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjMap* map = AS_MAP(receiver);
+    if (!dai_value_is_hashable(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    const DaiObjMapEntry* entry = hashmap_delete(map->map, &(DaiObjMapEntry){argv[0]});
+    if (entry != NULL) {
+        hashmap_delete(map->map, &(DaiObjMapEntry){argv[0]});
+        return entry->value;
+    }
+    return argc == 2 ? argv[1] : NIL_VAL;
+}
+
+static DaiValue
+DaiObjMap_has(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "has() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjMap* map = AS_MAP(receiver);
+    if (!dai_value_is_hashable(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    const DaiObjMapEntry* entry = hashmap_get(map->map, &(DaiObjMapEntry){argv[0]});
+    return entry != NULL ? dai_true : dai_false;
+}
+
+
+enum DaiObjMapFunctionNo {
+    DaiObjMapFunctionNo_length = 0,
+    DaiObjMapFunctionNo_get,
+    DaiObjMapFunctionNo_keys,
+    DaiObjMapFunctionNo_pop,
+    DaiObjMapFunctionNo_has,
+};
+
+static DaiObjBuiltinFunction DaiObjMapBuiltins[] = {
+    [DaiObjMapFunctionNo_length] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "length",
+            .function = &DaiObjMap_length,
+        },
+    [DaiObjMapFunctionNo_get] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "get",
+            .function = &DaiObjMap_get,
+        },
+    [DaiObjMapFunctionNo_keys] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "keys",
+            .function = &DaiObjMap_keys,
+        },
+    [DaiObjMapFunctionNo_pop] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "pop",
+            .function = &DaiObjMap_pop,
+        },
+    [DaiObjMapFunctionNo_has] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "has",
+            .function = &DaiObjMap_has,
+        },
+};
+
+static DaiValue
+DaiObjMap_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    const char* cname = name->chars;
+    switch (cname[0]) {
+        case 'l': {
+            if (strcmp(cname, "length") == 0) {
+                return OBJ_VAL(&DaiObjMapBuiltins[DaiObjMapFunctionNo_length]);
+            }
+            break;
+        }
+        case 'g': {
+            if (strcmp(cname, "get") == 0) {
+                return OBJ_VAL(&DaiObjMapBuiltins[DaiObjMapFunctionNo_get]);
+            }
+            break;
+        }
+        case 'k': {
+            if (strcmp(cname, "keys") == 0) {
+                return OBJ_VAL(&DaiObjMapBuiltins[DaiObjMapFunctionNo_keys]);
+            }
+            break;
+        }
+        case 'p': {
+            if (strcmp(cname, "pop") == 0) {
+                return OBJ_VAL(&DaiObjMapBuiltins[DaiObjMapFunctionNo_pop]);
+            }
+            break;
+        }
+        case 'h': {
+            if (strcmp(cname, "has") == 0) {
+                return OBJ_VAL(&DaiObjMapBuiltins[DaiObjMapFunctionNo_has]);
+            }
+            break;
+        }
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
+}
+
+static DaiValue
+DaiObjMap_subscript_get(DaiVM* vm, DaiValue receiver, DaiValue index) {
+    DaiObjMap* map = AS_MAP(receiver);
+    if (!dai_value_is_hashable(index)) {
+        DaiObjError* err = DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(index));
+        return OBJ_VAL(err);
+    }
+    const DaiObjMapEntry* entry = hashmap_get(map->map, &(DaiObjMapEntry){index});
+    if (entry != NULL) {
+        return entry->value;
+    }
+    const char* s    = dai_value_string(index);
+    DaiObjError* err = DaiObjError_Newf(vm, "KeyError: %s", s);
+    free((void*)s);
+    return OBJ_VAL(err);
+}
+
+static DaiValue
+DaiObjMap_subscript_set(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value) {
+    DaiObjMap* map = AS_MAP(receiver);
+    if (!dai_value_is_hashable(index)) {
+        DaiObjError* err = DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(index));
+        return OBJ_VAL(err);
+    }
+    DaiObjMapEntry entry = {index, value};
+    if (hashmap_set(map->map, &entry) == NULL && hashmap_oom(map->map)) {
+        DaiObjError* err = DaiObjError_Newf(vm, "Out of memory");
+        return OBJ_VAL(err);
+    }
+    return NIL_VAL;
+}
+
+static char*
+DaiObjMap_String(DaiValue value, DaiPtrArray* visited) {
+    if (DaiPtrArray_contains(visited, AS_OBJ(value))) {
+        return strdup("{...}");
+    }
+    DaiPtrArray_write(visited, AS_OBJ(value));
+    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiObjMap* map      = AS_MAP(value);
+    DaiStringBuffer_write(sb, "{");
+    void* item;
+    size_t iter = 0;
+    while (hashmap_iter(map->map, &iter, &item)) {
+        DaiObjMapEntry* entry = (DaiObjMapEntry*)item;
+        char* key             = dai_value_string_with_visited(entry->key, visited);
+        char* val             = dai_value_string_with_visited(entry->value, visited);
+        DaiStringBuffer_write(sb, key);
+        DaiStringBuffer_write(sb, ": ");
+        DaiStringBuffer_write(sb, val);
+        free(key);
+        free(val);
+        DaiStringBuffer_write(sb, ", ");
+    }
+    DaiStringBuffer_write(sb, "}");
+    return DaiStringBuffer_getAndFree(sb, NULL);
+}
+
+static int
+DaiObjMap_equal(DaiValue a, DaiValue b, int* limit) {
+    DaiObjMap* map_a = AS_MAP(a);
+    DaiObjMap* map_b = AS_MAP(b);
+    if (map_a == map_b) {
+        return true;
+    }
+    if (hashmap_count(map_a->map) != hashmap_count(map_b->map)) {
+        return false;
+    }
+    void* item;
+    size_t iter = 0;
+    while (hashmap_iter(map_a->map, &iter, &item)) {
+        DaiObjMapEntry* entry         = (DaiObjMapEntry*)item;
+        const DaiObjMapEntry* entry_b = hashmap_get(map_b->map, entry);
+        if (entry_b == NULL) {
+            return false;
+        }
+        int ret = dai_value_equal_with_limit(entry->value, entry_b->value, limit);
+        if (ret == -1) {
+            return -1;
+        }
+        if (ret == 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static struct DaiOperation map_operation = {
+    .get_property_func  = DaiObjMap_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = DaiObjMap_subscript_get,
+    .subscript_set_func = DaiObjMap_subscript_set,
+    .string_func        = DaiObjMap_String,
+    .equal_func         = DaiObjMap_equal,
+    .hash_func          = NULL,
+};
+
+int
+DaiObjMapEntry_compare(const void* a, const void* b, void* udata) {
+    const DaiObjMapEntry* entry_a = (const DaiObjMapEntry*)a;
+    const DaiObjMapEntry* entry_b = (const DaiObjMapEntry*)b;
+    // 因为容器不能作为键，所以 dai_value_equal 不会返回错误
+    return !dai_value_equal(entry_a->key, entry_b->key);
+}
+
+uint64_t
+DaiObjMapEntry_hash(const void* item, uint64_t seed0, uint64_t seed1) {
+    const DaiObjMapEntry* entry = (const DaiObjMapEntry*)item;
+    // 因为容器不能作为键，所以 dai_value_hash 不会返回错误
+    return dai_value_hash(entry->key, seed0, seed1);
+}
+
+DaiObjMap*
+DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjError** err) {
+    DaiObjMap* map     = ALLOCATE_OBJ(vm, DaiObjMap, DaiObjType_map);
+    map->obj.operation = &map_operation;
+    map->iter          = 0;
+    map->map           = hashmap_new(sizeof(DaiObjMapEntry),
+                           length,
+                           0,
+                           0,
+                           DaiObjMapEntry_hash,
+                           DaiObjMapEntry_compare,
+                           NULL,
+                           vm);
+    *err               = NULL;
+    struct hashmap* h  = map->map;
+    for (int i = 0; i < length; i++) {
+        if (!dai_value_is_hashable(values[i * 2])) {
+            *err = DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(values[i * 2]));
+            return NULL;
+        }
+        DaiObjMapEntry entry = {values[i * 2], values[i * 2 + 1]};
+        if (hashmap_set(h, &entry) == NULL && hashmap_oom(h)) {
+            *err = DaiObjError_Newf(vm, "Out of memory");
+            return NULL;
+        }
+    }
+    return map;
+}
+
+bool
+DaiObjMap_iter(DaiObjMap* map, DaiValue* key, DaiValue* value) {
+    void* item;
+    if (hashmap_iter(map->map, &map->iter, &item)) {
+        DaiObjMapEntry entry = *(DaiObjMapEntry*)item;
+        *key                 = entry.key;
+        *value               = entry.value;
+        return true;
+    }
+    map->iter = 0;
+    return false;
+}
+
+void
+DaiObjMap_Free(DaiVM* vm, DaiObjMap* map) {
+    hashmap_free(map->map);
+    VM_FREE(vm, DaiObjMap, map);
+}
+// #endregion
+
 // #region 错误
 
 static char*
@@ -1598,6 +1950,11 @@ DaiObjError_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited)
     return buf;
 }
 
+static uint64_t
+DaiObjError_hash(DaiValue value) {
+    return hash_string(AS_ERROR(value)->message, strlen(AS_ERROR(value)->message));
+}
+
 static struct DaiOperation error_operation = {
     .get_property_func  = dai_default_get_property,
     .set_property_func  = dai_default_set_property,
@@ -1605,6 +1962,7 @@ static struct DaiOperation error_operation = {
     .subscript_set_func = dai_default_subscript_set,
     .string_func        = DaiObjError_String,
     .equal_func         = dai_default_equal,
+    .hash_func          = DaiObjError_hash,
 };
 
 DaiObjError*
@@ -1639,6 +1997,7 @@ dai_object_ts(DaiValue value) {
             return "function";
         }
         case DaiObjType_array: return "array";
+        case DaiObjType_map: return "map";
         case DaiObjType_error: return "error";
         default: return "unknown";
     }

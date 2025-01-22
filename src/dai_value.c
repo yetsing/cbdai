@@ -3,6 +3,7 @@
 */
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -101,6 +102,31 @@ dai_value_is_truthy(const DaiValue value) {
         case DaiValueType_bool: return AS_BOOL(value);
         case DaiValueType_int: return AS_INTEGER(value) != 0;
         default: return true;
+    }
+}
+
+uint64_t
+dai_value_hash(DaiValue value, __attribute__((unused)) uint64_t seed0,
+               __attribute__((unused)) uint64_t seed1) {
+    switch (value.type) {
+        case DaiValueType_nil: return 0;
+        case DaiValueType_int: return (uint64_t)AS_INTEGER(value);
+        case DaiValueType_float: return (uint64_t)AS_FLOAT(value);
+        case DaiValueType_bool: return AS_BOOL(value) ? 1 : 0;
+        case DaiValueType_obj: return AS_OBJ(value)->operation->hash_func(value);
+        default: return 0;
+    }
+}
+
+bool
+dai_value_is_hashable(DaiValue value) {
+    switch (value.type) {
+        case DaiValueType_nil:
+        case DaiValueType_int:
+        case DaiValueType_float:
+        case DaiValueType_bool: return true;
+        case DaiValueType_obj: return AS_OBJ(value)->operation->hash_func != NULL;
+        default: return false;
     }
 }
 

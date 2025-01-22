@@ -133,6 +133,26 @@ dai_value_string(DaiValue value);
 bool
 dai_value_is_truthy(const DaiValue value);
 
+/**
+ * @brief 返回值的哈希值
+ *
+ * @param value 值
+ *
+ * @return uint64_t 哈希值
+ */
+uint64_t
+dai_value_hash(DaiValue value, uint64_t seed0, uint64_t seed1);
+
+/**
+ * @brief 返回值是否可哈希
+ *
+ * @param value 值
+ *
+ * @return true 可哈希，false 不可哈希
+ */
+bool
+dai_value_is_hashable(DaiValue value);
+
 
 typedef struct {
     int capacity;
