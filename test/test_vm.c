@@ -456,6 +456,57 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
     DaiVM vm;
     DaiVM_init(&vm);
     DaiVMTestCase tests[] = {
+        // #region compare
+        {
+            "'0' > '1';",
+            dai_false,
+        },
+        {
+            "'0' < '1';",
+            dai_true,
+        },
+        {
+            "'1' > '0';",
+            dai_true,
+        },
+        {
+            "'1' < '0';",
+            dai_false,
+        },
+        {
+            "'00' < '1';",
+            dai_false,
+        },
+        {
+            "'00' > '1';",
+            dai_true,
+        },
+        {
+            "'0' >= '1';",
+            dai_false,
+        },
+        {
+            "'0' <= '1';",
+            dai_true,
+        },
+        {
+            "'1' >= '0';",
+            dai_true,
+        },
+        {
+            "'1' <= '0';",
+            dai_false,
+        },
+        {
+            "'00' <= '1';",
+            dai_false,
+        },
+        {
+            "'00' >= '1';",
+            dai_true,
+        },
+        // #endregion
+
         // equal
         {
             "\"monkey\" == \"monkey\";",

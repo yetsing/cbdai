@@ -435,27 +435,55 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             case DaiOpGreaterThan: {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
-                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
+                if (IS_INTEGER(a) && IS_INTEGER(b)) {
+                    DaiValue res = BOOL_VAL(AS_INTEGER(a) > AS_INTEGER(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_INTEGER(a) && IS_FLOAT(b)) {
+                    DaiValue res = BOOL_VAL(AS_INTEGER(a) > AS_FLOAT(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_FLOAT(a) && IS_INTEGER(b)) {
+                    DaiValue res = BOOL_VAL(AS_FLOAT(a) > AS_INTEGER(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_FLOAT(a) && IS_FLOAT(b)) {
+                    DaiValue res = BOOL_VAL(AS_FLOAT(a) > AS_FLOAT(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_STRING(a) && IS_STRING(b)) {
+                    int ret      = DaiObjString_cmp(AS_STRING(a), AS_STRING(b));
+                    DaiValue res = BOOL_VAL(ret > 0);
+                    DaiVM_push(vm, res);
+                } else {
                     return DaiObjError_Newf(vm,
                                             "unsupported operand type(s) for >/<: '%s' and '%s'",
                                             dai_value_ts(a),
                                             dai_value_ts(b));
                 }
-                DaiValue res = BOOL_VAL(AS_INTEGER(a) > AS_INTEGER(b));
-                DaiVM_push(vm, res);
                 break;
             }
             case DaiOpGreaterEqualThan: {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
-                if (!(IS_INTEGER(a) && IS_INTEGER(b))) {
+                if (IS_INTEGER(a) && IS_INTEGER(b)) {
+                    DaiValue res = BOOL_VAL(AS_INTEGER(a) >= AS_INTEGER(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_INTEGER(a) && IS_FLOAT(b)) {
+                    DaiValue res = BOOL_VAL(AS_INTEGER(a) >= AS_FLOAT(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_FLOAT(a) && IS_INTEGER(b)) {
+                    DaiValue res = BOOL_VAL(AS_FLOAT(a) >= AS_INTEGER(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_FLOAT(a) && IS_FLOAT(b)) {
+                    DaiValue res = BOOL_VAL(AS_FLOAT(a) >= AS_FLOAT(b));
+                    DaiVM_push(vm, res);
+                } else if (IS_STRING(a) && IS_STRING(b)) {
+                    int ret      = DaiObjString_cmp(AS_STRING(a), AS_STRING(b));
+                    DaiValue res = BOOL_VAL(ret >= 0);
+                    DaiVM_push(vm, res);
+                } else {
                     return DaiObjError_Newf(vm,
                                             "unsupported operand type(s) for >=/<=: '%s' and '%s'",
                                             dai_value_ts(a),
                                             dai_value_ts(b));
                 }
-                DaiValue res = BOOL_VAL(AS_INTEGER(a) >= AS_INTEGER(b));
-                DaiVM_push(vm, res);
                 break;
             }
 

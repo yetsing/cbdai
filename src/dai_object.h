@@ -164,6 +164,8 @@ DaiObjString*
 dai_take_string(DaiVM* vm, char* chars, int length);
 DaiObjString*
 dai_copy_string(DaiVM* vm, const char* chars, int length);
+int
+DaiObjString_cmp(DaiObjString* s1, DaiObjString* s2);
 
 typedef struct {
     DaiObj obj;

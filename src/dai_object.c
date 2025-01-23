@@ -1049,6 +1049,17 @@ dai_copy_string(DaiVM* vm, const char* chars, int length) {
     heap_chars[length] = '\0';
     return allocate_string(vm, heap_chars, length, hash);
 }
+
+// Function to compare two DaiObjString objects
+int
+DaiObjString_cmp(DaiObjString* a, DaiObjString* b) {
+    // Compare the lengths first
+    if (a->length < b->length) return -1;
+    if (a->length > b->length) return 1;
+
+    // If lengths are equal, compare the strings lexicographically
+    return strcmp(a->chars, b->chars);
+}
 // #endregion
 
 // #region 数组 DaiObjArray
