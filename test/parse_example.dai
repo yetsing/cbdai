@@ -5,6 +5,10 @@ if (a > b) {
     true;
     false;
 };
+if (a > b) {
+    true;
+    false;
+}
 b = a + 4;
 
 # 这是一段注释
@@ -13,6 +17,11 @@ if (a > b) {
 } else {
     2; # 行内注释
 };
+if (a > b) {
+    1; // 行内注释
+} else {
+    2; # 行内注释
+}
 
 // 示例函数
 var foo = fn(s) {
@@ -23,7 +32,7 @@ a == b;
 
 fn goo(s) {
     return s + s;
-};
+}
 
 var s1 = "abc";
 var s2 = "def";
@@ -48,10 +57,10 @@ class Foo {
     fn set(a) {
         super.set(a);
         s = a;
-    };
+    }
 
     class var c = 4;
-    class fn cget() {};
+    class fn cget() {}
     class fn cset(c) {
         self.c = c;
         s = c;
@@ -74,12 +83,21 @@ if (x == 1) {
 } else {
     x;
 };
+if (x == 1) {
+    x;
+} elif (x == 2) {
+    x;
+} elif (x == 3) {
+    x;
+} else {
+    x;
+}
 
 while (x < 10) {
     x = x + 1;
     continue;
     break;
-};
+}
 
 var mynil = nil;
 x = 3.1415926;
@@ -90,6 +108,10 @@ x[0];
     var a = 2;
     print(a);
 };
+{
+    var a = 3;
+}
+print(a);
 
 var m = {
     1: 2,

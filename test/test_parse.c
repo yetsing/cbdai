@@ -1568,11 +1568,6 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
             "\"DaiTokenType_semicolon\" in <test>:1:23",
         },
         {
-            "if (a) {} else {}",
-            "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "
-            "got \"DaiTokenType_eof\" in <test>:1:18",
-        },
-        {
             "var foo = fn(1) { 1; };",
             "SyntaxError: expected token to be \"DaiTokenType_ident\" but got "
             "\"DaiTokenType_int\" in <test>:1:14",

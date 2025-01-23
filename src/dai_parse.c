@@ -986,9 +986,9 @@ Parser_parseClassMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
-        func->free_fn((DaiAstBase*)func, true);
-        return NULL;
+    // 末尾分号可选
+    if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
+        Parser_nextToken(p);
     }
 
     {
@@ -1120,9 +1120,9 @@ Parser_parseMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
-        func->free_fn((DaiAstBase*)func, true);
-        return NULL;
+    // 末尾分号可选
+    if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
+        Parser_nextToken(p);
     }
 
     {
@@ -1276,9 +1276,9 @@ Parser_parseFunctionStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
-        func->free_fn((DaiAstBase*)func, true);
-        return NULL;
+    // 末尾分号可选
+    if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
+        Parser_nextToken(p);
     }
 
     {
@@ -1508,9 +1508,9 @@ Parser_parseIfStatement(Parser* p) {
             return NULL;
         }
     }
-    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
-        ifstatement->free_fn((DaiAstBase*)ifstatement, true);
-        return NULL;
+    // 末尾分号可选
+    if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
+        Parser_nextToken(p);
     }
     {
         ifstatement->end_line   = p->cur_token->end_line;
@@ -1595,9 +1595,9 @@ Parser_parseBlockStatement(Parser* p) {
     if (blockstatement == NULL) {
         return NULL;
     }
-    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
-        blockstatement->free_fn((DaiAstBase*)blockstatement, true);
-        return NULL;
+    // 末尾分号可选
+    if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
+        Parser_nextToken(p);
     }
     blockstatement->end_line   = p->cur_token->end_line;
     blockstatement->end_column = p->cur_token->end_column;
