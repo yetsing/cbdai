@@ -6,6 +6,7 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
+    char* operator;
     DaiAstExpression* left;
     DaiAstExpression* value;
 } DaiAstAssignStatement;

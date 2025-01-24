@@ -75,7 +75,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
                              "1.234E-10 % \n"
                              "== != < > <= >= and or not\n"
                              "& | ~ << >> ^\n"
-                             "[]:\n";
+                             "[]: += -= *= /= \n";
     const DaiToken tests[] = {
         {
             DaiTokenType_assign,
@@ -290,6 +290,10 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_lbracket, "[", 35, 1, 35, 2},
         {DaiTokenType_rbracket, "]", 35, 2, 35, 3},
         {DaiTokenType_colon, ":", 35, 3, 35, 4},
+        {DaiTokenType_add_assign, "+=", 35, 5, 35, 7},
+        {DaiTokenType_sub_assign, "-=", 35, 8, 35, 10},
+        {DaiTokenType_mul_assign, "*=", 35, 11, 35, 13},
+        {DaiTokenType_div_assign, "/=", 35, 14, 35, 16},
 
         {DaiTokenType_eof, "", 36, 1},
     };

@@ -495,6 +495,83 @@ test_assign_statements(__attribute__((unused)) const MunitParameter params[],
         munit_assert_int(stmt->start_column, ==, 1);
         munit_assert_int(stmt->end_line, ==, 1);
         munit_assert_int(stmt->end_column, ==, 7);
+        munit_assert_null(stmt->operator);
+        check_identifier(stmt->value, "y");
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "x += y;";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+        munit_assert_int(program->length, ==, 1);
+        munit_assert_int(program->statements[0]->type, ==, DaiAstType_AssignStatement);
+        DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_AssignStatement);
+        check_identifier(stmt->left, "x");
+        munit_assert_int(stmt->start_line, ==, 1);
+        munit_assert_int(stmt->start_column, ==, 1);
+        munit_assert_int(stmt->end_line, ==, 1);
+        munit_assert_int(stmt->end_column, ==, 8);
+        munit_assert_string_equal(stmt->operator, "+");
+        check_identifier(stmt->value, "y");
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "x -= y;";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+        munit_assert_int(program->length, ==, 1);
+        munit_assert_int(program->statements[0]->type, ==, DaiAstType_AssignStatement);
+        DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_AssignStatement);
+        check_identifier(stmt->left, "x");
+        munit_assert_int(stmt->start_line, ==, 1);
+        munit_assert_int(stmt->start_column, ==, 1);
+        munit_assert_int(stmt->end_line, ==, 1);
+        munit_assert_int(stmt->end_column, ==, 8);
+        munit_assert_string_equal(stmt->operator, "-");
+        check_identifier(stmt->value, "y");
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "x *= y;";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+        munit_assert_int(program->length, ==, 1);
+        munit_assert_int(program->statements[0]->type, ==, DaiAstType_AssignStatement);
+        DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_AssignStatement);
+        check_identifier(stmt->left, "x");
+        munit_assert_int(stmt->start_line, ==, 1);
+        munit_assert_int(stmt->start_column, ==, 1);
+        munit_assert_int(stmt->end_line, ==, 1);
+        munit_assert_int(stmt->end_column, ==, 8);
+        munit_assert_string_equal(stmt->operator, "*");
+        check_identifier(stmt->value, "y");
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    {
+        const char* input = "x /= y;";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+        munit_assert_int(program->length, ==, 1);
+        munit_assert_int(program->statements[0]->type, ==, DaiAstType_AssignStatement);
+        DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_AssignStatement);
+        check_identifier(stmt->left, "x");
+        munit_assert_int(stmt->start_line, ==, 1);
+        munit_assert_int(stmt->start_column, ==, 1);
+        munit_assert_int(stmt->end_line, ==, 1);
+        munit_assert_int(stmt->end_column, ==, 8);
+        munit_assert_string_equal(stmt->operator, "/");
         check_identifier(stmt->value, "y");
         program->free_fn((DaiAstBase*)program, true);
     }

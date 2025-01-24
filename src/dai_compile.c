@@ -557,9 +557,23 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_AssignStatement: {
             DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)node;
-            DaiCompileError* err        = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+            if (stmt->operator!= NULL) {
+                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->left);
+                if (err != NULL) {
+                    return NULL;
+                }
+            }
+            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
             if (err != NULL) {
                 return err;
+            }
+            if (stmt->operator!= NULL) {
+                switch (*stmt->operator) {
+                    case '+': DaiCompiler_emit(compiler, DaiOpAdd, stmt->start_line); break;
+                    case '-': DaiCompiler_emit(compiler, DaiOpSub, stmt->start_line); break;
+                    case '*': DaiCompiler_emit(compiler, DaiOpMul, stmt->start_line); break;
+                    case '/': DaiCompiler_emit(compiler, DaiOpDiv, stmt->start_line); break;
+                }
             }
             switch (stmt->left->type) {
                 case DaiAstType_Identifier: {

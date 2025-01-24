@@ -79,6 +79,11 @@ typedef enum {
     DaiTokenType_rbracket,   // "rbracket]"
     DaiTokenType_lbrace,     // "lbrace{"
     DaiTokenType_rbrace,     // "rbrace}"
+
+    DaiTokenType_add_assign,   // "add_assign+="
+    DaiTokenType_sub_assign,   // "sub_assign-="
+    DaiTokenType_mul_assign,   // "mul_assign*="
+    DaiTokenType_div_assign,   // "div_assign/="
     // #endregion
 
     // 结束标记

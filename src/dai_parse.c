@@ -1,11 +1,13 @@
 #include <assert.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "dai_assert.h"
 #include "dai_ast.h"
-#include "dai_ast/dai_astMapLiteral.h"
+#include "dai_common.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
 #include "dai_parseint.h"
@@ -216,6 +218,21 @@ Parser_curTokenIs(const Parser* p, const DaiTokenType type) {
 static bool
 Parser_peekTokenIs(const Parser* p, const DaiTokenType type) {
     return p->peek_token->type == type;
+}
+
+static bool
+Parser_peekTokenIn(const Parser* p, ...) {
+    va_list args;
+    va_start(args, p);
+    DaiTokenType type;
+    while ((type = va_arg(args, DaiTokenType)) != DaiTokenType_end) {
+        if (p->peek_token->type == type) {
+            va_end(args);
+            return true;
+        }
+    }
+    va_end(args);
+    return false;
 }
 
 // 检查下一个 token 是否为期望的 token 类型
@@ -1323,12 +1340,16 @@ Parser_parseExpressionOrAssignStatement(Parser* p) {
         return NULL;
     }
     DaiAstStatement* dstmt = NULL;
-    if (Parser_peekTokenIs(p, DaiTokenType_assign)) {
+    if (Parser_peekTokenIn(p,
+                           DaiTokenType_assign,
+                           DaiTokenType_add_assign,
+                           DaiTokenType_sub_assign,
+                           DaiTokenType_mul_assign,
+                           DaiTokenType_div_assign,
+                           DaiTokenType_end)) {
         // 赋值语句
-        if (!Parser_expectPeek(p, DaiTokenType_assign)) {
-            expr->free_fn((DaiAstBase*)expr, true);
-            return NULL;
-        }
+        Parser_nextToken(p);
+        DaiTokenType assign_type    = p->cur_token->type;
         DaiAstAssignStatement* stmt = DaiAstAssignStatement_New();
         stmt->start_line            = start_token->start_line;
         stmt->start_column          = start_token->start_column;
@@ -1338,6 +1359,13 @@ Parser_parseExpressionOrAssignStatement(Parser* p) {
         if (stmt->value == NULL) {
             stmt->free_fn((DaiAstBase*)stmt, true);
             return NULL;
+        }
+        switch (assign_type) {
+            case DaiTokenType_add_assign: stmt->operator= "+"; break;
+            case DaiTokenType_sub_assign: stmt->operator= "-"; break;
+            case DaiTokenType_mul_assign: stmt->operator= "*"; break;
+            case DaiTokenType_div_assign: stmt->operator= "/"; break;
+            default: break;
         }
         dstmt = (DaiAstStatement*)stmt;
     } else {

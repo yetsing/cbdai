@@ -2506,6 +2506,35 @@ test_map(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_assign_statement(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void* user_data) {
+    const DaiVMTestCase tests[] = {
+        {
+            "var a = 1; a += 1; a;",
+            INTEGER_VAL(2),
+        },
+        {
+            "var a = 1; a -= 1; a;",
+            INTEGER_VAL(0),
+        },
+        {
+            "var a = 1; a *= 1; a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var a = 1; a /= 1; a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var a = 4; a /= 2; a;",
+            INTEGER_VAL(2),
+        },
+    };
+    run_vm_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    return MUNIT_OK;
+}
+
 MunitTest vm_tests[] = {
     {(char*)"/test_number_arithmetic",
      test_number_arithmetic,
@@ -2580,5 +2609,6 @@ MunitTest vm_tests[] = {
      MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_map", test_map, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/test_assign_statement", test_assign_statement, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

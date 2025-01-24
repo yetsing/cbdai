@@ -34,7 +34,8 @@ static const char* DaiTokenTypeStrings[] = {
     "DaiTokenType_comma",       "DaiTokenType_semicolon",   "DaiTokenType_colon",
     "DaiTokenType_lparen",      "DaiTokenType_rparen",      "DaiTokenType_lbracket",
     "DaiTokenType_rbracket",    "DaiTokenType_lbrace",      "DaiTokenType_rbrace",
-    "DaiTokenType_end",
+    "DaiTokenType_add_assign",  "DaiTokenType_sub_assign",  "DaiTokenType_mul_assign",
+    "DaiTokenType_div_assign",  "DaiTokenType_end",
 };
 
 __attribute__((unused)) const char*
@@ -63,6 +64,9 @@ static DaiToken autos[] = {
     {DaiTokenType_lparen, "("},       {DaiTokenType_rparen, ")"},
     {DaiTokenType_lbrace, "{"},       {DaiTokenType_rbrace, "}"},
     {DaiTokenType_lbracket, "["},     {DaiTokenType_rbracket, "]"},
+
+    {DaiTokenType_add_assign, "+="},  {DaiTokenType_sub_assign, "-="},
+    {DaiTokenType_mul_assign, "*="},  {DaiTokenType_div_assign, "/="},
 };
 
 static DaiToken keywords[] = {
@@ -566,16 +570,41 @@ Tokenizer_nextToken(Tokenizer* tker) {
         case ')':
         case '[':
         case ']':
-        case '+':
-        case '-':
-        case '*':
         case '%': {
             Tokenizer_readChar(tker);
             return Tokenizer_buildToken(tker, DaiTokenType_auto);
         }
+        case '+': {
+            Tokenizer_readChar(tker);
+            if (tker->ch == '=') {
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_add_assign);
+            }
+            return Tokenizer_buildToken(tker, DaiTokenType_plus);
+        }
+        case '-': {
+            Tokenizer_readChar(tker);
+            if (tker->ch == '=') {
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_sub_assign);
+            }
+            return Tokenizer_buildToken(tker, DaiTokenType_minus);
+        }
+        case '*': {
+            Tokenizer_readChar(tker);
+            if (tker->ch == '=') {
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_mul_assign);
+            }
+            return Tokenizer_buildToken(tker, DaiTokenType_asterisk);
+        }
         case '/': {
             if (ch == '/' && Tokenizer_peekChar(tker) == '/') {
                 return Tokenizer_readComment(tker);
+            } else if (Tokenizer_peekChar(tker) == '=') {
+                Tokenizer_readChar(tker);
+                Tokenizer_readChar(tker);
+                return Tokenizer_buildToken(tker, DaiTokenType_div_assign);
             } else {
                 Tokenizer_readChar(tker);
                 return Tokenizer_buildToken(tker, DaiTokenType_auto);

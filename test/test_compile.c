@@ -3063,6 +3063,119 @@ test_map(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_assign_statement(__attribute__((unused)) const MunitParameter params[],
+                      __attribute__((unused)) void* user_data) {
+    const DaiCompilerTestCase tests[] = {
+        {
+            "var a = 1; a += 1;",
+            16,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpAdd,
+                DaiOpSetGlobal,
+                0,
+                0,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "var a = 1; a -= 1;",
+            16,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpSub,
+                DaiOpSetGlobal,
+                0,
+                0,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "var a = 1; a *= 1;",
+            16,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpMul,
+                DaiOpSetGlobal,
+                0,
+                0,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(1),
+            },
+        },
+        {
+            "var a = 1; a /= 1;",
+            16,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpDiv,
+                DaiOpSetGlobal,
+                0,
+                0,
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(1),
+            },
+        },
+    };
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
 
 MunitTest compile_tests[] = {
     {(char*)"/test_integer_arithmetic",
@@ -3128,5 +3241,11 @@ MunitTest compile_tests[] = {
      MUNIT_TEST_OPTION_NONE,
      NULL},
     {(char*)"/test_map", test_map, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_assign_statement",
+     test_assign_statement,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

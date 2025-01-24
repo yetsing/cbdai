@@ -26,6 +26,10 @@ DaiAstAssignStatement_string(DaiAstBase* base, bool recursive) {
     }
     DaiStringBuffer_write(sb, ",\n");
 
+    if (stmt->operator!= NULL) {
+        DaiStringBuffer_writef(sb, "%soperator: %s,\n", indent, stmt->operator);
+    }
+
     if (recursive) {
         DaiStringBuffer_write(sb, indent);
         DaiStringBuffer_write(sb, "value: ");
@@ -65,7 +69,8 @@ DaiAstAssignStatement_New(void) {
         stmt->string_fn = DaiAstAssignStatement_string;
         stmt->free_fn   = DaiAstAssignStatement_free;
     }
-    stmt->type  = DaiAstType_AssignStatement;
+    stmt->type = DaiAstType_AssignStatement;
+    stmt->operator= NULL;
     stmt->left  = NULL;
     stmt->value = NULL;
     return stmt;
