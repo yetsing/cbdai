@@ -8,8 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ucd/ucd.h"
-
 #include "dai_codecs.h"
 #include "dai_malloc.h"
 #include "dai_tokenize.h"
@@ -467,45 +465,81 @@ lookup_ident(const char* ident) {
 }
 
 static bool
-is_identifier_start(dai_rune_t rune) {
-    // Lu, Ll, Lt, Lm, Lo, Nl, the underscore
-    if (rune == '_') {
+is_unicode_letter(dai_rune_t c) {
+    // Basic Latin letters
+    if (('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')) {
         return true;
     }
-    ucd_category category = ucd_lookup_category(rune);
-    switch (category) {
-        case UCD_CATEGORY_Lu:
-        case UCD_CATEGORY_Ll:
-        case UCD_CATEGORY_Lt:
-        case UCD_CATEGORY_Lm:
-        case UCD_CATEGORY_Lo:
-        case UCD_CATEGORY_Nl: return true;
 
-        default: return false;
+    // CJK Unified Ideographs (Common Chinese characters)
+    if (0x4E00 <= c && c <= 0x9FFF) {
+        return true;
     }
+
+    // CJK Extension A
+    if (0x3400 <= c && c <= 0x4DBF) {
+        return true;
+    }
+
+    // Hiragana
+    if (0x3040 <= c && c <= 0x309F) {
+        return true;
+    }
+
+    // Katakana
+    if (0x30A0 <= c && c <= 0x30FF) {
+        return true;
+    }
+
+    // Latin-1 Supplement letters
+    if ((0xC0 <= c && c <= 0xD6) || (0xD8 <= c && c <= 0xF6) || (0xF8 <= c && c <= 0xFF)) {
+        return true;
+    }
+
+    // Other scripts
+    if ((0x0100 <= c && c <= 0x02AF) ||   // Extended Latin
+        (0x0370 <= c && c <= 0x037D) ||   // Greek
+        (0x037F <= c && c <= 0x1FFF)) {   // More Greek, Cyrillic
+        return true;
+    }
+
+    return false;
 }
 
 static bool
-is_identifier_continue(dai_rune_t rune) {
-    // Lu, Ll, Lt, Lm, Lo, Nl, the underscore
-    // Mn, Mc, Nd, Pc
+is_unicode_number(dai_rune_t c) {
+    // Basic digits
+    if ('0' <= c && c <= '9') {
+        return true;
+    }
+
+    // Other number forms (simplified)
+    if ((0x0660 <= c && c <= 0x0669) ||   // Arabic-Indic digits
+        (0x06F0 <= c && c <= 0x06F9) ||   // Extended Arabic-Indic digits
+        (0x07C0 <= c && c <= 0x07C9) ||   // NKo digits
+        (0x0966 <= c && c <= 0x096F)) {   // Devanagari digits
+        return true;
+    }
+
+    return false;
+}
+
+// Replace is_identifier_start function
+static bool
+is_identifier_start(dai_rune_t rune) {
     if (rune == '_') {
         return true;
     }
-    ucd_category category = ucd_lookup_category(rune);
-    switch (category) {
-        case UCD_CATEGORY_Lu:
-        case UCD_CATEGORY_Ll:
-        case UCD_CATEGORY_Lt:
-        case UCD_CATEGORY_Lm:
-        case UCD_CATEGORY_Lo:
-        case UCD_CATEGORY_Nl:
-        case UCD_CATEGORY_Mn:
-        case UCD_CATEGORY_Mc:
-        case UCD_CATEGORY_Nd:
-        case UCD_CATEGORY_Pc: return true;
-        default: return false;
+    return is_unicode_letter(rune);
+}
+
+// Replace is_identifier_continue function
+static bool
+is_identifier_continue(dai_rune_t rune) {
+    if (rune == '_') {
+        return true;
     }
+    return is_unicode_letter(rune) || is_unicode_number(rune);
 }
 
 static DaiToken*
