@@ -24,11 +24,18 @@ add_executable(debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)  # for cli de
 
 add_executable(test_atstr atstr/test_atstr.c atstr/atstr.c munit/munit.c)
 
-target_compile_definitions(cbdai PRIVATE TEST)
-target_compile_definitions(cbdai-debug PRIVATE TEST)
-target_compile_definitions(santest PRIVATE TEST)
-target_compile_definitions(santest PRIVATE SANTEST_OUTPUT)
-target_compile_definitions(mem PRIVATE TEST)
+# Step 1: Add cache variables with defaults
+option(DAI_TEST_VERBOSE "Enable verbose testing" OFF)
+# Step 2: Update target definitions conditionally
+if(DAI_TEST_VERBOSE)
+    target_compile_definitions(cbdai PRIVATE DAI_TEST_VERBOSE)
+endif()
+
+target_compile_definitions(cbdai PRIVATE DAI_TEST)
+target_compile_definitions(cbdai-debug PRIVATE DAI_TEST)
+target_compile_definitions(santest PRIVATE DAI_TEST)
+target_compile_definitions(santest PRIVATE DAI_SANTEST_OUTPUT)
+target_compile_definitions(mem PRIVATE DAI_TEST)
 
 target_compile_options(coverage PRIVATE -fprofile-instr-generate -fcoverage-mapping)
 target_link_options(coverage PRIVATE -fprofile-instr-generate)

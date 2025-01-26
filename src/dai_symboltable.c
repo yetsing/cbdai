@@ -169,11 +169,6 @@ typedef struct _DaiSymbolTable {
     DaiSymbol free_symbols[256];
 } DaiSymbolTable;
 
-static bool
-DaiSymbolTable_isLocal(DaiSymbolTable* table) {
-    return table->depth > 0;
-}
-
 DaiSymbolTable*
 DaiSymbolTable_New() {
     DaiSymbolTable* table = ALLOCATE(DaiSymbolTable, 1);
@@ -241,13 +236,13 @@ DaiSymbolTable_define(DaiSymbolTable* table, const char* name) {
         char* cname = strdup(name);
         int index   = table->num_symbols + table->num_symbols_of_outer;
         symbol      = (DaiSymbol){cname, table->depth, index, true};
+        table->num_symbols++;
     }
     if (table->depth == 0) {
         symbol.type = DaiSymbolType_global;
     } else {
         symbol.type = DaiSymbolType_local;
     }
-    table->num_symbols++;
     bool isNewKey = SymbolMap_set(&table->store, symbol.name, symbol);
     assert((found && !isNewKey) || (!found && isNewKey));
     return symbol;
@@ -311,8 +306,18 @@ DaiSymbolTable_count(DaiSymbolTable* table) {
     return table->num_symbols;
 }
 
+int
+DaiSymbolTable_countOuter(DaiSymbolTable* table) {
+    return table->num_symbols + table->num_symbols_of_outer;
+}
+
 DaiSymbol*
 DaiSymbolTable_getFreeSymbols(DaiSymbolTable* table, int* free_symbol_count) {
     *free_symbol_count = table->num_free;
     return table->free_symbols;
+}
+
+bool
+DaiSymbolTable_isLocal(DaiSymbolTable* table) {
+    return table->depth > 0;
 }

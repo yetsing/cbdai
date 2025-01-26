@@ -21,6 +21,7 @@ typedef enum {
     DaiAstType_WhileStatement,
     DaiAstType_ContinueStatement,
     DaiAstType_BreakStatement,
+    DaiAstType_ForInStatement,
     DaiAstType_StatementEnd,
     // #endregion
 

@@ -1,0 +1,36 @@
+=+(){},;
+var five = 5;
+var ten = 10;
+
+var add = fn(x, y) {
+   x + y;
+};
+
+var result = add(five, ten);
+!-/*5;
+5 < 10 > 5;
+
+if (5 < 10) {
+     return true;
+} else {
+     return false;
+}
+
+10 == 10;
+10 != 9; # 123
+//456
+#中文注释123
+var 中文 = 123;
+"" "a" "abcd" "中文";
+'' 'a' 'abcd' '中文';
+'  a  b  '
+`  a  b
+`
+class Foo {};
+self.a = 3;
+super.b elif nil
+0 3.4 0.1 0.0 1.0 3.1416 1.234E+10 1.234E-10 %
+== != < > <= >= and or not
+& | ~ << >> ^
+[]: += -= *= /=
+for in

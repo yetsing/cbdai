@@ -47,7 +47,11 @@ bool
 DaiSymbolTable_isDefined(DaiSymbolTable* table, const char* name);
 int
 DaiSymbolTable_count(DaiSymbolTable* table);
+int
+DaiSymbolTable_countOuter(DaiSymbolTable* table);
 DaiSymbol*
 DaiSymbolTable_getFreeSymbols(DaiSymbolTable* table, int* free_symbol_count);
+bool
+DaiSymbolTable_isLocal(DaiSymbolTable* table);
 
 #endif /* FADFA587_97BF_4F17_B81D_02BA645443DF */

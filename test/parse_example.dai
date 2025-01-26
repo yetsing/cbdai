@@ -117,3 +117,7 @@ var m = {
     1: 2,
     2: 3,
 };
+
+for (var k, v in m) {
+    print(k, v);
+}

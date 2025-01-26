@@ -50,6 +50,14 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     printf("%p free type %d\n", (void*)object, object->type);
 #endif
     switch (object->type) {
+        case DaiObjType_mapIterator: {
+            VM_FREE(vm, DaiObjMapIterator, object);
+            break;
+        }
+        case DaiObjType_arrayIterator: {
+            VM_FREE(vm, DaiObjArrayIterator, object);
+            break;
+        }
         case DaiObjType_map: {
             DaiObjMap* map = (DaiObjMap*)object;
             DaiObjMap_Free(vm, map);
@@ -179,10 +187,21 @@ blackenObject(DaiVM* vm, DaiObj* object) {
     printf("\n");
 #endif
     switch (object->type) {
+        case DaiObjType_mapIterator: {
+            DaiObjMapIterator* iterator = (DaiObjMapIterator*)object;
+            markObject(vm, (DaiObj*)iterator->map);
+            break;
+        }
+        case DaiObjType_arrayIterator: {
+            DaiObjArrayIterator* iterator = (DaiObjArrayIterator*)object;
+            markObject(vm, (DaiObj*)iterator->array);
+            break;
+        }
         case DaiObjType_map: {
             DaiObjMap* map = (DaiObjMap*)object;
             DaiValue key, value;
-            while (DaiObjMap_iter(map, &key, &value)) {
+            size_t i = 0;
+            while (DaiObjMap_iter(map, &i, &key, &value)) {
                 if (IS_OBJ(key)) {
                     blackenObject(vm, AS_OBJ(key));
                 }
@@ -326,7 +345,7 @@ collectGarbage(DaiVM* vm) {
 #endif
 }
 
-#ifdef TEST
+#ifdef DAI_TEST
 void
 test_mark(DaiVM* vm) {
     markRoots(vm);

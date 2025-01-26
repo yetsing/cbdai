@@ -153,6 +153,16 @@ dai_value_hash(DaiValue value, uint64_t seed0, uint64_t seed1);
 bool
 dai_value_is_hashable(DaiValue value);
 
+/**
+ * @brief 返回值是否可迭代
+ *
+ * @param value 值
+ *
+ * @return true 可迭代，false 不可迭代
+ */
+bool
+dai_value_is_iterable(DaiValue value);
+
 
 typedef struct {
     int capacity;

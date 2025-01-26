@@ -64,6 +64,11 @@ dai_default_hash(DaiValue value) {
     return (uint64_t)(uintptr_t)AS_OBJ(value);
 }
 
+static DaiValue
+dai_iter_init_return_self(DaiVM* vm, DaiValue receiver) {
+    return receiver;
+}
+
 static struct DaiOperation default_operation = {
     .get_property_func  = dai_default_get_property,
     .set_property_func  = dai_default_set_property,
@@ -72,6 +77,8 @@ static struct DaiOperation default_operation = {
     .string_func        = dai_default_string_func,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 static char*
@@ -91,6 +98,8 @@ static struct DaiOperation builtin_function_operation = {
     .string_func        = DaiObjBuiltinFunction_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 static DaiObj*
@@ -128,6 +137,8 @@ static struct DaiOperation function_operation = {
     .string_func        = DaiObjFunction_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 DaiObjFunction*
@@ -167,6 +178,8 @@ static struct DaiOperation closure_operation = {
     .string_func        = DaiObjClosure_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 DaiObjClosure*
@@ -288,6 +301,8 @@ static struct DaiOperation class_operation = {
     .string_func        = DaiObjClass_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 DaiObjClass*
@@ -361,6 +376,8 @@ static struct DaiOperation instance_operation = {
     .string_func        = DaiObjInstance_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 
@@ -397,6 +414,8 @@ static struct DaiOperation bound_method_operation = {
     .string_func        = DaiObjBoundMethod_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 DaiObjBoundMethod*
@@ -1002,8 +1021,10 @@ static struct DaiOperation string_operation = {
     .subscript_set_func = DaiObjString_subscript_set,
     .string_func        = DaiObjString_String,
     // 因为相同的字符串会被重用，所以直接比较指针（字符串驻留）
-    .equal_func = dai_default_equal,
-    .hash_func  = DaiObjString_hash,
+    .equal_func     = dai_default_equal,
+    .hash_func      = DaiObjString_hash,
+    .iter_init_func = NULL,
+    .iter_next_func = NULL,
 };
 
 
@@ -1561,6 +1582,12 @@ DaiObjArray_String(DaiValue value, DaiPtrArray* visited) {
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
+static DaiValue
+DaiObjArray_iter_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver) {
+    DaiObjArrayIterator* iterator = DaiObjArrayIterator_New(vm, AS_ARRAY(receiver));
+    return OBJ_VAL(iterator);
+}
+
 static struct DaiOperation array_operation = {
     .get_property_func  = DaiObjArray_get_property,
     .set_property_func  = dai_default_set_property,
@@ -1569,6 +1596,8 @@ static struct DaiOperation array_operation = {
     .string_func        = DaiObjArray_String,
     .equal_func         = DaiObjArray_equal,
     .hash_func          = NULL,
+    .iter_init_func     = DaiObjArray_iter_init,
+    .iter_next_func     = NULL,
 };
 
 DaiObjArray*
@@ -1624,6 +1653,44 @@ DaiObjArray_append2(DaiVM* vm, DaiObjArray* array, int n, ...) {
     return array;
 }
 
+
+// #endregion
+
+// #region DaiObjArrayIterator
+
+static DaiValue
+DaiObjArrayIterator_iter_next(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue* index,
+                              DaiValue* element) {
+    DaiObjArrayIterator* iterator = AS_ARRAY_ITERATOR(receiver);
+    if (iterator->index >= iterator->array->length) {
+        return UNDEFINED_VAL;
+    }
+    *index   = INTEGER_VAL(iterator->index);
+    *element = iterator->array->elements[iterator->index];
+    iterator->index++;
+    return NIL_VAL;
+}
+
+static struct DaiOperation array_iterator_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = dai_default_string_func,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = dai_iter_init_return_self,
+    .iter_next_func     = DaiObjArrayIterator_iter_next,
+};
+
+DaiObjArrayIterator*
+DaiObjArrayIterator_New(DaiVM* vm, DaiObjArray* array) {
+    DaiObjArrayIterator* iterator = ALLOCATE_OBJ(vm, DaiObjArrayIterator, DaiObjType_arrayIterator);
+    iterator->obj.operation       = &array_iterator_operation;
+    iterator->array               = array;
+    iterator->index               = 0;
+    return iterator;
+}
 
 // #endregion
 
@@ -1877,6 +1944,12 @@ DaiObjMap_equal(DaiValue a, DaiValue b, int* limit) {
     return true;
 }
 
+static DaiValue
+DaiObjMap_iter_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver) {
+    DaiObjMapIterator* iterator = DaiObjMapIterator_New(vm, AS_MAP(receiver));
+    return OBJ_VAL(iterator);
+}
+
 static struct DaiOperation map_operation = {
     .get_property_func  = DaiObjMap_get_property,
     .set_property_func  = dai_default_set_property,
@@ -1885,6 +1958,8 @@ static struct DaiOperation map_operation = {
     .string_func        = DaiObjMap_String,
     .equal_func         = DaiObjMap_equal,
     .hash_func          = NULL,
+    .iter_init_func     = DaiObjMap_iter_init,
+    .iter_next_func     = NULL,
 };
 
 int
@@ -1902,11 +1977,10 @@ DaiObjMapEntry_hash(const void* item, uint64_t seed0, uint64_t seed1) {
     return dai_value_hash(entry->key, seed0, seed1);
 }
 
-DaiObjMap*
-DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjError** err) {
+DaiObjError*
+DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjMap** map_ret) {
     DaiObjMap* map     = ALLOCATE_OBJ(vm, DaiObjMap, DaiObjType_map);
     map->obj.operation = &map_operation;
-    map->iter          = 0;
     map->map           = hashmap_new(sizeof(DaiObjMapEntry),
                            length,
                            0,
@@ -1915,32 +1989,29 @@ DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjError** err) 
                            DaiObjMapEntry_compare,
                            NULL,
                            vm);
-    *err               = NULL;
     struct hashmap* h  = map->map;
     for (int i = 0; i < length; i++) {
         if (!dai_value_is_hashable(values[i * 2])) {
-            *err = DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(values[i * 2]));
-            return NULL;
+            return DaiObjError_Newf(vm, "unhashable type: '%s'", dai_value_ts(values[i * 2]));
         }
         DaiObjMapEntry entry = {values[i * 2], values[i * 2 + 1]};
         if (hashmap_set(h, &entry) == NULL && hashmap_oom(h)) {
-            *err = DaiObjError_Newf(vm, "Out of memory");
-            return NULL;
+            return DaiObjError_Newf(vm, "Out of memory");
         }
     }
-    return map;
+    *map_ret = map;
+    return NULL;
 }
 
 bool
-DaiObjMap_iter(DaiObjMap* map, DaiValue* key, DaiValue* value) {
+DaiObjMap_iter(DaiObjMap* map, size_t* i, DaiValue* key, DaiValue* value) {
     void* item;
-    if (hashmap_iter(map->map, &map->iter, &item)) {
+    if (hashmap_iter(map->map, i, &item)) {
         DaiObjMapEntry entry = *(DaiObjMapEntry*)item;
         *key                 = entry.key;
         *value               = entry.value;
         return true;
     }
-    map->iter = 0;
     return false;
 }
 
@@ -1949,6 +2020,46 @@ DaiObjMap_Free(DaiVM* vm, DaiObjMap* map) {
     hashmap_free(map->map);
     VM_FREE(vm, DaiObjMap, map);
 }
+// #endregion
+
+// #region DaiObjMapIterator
+
+static DaiValue
+DaiObjMapIterator_iter_next(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue* index,
+                            DaiValue* element) {
+    DaiObjMapIterator* iterator = AS_MAP_ITERATOR(receiver);
+    DaiObjMap* map              = iterator->map;
+    void* item;
+    if (hashmap_iter(map->map, &iterator->map_index, &item)) {
+        DaiObjMapEntry* entry = (DaiObjMapEntry*)item;
+        *index                = entry->key;
+        *element              = entry->value;
+        return NIL_VAL;
+    }
+    return UNDEFINED_VAL;
+}
+
+static struct DaiOperation map_iterator_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = dai_default_string_func,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = dai_iter_init_return_self,
+    .iter_next_func     = DaiObjMapIterator_iter_next,
+};
+
+DaiObjMapIterator*
+DaiObjMapIterator_New(DaiVM* vm, DaiObjMap* map) {
+    DaiObjMapIterator* iterator = ALLOCATE_OBJ(vm, DaiObjMapIterator, DaiObjType_mapIterator);
+    iterator->obj.operation     = &map_iterator_operation;
+    iterator->map               = map;
+    iterator->map_index         = 0;
+    return iterator;
+}
+
 // #endregion
 
 // #region 错误
@@ -1974,6 +2085,8 @@ static struct DaiOperation error_operation = {
     .string_func        = DaiObjError_String,
     .equal_func         = dai_default_equal,
     .hash_func          = DaiObjError_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 DaiObjError*

@@ -1,3 +1,5 @@
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -6,6 +8,7 @@
 #include "dai_compile.h"
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_symboltable.h"
 
 // #region IntArray 记录 break continue 层级和位置，辅助编译跳转指令
 typedef struct {
@@ -154,6 +157,7 @@ DaiCompiler_addName(const DaiCompiler* compiler, const char* name, int back) {
 }
 #    define ADD_GLOBAL_NAME(compiler, name) DaiCompiler_addName((compiler), (name), 3)
 #    define ADD_LOCAL_NAME(compiler, name) DaiCompiler_addName((compiler), (name), 2)
+#    define ADD_LOCAL_NAME3(compiler, name) DaiCompiler_addName((compiler), (name), 3)
 #    define ADD_FREE_NAME(compiler, name) DaiCompiler_addName((compiler), (name), 2)
 
 #else
@@ -162,6 +166,9 @@ DaiCompiler_addName(const DaiCompiler* compiler, const char* name, int back) {
         } while (0)
 #    define ADD_LOCAL_NAME(compiler, name) \
         do {                               \
+        } while (0)
+#    define ADD_LOCAL_NAME3(compiler, name) \
+        do {                                \
         } while (0)
 #    define ADD_FREE_NAME(compiler, name) \
         do {                              \
@@ -180,6 +187,9 @@ DaiCompiler_emit2(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand, i
 static int
 DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_t operand2,
                   int line);
+static int
+DaiCompiler_emitIterNext2(const DaiCompiler* compiler, uint8_t operand1, uint16_t operand2,
+                          int line);
 static void
 DaiCompiler_patchJump(const DaiCompiler* compiler, int offset);
 static void
@@ -446,12 +456,9 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     return err;
                 }
             }
-            // 函数体的 block 不进行 pop
-            if (!compiler->is_function_block) {
-                int count = DaiSymbolTable_count(blockSymbolTable);
-                for (int i = 0; i < count; i++) {
-                    DaiCompiler_emit(compiler, DaiOpPop, stmt->start_line);
-                }
+            if (!compiler->is_function_block && DaiSymbolTable_count(blockSymbolTable) > 0) {
+                DaiCompiler_emit1(
+                    compiler, DaiOpPopN, DaiSymbolTable_count(blockSymbolTable), stmt->end_line);
             }
             compiler->is_function_block = false;
             DaiSymbolTable_free(blockSymbolTable);
@@ -852,6 +859,11 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             IntArray_enter(&compiler->continue_array);
             int while_start            = compiler->function->chunk.count;
             DaiAstWhileStatement* stmt = (DaiAstWhileStatement*)node;
+            int loop_offset            = 0;
+            if (DaiSymbolTable_isLocal(compiler->symbolTable)) {
+                loop_offset = DaiSymbolTable_countOuter(compiler->symbolTable);
+            }
+            DaiCompiler_emit1(compiler, DaiOpLoop, loop_offset, stmt->start_line);
             DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
             if (err != NULL) {
                 return err;
@@ -897,11 +909,12 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_BreakStatement: {
             DaiAstBreakStatement* stmt = (DaiAstBreakStatement*)node;
-            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while)) {
+            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while) &&
+                !IntArray_contains(&compiler->scope_stack, ScopeType_for)) {
                 return DaiCompileError_Newf(compiler->filename,
                                             stmt->start_line,
                                             stmt->start_column,
-                                            "cannot use 'break' outside of a while loop");
+                                            "cannot use 'break' outside of a loop");
             }
             int jump = DaiCompiler_emit2(compiler, DaiOpJump, 9999, stmt->start_line);
             IntArray_push(&compiler->break_array, jump);
@@ -909,11 +922,12 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_ContinueStatement: {
             DaiAstContinueStatement* stmt = (DaiAstContinueStatement*)node;
-            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while)) {
+            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while) &&
+                !IntArray_contains(&compiler->scope_stack, ScopeType_for)) {
                 return DaiCompileError_Newf(compiler->filename,
                                             stmt->start_line,
                                             stmt->start_column,
-                                            "cannot use 'continue' outside of a while loop");
+                                            "cannot use 'continue' outside of a loop");
             }
             int jump = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
             IntArray_push(&compiler->continue_array, jump);
@@ -1265,6 +1279,74 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             DaiCompiler_emit2(compiler, DaiOpMap, lit->length, lit->start_line);
             break;
         }
+        case DaiAstType_ForInStatement: {
+            IntArray_push(&compiler->scope_stack, ScopeType_for);
+            IntArray_enter(&compiler->break_array);
+            IntArray_enter(&compiler->continue_array);
+            DaiAstForInStatement* stmt = (DaiAstForInStatement*)node;
+            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->expression);
+            if (err != NULL) {
+                return err;
+            }
+            DaiCompiler_emit(compiler, DaiOpIterInit, stmt->start_line);
+            int for_start = compiler->function->chunk.count;
+            // 定义迭代器和迭代循环变量
+            DaiSymbolTable* outer            = compiler->symbolTable;
+            DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
+            compiler->symbolTable            = blockSymbolTable;
+            DaiSymbol itertor_symbol         = DaiSymbolTable_define(
+                blockSymbolTable, "//iterator");   // 一个特殊的变量名表示迭代器
+            DaiCompiler_emit1(compiler,
+                              DaiOpLoop,
+                              DaiSymbolTable_countOuter(compiler->symbolTable),
+                              stmt->start_line);
+            DaiSymbolTable_define(blockSymbolTable, stmt->i->value);
+            DaiSymbolTable_define(blockSymbolTable, stmt->e->value);
+            int jump_if_end_offset =
+                DaiCompiler_emitIterNext2(compiler, itertor_symbol.index, 9999, stmt->start_line);
+            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
+            if (err != NULL) {
+                return err;
+            }
+            {
+                // 跳转到循环开始
+                int jump_back = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
+                DaiCompiler_patchJumpBack(compiler, jump_back, for_start);
+                // 更新 jump 到循环末尾的偏移量
+                // DaiOpIterNext2 比 jump 指令长度多 1 ，所以这里加 1 适配 jump 格式
+                DaiCompiler_patchJump(compiler, jump_if_end_offset + 1);
+            }
+            // 更新 break 跳转指令的偏移量
+            {
+                int count = compiler->break_array.count;
+                for (int i = 0; i < count; i++) {
+                    int jump = IntArray_popCurrentLevel(&compiler->break_array);
+                    if (jump == -1) {
+                        break;
+                    }
+                    DaiCompiler_patchJump(compiler, jump);
+                }
+            }
+            // 更新 continue 跳转指令的偏移量
+            {
+                int count = compiler->continue_array.count;
+                for (int i = 0; i < count; i++) {
+                    int jump = IntArray_popCurrentLevel(&compiler->continue_array);
+                    if (jump == -1) {
+                        break;
+                    }
+                    DaiCompiler_patchJumpBack(compiler, jump, for_start);
+                }
+            }
+            // pop iterator i e
+            DaiCompiler_emit1(compiler, DaiOpPopN, 3, stmt->end_line);
+            DaiSymbolTable_free(blockSymbolTable);
+            compiler->symbolTable = outer;
+            IntArray_leave(&compiler->break_array);
+            IntArray_leave(&compiler->continue_array);
+            IntArray_pop(&compiler->scope_stack);
+            break;
+        }
         default: {
             fprintf(stderr, "unknown node type: %s\n", DaiAstType_string(node->type));
             abort();
@@ -1306,6 +1388,16 @@ DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, 
     DaiChunk* chunk = &(compiler->function->chunk);
     DaiChunk_writeu16(chunk, op, operand1, line);
     DaiChunk_write(chunk, operand2, line);
+    return chunk->count - 4;
+}
+
+static int
+DaiCompiler_emitIterNext2(const DaiCompiler* compiler, uint8_t operand1, uint16_t operand2,
+                          int line) {
+    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk_write(chunk, DaiOpIterNext2, line);
+    DaiChunk_write(chunk, operand1, line);
+    DaiChunk_write2(chunk, operand2, line);
     return chunk->count - 4;
 }
 

@@ -1,7 +1,5 @@
-//
-// Created by  on 2024/5/29.
-//
-
+#include <assert.h>
+#include <linux/limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,6 +12,19 @@
 #include "dai_utils.h"
 
 // #region tokenize 辅助函数
+
+// 获取当前文件所在文件夹路径
+static void
+get_file_directory(char* path) {
+    if (realpath(__FILE__, path) == NULL) {
+        perror("realpath");
+        assert(false);
+    }
+    char* last_slash = strrchr(path, '/');
+    if (last_slash) {
+        *(last_slash + 1) = '\0';
+    }
+}
 
 static DaiTokenList*
 dai_tokenize_file(const char* filename) {
@@ -35,47 +46,15 @@ dai_tokenize_file(const char* filename) {
 static MunitResult
 test_next_token(__attribute__((unused)) const MunitParameter params[],
                 __attribute__((unused)) void* user_data) {
-    const char* input      = "=+(){},;\n"
-                             "var five = 5;\n"
-                             "var ten = 10;\n"
-                             "\n"
-                             "var add = fn(x, y) {\n"
-                             "   x + y;\n"
-                             "};\n"
-                             "\n"
-                             "var result = add(five, ten);\n"
-                             "!-/*5;\n"
-                             "5 < 10 > 5;\n"
-                             "\n"
-                             "if (5 < 10) {\n"
-                             "     return true;\n"
-                             "} else {\n"
-                             "     return false;\n"
-                             "}\n"
-                             "\n"
-                             "10 == 10;\n"
-                             "10 != 9; # 123\n"
-                             "//456\n"
-                             "#中文注释123\n"
-                             "var 中文 = 123;\n"
-                             "\"\" \"a\" \"abcd\" \"中文\";\n"
-                             "'' 'a' 'abcd' '中文';\n"
-                             "'  a  b  '\n"
-                             "`  a  b  \n`\n"
-                             "class Foo {};\n"
-                             "self.a = 3;\n"
-                             "super.b elif nil\n"
-                             "0 "
-                             "3.4 "
-                             "0.1 "
-                             "0.0 "
-                             "1.0 "
-                             "3.1416 "
-                             "1.234E+10 "
-                             "1.234E-10 % \n"
-                             "== != < > <= >= and or not\n"
-                             "& | ~ << >> ^\n"
-                             "[]: += -= *= /= \n";
+    char resolved_path[PATH_MAX];
+    get_file_directory(resolved_path);
+    strcat(resolved_path, "tokenize_example.txt");
+    const char* input = dai_string_from_file(resolved_path);
+    if (input == NULL) {
+        perror("dai_string_from_file");
+    }
+    munit_assert_not_null(input);
+
     const DaiToken tests[] = {
         {
             DaiTokenType_assign,
@@ -239,7 +218,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
 
         {DaiTokenType_str, "'  a  b  '", 26, 1},
 
-        {DaiTokenType_str, "`  a  b  \n`", 27, 1, 28, 2},
+        {DaiTokenType_str, "`  a  b\n`", 27, 1, 28, 2},
 
         {DaiTokenType_class, "class", 29, 1, 29, 6},
         {DaiTokenType_ident, "Foo", 29, 7, 29, 10},
@@ -295,7 +274,10 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_mul_assign, "*=", 35, 11, 35, 13},
         {DaiTokenType_div_assign, "/=", 35, 14, 35, 16},
 
-        {DaiTokenType_eof, "", 36, 1},
+        {DaiTokenType_for, "for", 36, 1, 36, 4},
+        {DaiTokenType_in, "in", 36, 5, 36, 7},
+
+        {DaiTokenType_eof, "", 37, 1},
     };
 
     DaiTokenList list;
@@ -325,6 +307,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         }
     }
     DaiTokenList_reset(&list);
+    free((void*)input);
     return MUNIT_OK;
 }
 

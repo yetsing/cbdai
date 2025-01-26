@@ -1,5 +1,7 @@
+#include <linux/limits.h>
 #include <stdio.h>
 
+#include "dai_ast/dai_astexpression.h"
 #include "dai_ast/dai_asttype.h"
 #include "munit/munit.h"
 
@@ -8,7 +10,6 @@
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 
-#include <linux/limits.h>
 
 // 获取当前文件所在文件夹路径
 static void
@@ -2083,6 +2084,17 @@ recursive_string_and_free(DaiAstBase* ast) {
             literal->free_fn((DaiAstBase*)literal, false);
             break;
         }
+        case DaiAstType_ForInStatement: {
+            DaiAstForInStatement* statement = (DaiAstForInStatement*)ast;
+            char* s                         = statement->string_fn((DaiAstBase*)statement, false);
+            free(s);
+            recursive_string_and_free((DaiAstBase*)statement->i);
+            recursive_string_and_free((DaiAstBase*)statement->e);
+            recursive_string_and_free((DaiAstBase*)statement->expression);
+            recursive_string_and_free((DaiAstBase*)statement->body);
+            statement->free_fn((DaiAstBase*)statement, false);
+            break;
+        }
 
         default: {
             unreachable();
@@ -2105,7 +2117,7 @@ test_parse_example(__attribute__((unused)) const MunitParameter params[],
     parse_helper(input, program);
 
     {
-#ifdef SANTEST_OUTPUT
+#ifdef DAI_SANTEST_OUTPUT
         char* s = program->string_fn((DaiAstBase*)program, true);
         printf("%s\n", s);
         free(s);
@@ -2422,6 +2434,36 @@ test_map_literal_expression(__attribute__((unused)) const MunitParameter params[
     return MUNIT_OK;
 }
 
+
+static MunitResult
+test_forin_statement(__attribute__((unused)) const MunitParameter params[],
+                     __attribute__((unused)) void* user_data) {
+    {
+        const char* input = "for (var i1, i2 in arr) { }";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ForInStatement);
+        DaiAstForInStatement* forin_stmt = (DaiAstForInStatement*)stmt;
+        {
+            munit_assert_int(forin_stmt->start_line, ==, 1);
+            munit_assert_int(forin_stmt->start_column, ==, 1);
+            munit_assert_int(forin_stmt->end_line, ==, 1);
+            munit_assert_int(forin_stmt->end_column, ==, 28);
+        }
+        check_identifier((DaiAstExpression*)forin_stmt->i, "i1");
+        check_identifier((DaiAstExpression*)forin_stmt->e, "i2");
+        check_identifier(forin_stmt->expression, "arr");
+        munit_assert_int(forin_stmt->body->length, ==, 0);
+        program->free_fn((DaiAstBase*)program, true);
+    }
+    return MUNIT_OK;
+}
+
 MunitTest parse_tests[] = {
     {(char*)"/test_var_statements", test_var_statements, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_return_statements",
@@ -2556,6 +2598,12 @@ MunitTest parse_tests[] = {
      NULL},
     {(char*)"/test_map_literal_expression",
      test_map_literal_expression,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_forin_statement",
+     test_forin_statement,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

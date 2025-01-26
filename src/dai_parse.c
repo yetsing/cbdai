@@ -7,6 +7,7 @@
 
 #include "dai_assert.h"
 #include "dai_ast.h"
+#include "dai_ast/dai_astForInStatement.h"
 #include "dai_common.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
@@ -165,9 +166,9 @@ Parser_parseExpression(Parser* p, Precedence precedence);
 static DaiAstStatement*
 Parser_parseStatement(Parser* p);
 static DaiAstBlockStatement*
-Parser_parseBlockStatement(Parser* p);
+Parser_parseBlockStatement(Parser* p);   // 解析独立存在的块语句
 static DaiAstBlockStatement*
-Parser_parseBlockStatement1(Parser* p);
+Parser_parseBlockStatement1(Parser* p);   // 解析语句块，比如 if 语句的 body
 static DaiAstStatement*
 Parser_parseStatementOfClass(Parser* p);
 // #endregion
@@ -1632,6 +1633,82 @@ Parser_parseBlockStatement(Parser* p) {
     return blockstatement;
 }
 
+// 解析 for in 语句
+// for-in-statement ::= "for" "(" "var" identifier "," identifier "in" expression ")"
+//                      block-statement [ ";" ]
+static DaiAstForInStatement*
+Parser_parseForInStatement(Parser* p) {
+    DaiAstForInStatement* forin_stmt = DaiAstForInStatement_New();
+    {
+        forin_stmt->start_line   = p->cur_token->start_line;
+        forin_stmt->start_column = p->cur_token->start_column;
+    }
+    // 解析 for in 语句的左括号
+    if (!Parser_expectPeek(p, DaiTokenType_lparen)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    // 解析 for in 语句的 var
+    if (!Parser_expectPeek(p, DaiTokenType_var)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    // 解析 for in 语句的变量
+    if (!Parser_expectPeek(p, DaiTokenType_ident)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    DaiAstIdentifier* ident = (DaiAstIdentifier*)Parser_parseIdentifier(p);
+    forin_stmt->i           = ident;
+    if (!Parser_expectPeek(p, DaiTokenType_comma)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    // 解析 for in 语句的变量
+    if (!Parser_expectPeek(p, DaiTokenType_ident)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    ident         = (DaiAstIdentifier*)Parser_parseIdentifier(p);
+    forin_stmt->e = ident;
+    // 解析 for in 语句的 in
+    if (!Parser_expectPeek(p, DaiTokenType_in)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    Parser_nextToken(p);
+    // 解析 for in 语句的表达式
+    forin_stmt->expression = Parser_parseExpression(p, Precedence_Lowest);
+    if (forin_stmt->expression == NULL) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    // 解析 for in 语句的右括号
+    if (!Parser_expectPeek(p, DaiTokenType_rparen)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    // 解析 for in 语句的 block
+    if (!Parser_expectPeek(p, DaiTokenType_lbrace)) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    forin_stmt->body = Parser_parseBlockStatement1(p);
+    if (forin_stmt->body == NULL) {
+        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+        return NULL;
+    }
+    // 末尾分号可选
+    if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
+        Parser_nextToken(p);
+    }
+    {
+        forin_stmt->end_line   = p->cur_token->end_line;
+        forin_stmt->end_column = p->cur_token->end_column;
+    }
+    return forin_stmt;
+}
+
 static DaiAstStatement*
 Parser_parseStatement(Parser* p) {
     switch (p->cur_token->type) {
@@ -1679,6 +1756,9 @@ Parser_parseStatement(Parser* p) {
         }
         case DaiTokenType_lbrace: {
             return (DaiAstStatement*)Parser_parseBlockStatement(p);
+        }
+        case DaiTokenType_for: {
+            return (DaiAstStatement*)Parser_parseForInStatement(p);
         }
         default: {
             return (DaiAstStatement*)Parser_parseExpressionStatement(p);

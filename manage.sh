@@ -65,12 +65,24 @@ function compile() {
 }
 
 function test() {
-	compile "cbdai"
+	# if param is start with -D, it will be passed to cmake, other will be passed to program
+	cmake_params=()
+	program_params=()
+
+	for param in "$@"; do
+		if [[ "$param" == -D* ]]; then
+			cmake_params+=("$param")
+		else
+			program_params+=("$param")
+		fi
+	done
+
+	compile "cbdai" "${cmake_params[@]}"
 	cp_compile_commands_json
-	time ./cmake-build-debug/cbdai "$@"
+	time ./cmake-build-debug/cbdai "${program_params[@]}"
 	# 运行包含 Sanitizer 检查的测试
 	compile "santest"
-	./cmake-build-debug/santest "$@"
+	./cmake-build-debug/santest "${program_params[@]}"
 }
 
 function test_atstr() {

@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,6 +22,8 @@ static void
 DaiVM_push(DaiVM* vm, DaiValue value);
 static DaiValue
 DaiVM_pop(DaiVM* vm);
+static void
+DaiVM_popN(DaiVM* vm, int n);
 static DaiObjError*
 DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount);
 
@@ -262,6 +265,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             dai_print_value(*slot);
             dai_log(" ]");
         }
+        if (vm->stack_top == vm->stack) {
+            dai_log("<EMPTY>");
+        }
         dai_log("\n");
         DaiChunk_disassembleInstruction(chunk, (int)(frame->ip - chunk->code));
 #endif
@@ -399,9 +405,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
             case DaiOpMap: {
-                uint16_t length = READ_UINT16();
-                DaiObjError* err;
-                DaiObjMap* map = DaiObjMap_New(vm, vm->stack_top - length * 2, length, &err);
+                uint16_t length  = READ_UINT16();
+                DaiObjMap* map   = NULL;
+                DaiObjError* err = DaiObjMap_New(vm, vm->stack_top - length * 2, length, &map);
                 if (err != NULL) {
                     return err;
                 }
@@ -558,8 +564,49 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
 
+            case DaiOpIterInit: {
+                DaiValue val = DaiVM_peek(vm, 0);
+                if (dai_value_is_iterable(val)) {
+                    DaiValue iterator = AS_OBJ(val)->operation->iter_init_func(vm, val);
+                    // 将栈顶的 val 替换成 iterator
+                    vm->stack_top[-1] = iterator;
+                } else {
+                    return DaiObjError_Newf(vm, "'%s' object is not iterable", dai_value_ts(val));
+                }
+                break;
+            }
+            case DaiOpIterNext2: {
+                uint8_t iterator_index = READ_BYTE();
+                uint16_t end_offset    = READ_UINT16();
+                DaiValue iterator      = frame->slots[iterator_index];
+                DaiValue i, e;
+                DaiValue next = AS_OBJ(iterator)->operation->iter_next_func(vm, iterator, &i, &e);
+                DaiVM_push(vm, i);
+                DaiVM_push(vm, e);
+                if (IS_UNDEFINED(next)) {
+                    frame->ip += end_offset;
+                }
+                break;
+            }
+
+            case DaiOpLoop: {
+                uint8_t n     = READ_BYTE();
+                vm->stack_top = frame->slots + n;
+                break;
+            }
+
             case DaiOpPop: {
+#ifdef DEBUG_TRACE_EXECUTION
+                dai_log("          pop [ ");
+                dai_print_value(DaiVM_peek(vm, 0));
+                dai_log(" ]\n");
+#endif
                 DaiVM_pop(vm);
+                break;
+            }
+            case DaiOpPopN: {
+                uint8_t n = READ_BYTE();
+                DaiVM_popN(vm, n);
                 break;
             }
 
@@ -619,8 +666,13 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
             case DaiOpSetLocal: {
-                frame->ip++;
-                // 值正好在本地变量所在的位置，不需要做任何操作
+                // var 语句和赋值语句都会用到这个指令
+                uint8_t slot = READ_BYTE();
+                if (frame->slots + slot < vm->stack_top - 1) {
+                    // 如果是赋值语句，那么需要先弹出栈顶的值
+                    frame->slots[slot] = DaiVM_pop(vm);
+                }
+                // 如果是 var 语句，那么什么都不用做，值已经在对应的 slot 里面了
                 break;
             }
 
@@ -817,9 +869,12 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     if (err != NULL) {
                         return err;
                     }
-                    frame           = CURRENT_FRAME;
-                    frame->slots[0] = receiver;
-                    chunk           = &frame->function->chunk;
+                    // 如果是内置函数，那么不需要更新 frame 和 chunk
+                    if (!IS_BUILTINFN(res)) {
+                        frame           = CURRENT_FRAME;
+                        frame->slots[0] = receiver;
+                        chunk           = &frame->function->chunk;
+                    }
                 } else {
                     return DaiObjError_Newf(vm,
                                             "'%s' object has not property '%s'",
@@ -899,6 +954,8 @@ DaiVM_run(DaiVM* vm, DaiObjFunction* function) {
     if (err != NULL) {
         return err;
     }
+    // 弹出脚本函数，这样初始运行时整个栈都是空的
+    DaiVM_pop(vm);
     return DaiVM_dorun(vm, false);
 }
 
@@ -999,6 +1056,10 @@ DaiVM_pop(DaiVM* vm) {
     vm->stack_top--;
     return *vm->stack_top;
 }
+static void
+DaiVM_popN(DaiVM* vm, int n) {
+    vm->stack_top -= n;
+}
 DaiValue
 DaiVM_stackTop(const DaiVM* vm) {
     return vm->stack_top[-1];
@@ -1011,8 +1072,7 @@ DaiVM_lastPopedStackElem(const DaiVM* vm) {
 }
 bool
 DaiVM_isEmptyStack(const DaiVM* vm) {
-    // 栈里面会留下一个脚本对应的函数
-    return vm->stack_top == vm->stack + 1;
+    return vm->stack_top == vm->stack;
 }
 
 // #endregion

@@ -1,8 +1,10 @@
 /*
 反汇编
 */
+#include <stdint.h>
 #include <stdio.h>
 
+#include "dai_chunk.h"
 #include "dai_debug.h"
 #include "dai_object.h"
 
@@ -45,10 +47,25 @@ simple_instruction(const char* name, int offset) {
 }
 
 static int
+simple_instruction1(const char* name, const DaiChunk* chunk, int offset) {
+    uint8_t n = DaiChunk_read(chunk, offset + 1);
+    printf("%s %d\n", name, n);
+    return offset + 2;
+}
+
+static int
 simple_instruction2(const char* name, const DaiChunk* chunk, const int offset) {
     uint16_t n = DaiChunk_readu16(chunk, offset + 1);
     printf("%s %d\n", name, n);
     return offset + 3;
+}
+
+static int
+iter_next2_instruction(const char* name, const DaiChunk* chunk, const int offset) {
+    uint8_t n           = DaiChunk_read(chunk, offset + 1);
+    uint16_t end_offset = DaiChunk_readu16(chunk, offset + 2);
+    printf("%s %d %d\n", name, n, end_offset);
+    return offset + 4;
 }
 
 static int
@@ -179,7 +196,13 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpJump: return jump_instruction("OP_JUMP", chunk, offset);
         case DaiOpJumpBack: return jump_back_instruction("OP_JUMP_BACK", chunk, offset);
 
+        case DaiOpIterInit: return simple_instruction("OP_ITER", offset);
+        case DaiOpIterNext2: return iter_next2_instruction("OP_ITER_NEXT2", chunk, offset);
+
+        case DaiOpLoop: return simple_instruction1("OP_LOOP", chunk, offset);
+
         case DaiOpPop: return simple_instruction("OP_POP", offset);
+        case DaiOpPopN: return simple_instruction1("OP_POP_N", chunk, offset);
 
         case DaiOpDefineGlobal: return global_instruction("OP_DEFINE_GLOBAL", chunk, offset);
         case DaiOpSetGlobal: return global_instruction("OP_SET_GLOBAL", chunk, offset);

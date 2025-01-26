@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "dai_chunk.h"
@@ -86,8 +87,12 @@ flat_constants(DaiValueArray* target, const DaiValueArray* source) {
 }
 
 static void
-run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
+run_compiler_tests2(const DaiCompilerTestCase* tests, const size_t count, bool verbose) {
     for (size_t i = 0; i < count; i++) {
+        if (verbose) {
+            printf("=========================== %zu \n", i);
+            printf("%s\n", tests[i].input);
+        }
         DaiVM vm;
         DaiVM_init(&vm);
         DaiObjFunction* function = DaiObjFunction_New(&vm, "<test>", "<test>");
@@ -101,6 +106,9 @@ run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
             if (chunk.code[j] != tests[i].expected_codes[j]) {
                 DaiChunk_disassemble(&chunk, "test");
             }
+            if (chunk.code[j] != tests[i].expected_codes[j]) {
+                printf("unexpected at %d\n", j);
+            }
             munit_assert_uint8(chunk.code[j], ==, tests[i].expected_codes[j]);
         }
         // 将函数内嵌套的常量全部展开，方便测试
@@ -113,6 +121,11 @@ run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
         DaiValueArray_reset(&got_constants);
         DaiVM_reset(&vm);
     }
+}
+
+static void
+run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
+    run_compiler_tests2(tests, count, false);
 }
 
 static MunitResult
@@ -786,22 +799,26 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "while (false) { }",
-            7,
+            9,
             {
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
                 3,
                 DaiOpJumpBack,
                 0,
-                7,
+                9,
             },
             {},
         },
         {
             "while (false) { 1; }",
-            11,
+            13,
             {
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
@@ -812,7 +829,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpPop,
                 DaiOpJumpBack,
                 0,
-                11,
+                13,
             },
             {
                 INTEGER_VAL(1),
@@ -820,8 +837,10 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { 1; break; }",
-            14,
+            16,
             {
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
@@ -835,7 +854,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 3,
                 DaiOpJumpBack,
                 0,
-                14,
+                16,
             },
             {
                 INTEGER_VAL(1),
@@ -843,8 +862,10 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { 1; continue; }",
-            14,
+            16,
             {
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
@@ -855,10 +876,10 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpPop,
                 DaiOpJumpBack,
                 0,
-                11,
+                13,
                 DaiOpJumpBack,
                 0,
-                14,
+                16,
             },
             {
                 INTEGER_VAL(1),
@@ -866,8 +887,10 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { break; 1; break; }",
-            17,
+            19,
             {
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
@@ -884,7 +907,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 3,
                 DaiOpJumpBack,
                 0,
-                17,
+                19,
             },
             {
                 INTEGER_VAL(1),
@@ -892,25 +915,27 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { continue; 1; continue; }",
-            17,
+            19,
             {
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
                 13,
                 DaiOpJumpBack,
                 0,
-                7,
+                9,
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpPop,
                 DaiOpJumpBack,
                 0,
-                14,
+                16,
                 DaiOpJumpBack,
                 0,
-                17,
+                19,
             },
             {
                 INTEGER_VAL(1),
@@ -918,13 +943,17 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (true) { while (false) { break; 1; break; } break; }",
-            27,
+            31,
             {
+                DaiOpLoop,
+                0,
                 DaiOpTrue,
                 DaiOpJumpIfFalse,
                 0,
-                23,
+                25,
 
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
@@ -941,14 +970,14 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 3,
                 DaiOpJumpBack,
                 0,
-                17,
+                19,
 
                 DaiOpJump,
                 0,
                 3,
                 DaiOpJumpBack,
                 0,
-                27,
+                31,
             },
             {
                 INTEGER_VAL(1),
@@ -958,23 +987,27 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
             "while (true) {\n"
             "  break;\n"
             "  while (false) {\n"
-            "    break;"
-            "    1;"
             "    break;\n"
-            "  }"
+            "    1;\n"
+            "    break;\n"
+            "  }\n"
             "  break;\n"
-            "}"
+            "}\n"
             "",
-            30,
+            34,
             {
+                DaiOpLoop,
+                0,
                 DaiOpTrue,
                 DaiOpJumpIfFalse,
                 0,
-                26,
+                28,
                 DaiOpJump,
                 0,
-                23,
+                25,
 
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
@@ -991,14 +1024,14 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 3,
                 DaiOpJumpBack,
                 0,
-                17,
+                19,
 
                 DaiOpJump,
                 0,
                 3,
                 DaiOpJumpBack,
                 0,
-                30,
+                34,
             },
             {
                 INTEGER_VAL(1),
@@ -1016,19 +1049,23 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
             "  break;\n"
             "}"
             "",
-            33,
+            37,
             {
+                DaiOpLoop,
+                0,
                 DaiOpTrue,
                 DaiOpJumpIfFalse,
                 0,
-                29,
+                31,
                 DaiOpJump,
                 0,
-                26,
+                28,
                 DaiOpJumpBack,
                 0,
-                10,
+                12,
 
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
@@ -1045,14 +1082,14 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 3,
                 DaiOpJumpBack,
                 0,
-                17,
+                19,
 
                 DaiOpJump,
                 0,
                 3,
                 DaiOpJumpBack,
                 0,
-                33,
+                37,
             },
             {
                 INTEGER_VAL(1),
@@ -1071,26 +1108,30 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
             "  break;\n"
             "}"
             "",
-            36,
+            40,
             {
+                DaiOpLoop,
+                0,
                 DaiOpTrue,
                 DaiOpJumpIfFalse,
                 0,
-                32,
+                34,
                 DaiOpJump,
                 0,
-                29,
+                31,
                 DaiOpJumpBack,
                 0,
-                10,
+                12,
 
+                DaiOpLoop,
+                0,
                 DaiOpFalse,
                 DaiOpJumpIfFalse,
                 0,
                 16,
                 DaiOpJumpBack,
                 0,
-                7,
+                9,
                 DaiOpJump,
                 0,
                 10,
@@ -1103,21 +1144,21 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 3,
                 DaiOpJumpBack,
                 0,
-                20,
+                22,
 
                 DaiOpJump,
                 0,
                 3,
                 DaiOpJumpBack,
                 0,
-                36,
+                40,
             },
             {
                 INTEGER_VAL(1),
             },
         },
     };
-    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    run_compiler_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
     return MUNIT_OK;
 }
 
@@ -1732,7 +1773,7 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
             },
         },
     };
-    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    run_compiler_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
     DaiVM_reset(&vm);
     return MUNIT_OK;
 }
@@ -3176,6 +3217,111 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_forin_statement(__attribute__((unused)) const MunitParameter params[],
+                     __attribute__((unused)) void* user_data) {
+    const DaiCompilerTestCase tests[] = {
+        {
+            "var a = [1, 2, 3]; for (var i, e in a) {};",
+            30,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpConstant,
+                0,
+                2,
+                DaiOpArray,
+                0,
+                3,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                // for (var i, e in a) {};
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpIterInit,
+                DaiOpLoop,
+                1,
+                DaiOpIterNext2,
+                0,
+                0,
+                3,
+                DaiOpJumpBack,
+                0,
+                9,
+                DaiOpPopN,
+                3,
+
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+                INTEGER_VAL(3),
+            },
+        },
+        {
+            "var a = [1, 2, 3]; for (var i, e in a) { break; continue; };",
+            36,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpConstant,
+                0,
+                1,
+                DaiOpConstant,
+                0,
+                2,
+                DaiOpArray,
+                0,
+                3,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                // for (var i, e in a) {};
+                DaiOpGetGlobal,
+                0,
+                0,
+                DaiOpIterInit,
+                DaiOpLoop,
+                1,
+                DaiOpIterNext2,
+                0,
+                0,
+                9,
+                // break;
+                DaiOpJump,
+                0,
+                6,
+                // continue
+                DaiOpJumpBack,
+                0,
+                12,
+                DaiOpJumpBack,
+                0,
+                15,
+                // after for-in loop, pop iterator i e
+                DaiOpPopN,
+                3,
+
+            },
+            {
+                INTEGER_VAL(1),
+                INTEGER_VAL(2),
+                INTEGER_VAL(3),
+            },
+        },
+
+    };
+    run_compiler_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    return MUNIT_OK;
+}
+
 
 MunitTest compile_tests[] = {
     {(char*)"/test_integer_arithmetic",
@@ -3243,6 +3389,12 @@ MunitTest compile_tests[] = {
     {(char*)"/test_map", test_map, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_assign_statement",
      test_assign_statement,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
+    {(char*)"/test_forin_statement",
+     test_forin_statement,
      NULL,
      NULL,
      MUNIT_TEST_OPTION_NONE,

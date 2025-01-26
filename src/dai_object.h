@@ -21,7 +21,9 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_CLASS(value) dai_is_obj_type(value, DaiObjType_class)
 #define IS_STRING(value) dai_is_obj_type(value, DaiObjType_string)
 #define IS_ARRAY(value) dai_is_obj_type(value, DaiObjType_array)
+#define IS_ARRAY_ITERATOR(value) dai_is_obj_type(value, DaiObjType_arrayIterator)
 #define IS_MAP(value) dai_is_obj_type(value, DaiObjType_map)
+#define IS_MAP_ITERATOR(value) dai_is_obj_type(value, DaiObjType_mapIterator)
 #define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
@@ -33,7 +35,9 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_STRING(value) ((DaiObjString*)AS_OBJ(value))
 #define AS_CSTRING(value) (((DaiObjString*)AS_OBJ(value))->chars)
 #define AS_ARRAY(value) ((DaiObjArray*)AS_OBJ(value))
+#define AS_ARRAY_ITERATOR(value) ((DaiObjArrayIterator*)AS_OBJ(value))
 #define AS_MAP(value) ((DaiObjMap*)AS_OBJ(value))
+#define AS_MAP_ITERATOR(value) ((DaiObjMapIterator*)AS_OBJ(value))
 #define AS_ERROR(value) ((DaiObjError*)AS_OBJ(value))
 
 typedef enum {
@@ -45,7 +49,9 @@ typedef enum {
     DaiObjType_instance,
     DaiObjType_boundMethod,
     DaiObjType_array,
+    DaiObjType_arrayIterator,
     DaiObjType_map,
+    DaiObjType_mapIterator,
     DaiObjType_error,
 } DaiObjType;
 
@@ -66,6 +72,9 @@ typedef uint64_t (*HashFn)(DaiValue value);
  */
 typedef int (*EqualFn)(DaiValue a, DaiValue b, int* limit);
 typedef char* (*StringFn)(DaiValue value, DaiPtrArray* visited);
+typedef DaiValue (*IterInitFn)(DaiVM* vm, DaiValue receiver);
+// 返回 undefined 表示结束
+typedef DaiValue (*IterNextFn)(DaiVM* vm, DaiValue receiver, DaiValue* index, DaiValue* element);
 
 struct DaiOperation {
     GetPropertyFn get_property_func;
@@ -75,6 +84,8 @@ struct DaiOperation {
     StringFn string_func;   // caller should free the returned string
     EqualFn equal_func;
     HashFn hash_func;
+    IterInitFn iter_init_func;
+    IterNextFn iter_next_func;
 };
 
 struct DaiObj {
@@ -182,6 +193,14 @@ DaiObjArray_append2(DaiVM* vm, DaiObjArray* array, int n, ...);
 
 typedef struct {
     DaiObj obj;
+    int index;
+    DaiObjArray* array;
+} DaiObjArrayIterator;
+DaiObjArrayIterator*
+DaiObjArrayIterator_New(DaiVM* vm, DaiObjArray* array);
+
+typedef struct {
+    DaiObj obj;
     char message[256];
 } DaiObjError;
 DaiObjError*
@@ -194,11 +213,10 @@ typedef struct {
 
 typedef struct {
     DaiObj obj;
-    size_t iter;   // 迭代计数，用来传给 hashmap_iter
     struct hashmap* map;
 } DaiObjMap;
-DaiObjMap*
-DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjError** error);
+DaiObjError*
+DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjMap** map_ret);
 // 释放 map 对象
 void
 DaiObjMap_Free(DaiVM* vm, DaiObjMap* map);
@@ -206,13 +224,22 @@ DaiObjMap_Free(DaiVM* vm, DaiObjMap* map);
  * @brief 迭代 map 中的 kv 对
  *
  * @param map map 对象
+ * @param i 迭代计数，用来传给 hashmap_iter ，初始值为 0
  * @param key 用于存储 key
  * @param value 用于存储 value
  *
  * @return true 拿到一个 kv 对，false 迭代结束
  */
 bool
-DaiObjMap_iter(DaiObjMap* map, DaiValue* key, DaiValue* value);
+DaiObjMap_iter(DaiObjMap* map, size_t* i, DaiValue* key, DaiValue* value);
+
+typedef struct {
+    DaiObj obj;
+    size_t map_index;   // hashmap_iter 的计数
+    DaiObjMap* map;
+} DaiObjMapIterator;
+DaiObjMapIterator*
+DaiObjMapIterator_New(DaiVM* vm, DaiObjMap* map);
 
 const char*
 dai_object_ts(DaiValue value);

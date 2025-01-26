@@ -1,7 +1,7 @@
 #include "dai_ast/dai_asttype.h"
 
 
-static const char* AstTypeStrings[] = {
+static const char* DaiAstTypeStrings[] = {
     "DaiAstType_unspecified",
     "DaiAstType_program",
     "DaiAstType_StatementStart",
@@ -20,6 +20,7 @@ static const char* AstTypeStrings[] = {
     "DaiAstType_WhileStatement",
     "DaiAstType_ContinueStatement",
     "DaiAstType_BreakStatement",
+    "DaiAstType_ForInStatement",
     "DaiAstType_StatementEnd",
     "DaiAstType_ExpressionStart",
     "DaiAstType_IntegerLiteral",
@@ -43,5 +44,5 @@ static const char* AstTypeStrings[] = {
 
 const char*
 DaiAstType_string(const DaiAstType type) {
-    return AstTypeStrings[type];
+    return DaiAstTypeStrings[type];
 }

@@ -11,6 +11,7 @@
 #include "dai_ast/dai_astContinueStatement.h"
 #include "dai_ast/dai_astDotExpression.h"
 #include "dai_ast/dai_astFloatLiteral.h"
+#include "dai_ast/dai_astForInStatement.h"
 #include "dai_ast/dai_astFunctionStatement.h"
 #include "dai_ast/dai_astMapLiteral.h"
 #include "dai_ast/dai_astMethodStatement.h"

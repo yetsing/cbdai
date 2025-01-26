@@ -69,7 +69,14 @@ typedef enum __attribute__((__packed__)) {
     DaiOpJump,
     DaiOpJumpBack,   // 往前跳
 
+    DaiOpIterInit,
+    DaiOpIterNext2,
+
+    // 循环指令，在每次循环开始时重置栈顶，操作数是与当前帧的栈顶的偏移量（局部变量数量）
+    DaiOpLoop,
+
     DaiOpPop,
+    DaiOpPopN,
 
     DaiOpDefineGlobal,
     DaiOpGetGlobal,
@@ -128,6 +135,8 @@ DaiChunk_init(DaiChunk* chunk, const char* filename);
 
 void
 DaiChunk_write(DaiChunk* chunk, uint8_t byte, int line);
+void
+DaiChunk_write2(DaiChunk* chunk, uint16_t n, int line);
 
 void
 DaiChunk_writeu16(DaiChunk* chunk, DaiOpCode op, uint16_t operand, int line);
@@ -150,7 +159,7 @@ DaiChunk_getLine(const DaiChunk* chunk, int offset);
 void
 DaiChunk_addName(DaiChunk* chunk, const char* name, int back);
 const char*
-DaiChunk_getName(DaiChunk* chunk, int offset);
+DaiChunk_getName(const DaiChunk* chunk, int offset);
 #endif
 
 #endif /* A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0 */

@@ -107,8 +107,12 @@ void
 dai_assert_value_equal(DaiValue actual, DaiValue expected);
 
 static void
-run_vm_tests2(const DaiVMTestCase* tests, const size_t count, bool verbose) {
+run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
     for (int i = 0; i < count; i++) {
+#ifdef DAI_TEST_VERBOSE
+        printf("====================== test %d\n", i);
+        printf("input: %s\n", tests[i].input);
+#endif
         DaiVM vm;
         DaiVM_init(&vm);
         if (IS_ERROR(tests[i].expected)) {
@@ -118,9 +122,6 @@ run_vm_tests2(const DaiVMTestCase* tests, const size_t count, bool verbose) {
         } else {
             interpret2(&vm, tests[i].input);
             DaiValue actual = DaiVM_lastPopedStackElem(&vm);
-            if (verbose) {
-                printf("input: %s\n", tests[i].input);
-            }
             dai_assert_value_equal(actual, tests[i].expected);
             if (!DaiVM_isEmptyStack(&vm)) {
                 for (DaiValue* slot = vm.stack; slot < vm.stack_top; slot++) {
@@ -139,7 +140,7 @@ run_vm_tests2(const DaiVMTestCase* tests, const size_t count, bool verbose) {
             collectGarbage(&vm);
             size_t after = vm.bytesAllocated;
             munit_assert_size(before, ==, after);
-#ifdef TEST
+#ifdef DAI_TEST
             test_mark(&vm);
             // 检查所有的对象都被标记了
             DaiObj* obj = vm.objects;
@@ -157,11 +158,6 @@ run_vm_tests2(const DaiVMTestCase* tests, const size_t count, bool verbose) {
 
         DaiVM_reset(&vm);
     }
-}
-
-static void
-run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
-    run_vm_tests2(tests, count, false);
 }
 
 static void
@@ -213,7 +209,7 @@ run_vm_test_file_with_number(const char* filename) {
         collectGarbage(&vm);
         const size_t after = vm.bytesAllocated;
         munit_assert_size(before, ==, after);
-#ifdef TEST
+#ifdef DAI_TEST
         test_mark(&vm);
         // 检查所有的对象都被标记了
         DaiObj* obj = vm.objects;
@@ -1038,7 +1034,7 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
         },
         // #endregion
     };
-    run_vm_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
 
     // #region split method
     DaiObjArray* array1 = DaiObjArray_New(&vm, NULL, 0);
@@ -1117,7 +1113,7 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
         },
 
     };
-    run_vm_tests2(split_tests, sizeof(split_tests) / sizeof(split_tests[0]), false);
+    run_vm_tests(split_tests, sizeof(split_tests) / sizeof(split_tests[0]));
     // #endregion
 
     DaiVM_reset(&vm);
@@ -2501,7 +2497,7 @@ test_map(__attribute__((unused)) const MunitParameter params[],
         // #endregion
 
     };
-    run_vm_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     DaiVM_reset(&vm);
     return MUNIT_OK;
 }
@@ -2531,7 +2527,91 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
             INTEGER_VAL(2),
         },
     };
-    run_vm_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
+static MunitResult
+test_forin_statement(__attribute__((unused)) const MunitParameter params[],
+                     __attribute__((unused)) void* user_data) {
+    const DaiVMTestCase tests[] = {
+        {
+            "var m = []; for (var i, e in m) {}; 1;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1]; var a = 0; for (var i, e in m) { a += e; }; a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1, 1]; var a = 0; for (var i, e in m) { a += e; }; a;",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [1, 1, 1]; var a = 0; for (var i, e in m) { a += e; }; a;",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 1, 1, 1]; var a = 0; for (var i, e in m) { a += e; }; a;",
+            INTEGER_VAL(4),
+        },
+
+        {
+            "var m = [1]; var a = 0; for (var i, e in m) { a += i; }; a;",
+            INTEGER_VAL(0),
+        },
+        {
+            "var m = [1, 1]; var a = 0; for (var i, e in m) { a += i; }; a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1, 1, 1]; var a = 0; for (var i, e in m) { a += i; }; a;",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 1, 1, 1]; var a = 0; for (var i, e in m) { a += i; }; a;",
+            INTEGER_VAL(6),
+        },
+
+        {
+            "var m = {}; for (var k, v in m) {}; 1;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1}; var a = 0; for (var k, v in m) { a += v; }; a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2}; var a = 0; for (var k, v in m) { a += v; }; a;",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; var a = 0; for (var k, v in m) { a += v; }; a;",
+            INTEGER_VAL(6),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3, 4: 4}; var a = 0; for (var k, v in m) { a += v; }; a;",
+            INTEGER_VAL(10),
+        },
+
+        {
+            "var m = {1: 1}; var a = 0; for (var k, v in m) { a += k; }; a;",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = {1: 1, 2: 2}; var a = 0; for (var k, v in m) { a += k; }; a;",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3}; var a = 0; for (var k, v in m) { a += k; }; a;",
+            INTEGER_VAL(6),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3, 4: 4}; var a = 0; for (var k, v in m) { a += k; }; a;",
+            INTEGER_VAL(10),
+        },
+    };
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
 
@@ -2610,5 +2690,6 @@ MunitTest vm_tests[] = {
      NULL},
     {(char*)"/test_map", test_map, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/test_assign_statement", test_assign_statement, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/test_forin_statement", test_forin_statement, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

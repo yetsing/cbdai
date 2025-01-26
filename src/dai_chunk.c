@@ -4,6 +4,7 @@
 
 #include "dai_chunk.h"
 #include "dai_memory.h"
+#include <stdint.h>
 
 #ifdef DISASSEMBLE_VARIABLE_NAME
 #    include <assert.h>
@@ -53,7 +54,16 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpJump]        = {.name = "DaiOpJump", .operand_bytes = 2},
     [DaiOpJumpBack]    = {.name = "DaiOpJumpBack", .operand_bytes = 2},
 
+    [DaiOpIterInit] = {.name = "DaiOpIterInit", .operand_bytes = 0},
+    // 操作数：迭代器的索引，循环末尾的偏移量
+    [DaiOpIterNext2] = {.name = "DaiOpIterNext2", .operand_bytes = 3},
+
+    // 操作数：与当前帧的栈顶的偏移量
+    [DaiOpLoop] = {.name = "DaiOpLoop", .operand_bytes = 1},
+
     [DaiOpPop] = {.name = "DaiOpPop", .operand_bytes = 0},
+    // 操作数：弹出的个数
+    [DaiOpPopN] = {.name = "DaiOpPopN", .operand_bytes = 1},
 
     [DaiOpDefineGlobal] = {.name = "DaiOpDefineGlobal", .operand_bytes = 2},
     [DaiOpGetGlobal]    = {.name = "DaiOpGetGlobal", .operand_bytes = 2},
@@ -171,6 +181,13 @@ DaiChunk_write(DaiChunk* chunk, uint8_t byte, int line) {
 }
 
 void
+DaiChunk_write2(DaiChunk* chunk, uint16_t n, int line) {
+    // 按大端序写入
+    DaiChunk_write(chunk, (uint8_t)(n >> 8), line);
+    DaiChunk_write(chunk, (uint8_t)(n & 0xff), line);
+}
+
+void
 DaiChunk_writeu16(DaiChunk* chunk, DaiOpCode op, uint16_t operand, int line) {
     DaiChunk_write(chunk, (uint8_t)op, line);
     // 按大端序写入
@@ -224,7 +241,7 @@ DaiChunk_addName(DaiChunk* chunk, const char* name, int back) {
     chunk->names[chunk->count - back] = strdup(name);
 }
 const char*
-DaiChunk_getName(DaiChunk* chunk, int offset) {
+DaiChunk_getName(const DaiChunk* chunk, int offset) {
     return chunk->names[offset];
 }
 #endif

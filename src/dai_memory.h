@@ -56,7 +56,7 @@ collectGarbage(DaiVM* vm);
 void
 dai_free_objects(DaiVM* vm);
 
-#ifdef TEST
+#ifdef DAI_TEST
 void
 test_mark(DaiVM* vm);
 #endif
