@@ -57,9 +57,13 @@ typedef struct _DaiVM {
 
     VMState state;
 
-
     // 内置函数
     DaiValue builtin_funcs[256];
+
+    // 临时引用，防止被 GC 回收
+    // 一些内置函数会创建一些对象，他既不在栈上，也没有被其他对象引用
+    // 为了防止被 GC 回收，这里引用一下
+    DaiValue temp_ref;
 } DaiVM;
 
 void
@@ -85,6 +89,9 @@ DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input);
 
 DaiValue
 DaiVM_stackTop(const DaiVM* vm);
+
+void
+DaiVM_setTempRef(DaiVM* vm, DaiValue value);
 
 // #region 用于测试的函数
 DaiValue

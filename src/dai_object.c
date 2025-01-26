@@ -669,9 +669,11 @@ DaiObjString_replace(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int a
 static DaiValue
 DaiObjString_splitn(DaiVM* vm, DaiObjString* s, DaiObjString* sep, int max_splits) {
     DaiObjArray* array = DaiObjArray_New(vm, NULL, 0);
-    const char* p      = s->chars;
-    const char* end    = s->chars + s->length;
-    int sep_len        = sep->length;
+    // 临时引用，防止被 GC 回收
+    DaiVM_setTempRef(vm, OBJ_VAL(array));
+    const char* p   = s->chars;
+    const char* end = s->chars + s->length;
+    int sep_len     = sep->length;
     while (p < end) {
         if (max_splits <= 0) {
             DaiObjArray_append1(vm, array, 1, &OBJ_VAL(dai_copy_string(vm, p, end - p)));
@@ -687,14 +689,17 @@ DaiObjString_splitn(DaiVM* vm, DaiObjString* s, DaiObjString* sep, int max_split
         p = q + sep_len;
         max_splits--;
     }
+    DaiVM_setTempRef(vm, NIL_VAL);
     return OBJ_VAL(array);
 }
 
 static DaiValue
 DaiObjString_split_whitespace(DaiVM* vm, DaiObjString* s) {
     DaiObjArray* array = DaiObjArray_New(vm, NULL, 0);
-    const char* p      = s->chars;
-    const char* end    = s->chars + s->length;
+    // 临时引用，防止被 GC 回收
+    DaiVM_setTempRef(vm, OBJ_VAL(array));
+    const char* p   = s->chars;
+    const char* end = s->chars + s->length;
     while (p < end) {
         while (p < end && isspace(*p)) {
             p++;
@@ -709,6 +714,7 @@ DaiObjString_split_whitespace(DaiVM* vm, DaiObjString* s) {
         }
         p = q;
     }
+    DaiVM_setTempRef(vm, NIL_VAL);
     return OBJ_VAL(array);
 }
 
@@ -1624,7 +1630,6 @@ DaiObjArray_New(DaiVM* vm, const DaiValue* elements, const int length) {
 
 DaiObjArray*
 DaiObjArray_append1(DaiVM* vm, DaiObjArray* array, int n, DaiValue* values) {
-
     int want = array->length + n;
     if (want > array->capacity) {
         int old_capacity = array->capacity;

@@ -48,6 +48,7 @@ DaiVM_init(DaiVM* vm) {
     vm->objects        = NULL;
     vm->bytesAllocated = 0;
     vm->nextGC         = 1024 * 1024;
+    vm->temp_ref       = NIL_VAL;
 
     vm->grayCount    = 0;
     vm->grayCapacity = 0;
@@ -1063,6 +1064,11 @@ DaiVM_popN(DaiVM* vm, int n) {
 DaiValue
 DaiVM_stackTop(const DaiVM* vm) {
     return vm->stack_top[-1];
+}
+
+void
+DaiVM_setTempRef(DaiVM* vm, DaiValue value) {
+    vm->temp_ref = value;
 }
 
 // #region 用于测试的函数

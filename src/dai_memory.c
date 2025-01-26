@@ -6,6 +6,7 @@
 
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_value.h"
 
 #ifdef DEBUG_LOG_GC
 #    include "dai_debug.h"
@@ -132,6 +133,7 @@ dai_free_objects(DaiVM* vm) {
     vm->grayStack = NULL;
 }
 
+// https://readonly.link/books/https://raw.githubusercontent.com/GuoYaxiang/craftinginterpreters_zh/main/book.json/-/26.%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6.md
 // #region 垃圾回收
 void
 markObject(DaiVM* vm, DaiObj* object) {
@@ -179,6 +181,7 @@ markTable(DaiVM* vm, DaiTable* table) {
     }
 }
 
+// 标记 object 引用的其他对象
 static void
 blackenObject(DaiVM* vm, DaiObj* object) {
 #ifdef DEBUG_LOG_GC
@@ -203,10 +206,10 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             size_t i = 0;
             while (DaiObjMap_iter(map, &i, &key, &value)) {
                 if (IS_OBJ(key)) {
-                    blackenObject(vm, AS_OBJ(key));
+                    markObject(vm, AS_OBJ(key));
                 }
                 if (IS_OBJ(value)) {
-                    blackenObject(vm, AS_OBJ(value));
+                    markObject(vm, AS_OBJ(value));
                 }
             }
             break;
@@ -215,7 +218,7 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             const DaiObjArray* array = (DaiObjArray*)object;
             for (int i = 0; i < array->length; i++) {
                 if (IS_OBJ(array->elements[i])) {
-                    blackenObject(vm, AS_OBJ(array->elements[i]));
+                    markObject(vm, AS_OBJ(array->elements[i]));
                 }
             }
             break;
@@ -284,6 +287,8 @@ markRoots(DaiVM* vm) {
             markValue(vm, vm->globals[i]);
         }
     }
+    // 标记临时引用
+    markValue(vm, vm->temp_ref);
 }
 
 static void
