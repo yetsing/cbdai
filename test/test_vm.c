@@ -1275,6 +1275,10 @@ test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
         {"assert(true, 'error message');", NIL_VAL},
         {"assert_eq(1, 1);", NIL_VAL},
         {"assert_eq(1, 1, 'error message');", NIL_VAL},
+        // time
+        {"var t = time_time(); t > 1737965587;", dai_true},
+        {"var t1 = time_time(); time_sleep(1); var t2 = time_time(); t2 > t1;", dai_true},
+        {"var t1 = time_time(); time_sleep(1.1); var t2 = time_time(); t2 > t1;", dai_true},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

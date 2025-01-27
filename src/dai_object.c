@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "dai_memory.h"
 #include "dai_object.h"
@@ -2226,6 +2227,40 @@ builtin_assert_eq(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) Dai
     return NIL_VAL;
 }
 
+static DaiValue
+builtin_time_time(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                  int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "time_time() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return INTEGER_VAL(ts.tv_sec);
+}
+
+static DaiValue
+builtin_time_sleep(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                   int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "time_sleep() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiValue val = argv[0];
+    struct timespec req;
+    if (IS_INTEGER(val)) {
+        req.tv_sec  = AS_INTEGER(val);
+        req.tv_nsec = 0;
+    } else if (IS_FLOAT(val)) {
+        req.tv_sec  = (time_t)AS_FLOAT(val);
+        req.tv_nsec = (long)((AS_FLOAT(val) - (double)req.tv_sec) * 1e9);
+    }
+    nanosleep(&req, NULL);
+    return NIL_VAL;
+}
+
 DaiObjBuiltinFunction builtin_funcs[256] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -2251,6 +2286,16 @@ DaiObjBuiltinFunction builtin_funcs[256] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "assert_eq",
         .function = builtin_assert_eq,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "time_time",
+        .function = builtin_time_time,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "time_sleep",
+        .function = builtin_time_sleep,
     },
 
     {
