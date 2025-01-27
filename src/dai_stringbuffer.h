@@ -13,6 +13,8 @@ DaiStringBuffer_writef(DaiStringBuffer* sb, const char* fmt, ...)
     __attribute__((format(printf, 2, 3)));
 void
 DaiStringBuffer_writen(DaiStringBuffer* sb, const char* str, size_t n);
+void
+DaiStringBuffer_writec(DaiStringBuffer* sb, char c);
 // 每行添加前缀
 void
 DaiStringBuffer_writeWithLinePrefix(DaiStringBuffer* sb, char* str, const char* prefix);

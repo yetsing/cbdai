@@ -1,4 +1,4 @@
-#include <linux/limits.h>
+#include <limits.h>
 #include <stdio.h>
 
 #include "dai_ast/dai_astexpression.h"

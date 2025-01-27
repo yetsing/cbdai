@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -5,6 +6,7 @@
 #include "munit/munit.h"
 
 #include "dai_compile.h"
+#include "dai_debug.h"
 #include "dai_malloc.h"
 #include "dai_memory.h"
 #include "dai_object.h"
@@ -12,9 +14,6 @@
 #include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_vm.h"
-
-#include <dai_debug.h>
-#include <linux/limits.h>
 
 // 获取当前文件所在文件夹路径
 static void

@@ -68,6 +68,11 @@ DaiStringBuffer_writen(DaiStringBuffer* sb, const char* str, size_t n) {
 }
 
 void
+DaiStringBuffer_writec(DaiStringBuffer* sb, char c) {
+    DaiStringBuffer_writen(sb, &c, 1);
+}
+
+void
 DaiStringBuffer_writeWithLinePrefix(DaiStringBuffer* sb, char* str, const char* prefix) {
     // 如果 str 以换行符结尾，需要添加换行符
     // 比如 "hello/n" 经过 strtok 之后会变成 "hello"

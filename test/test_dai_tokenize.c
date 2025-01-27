@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <linux/limits.h>
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +8,7 @@
 #include "munit/munit.h"
 
 #include "dai_codecs.h"
+#include "dai_common.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
 
@@ -24,6 +25,17 @@ get_file_directory(char* path) {
     if (last_slash) {
         *(last_slash + 1) = '\0';
     }
+}
+
+void
+log_data_hex(const unsigned char* data, size_t length) {
+    for (size_t i = 0; i < length; i++) {
+        printf("%02X ", data[i]);
+        if ((i + 1) % 16 == 0) {
+            printf("\n");
+        }
+    }
+    printf("\n");
 }
 
 static DaiTokenList*
@@ -277,7 +289,13 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_for, "for", 36, 1, 36, 4},
         {DaiTokenType_in, "in", 36, 5, 36, 7},
 
-        {DaiTokenType_eof, "", 37, 1},
+        {DaiTokenType_str, "\"\r\n\t\"\'\"", 37, 1, 37, 13},
+
+        {DaiTokenType_str, "\"\\z\"", 38, 1, 38, 5},
+
+        {DaiTokenType_str, "\"\x1b\xc3\xbf\"", 39, 1, 39, 11},
+
+        {DaiTokenType_eof, "", 40, 1},
     };
 
     DaiTokenList list;
@@ -289,10 +307,17 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
     }
     munit_assert_null(err);
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
+#ifdef DAI_TEST_VERBOSE
+        dai_log("check token at %d\n", i);
+#endif
         const DaiToken expect = tests[i];
         const DaiToken* tok   = DaiTokenList_next(&list);
         munit_assert_string_equal(DaiTokenType_string(expect.type), DaiTokenType_string(tok->type));
         munit_assert_int(expect.type, ==, tok->type);
+        if (strcmp(expect.literal, tok->literal) != 0) {
+            log_data_hex((const unsigned char*)expect.literal, strlen(expect.literal));
+            log_data_hex((const unsigned char*)tok->literal, strlen(tok->literal));
+        }
         munit_assert_string_equal(expect.literal, tok->literal);
         munit_assert_int(expect.start_line, ==, tok->start_line);
         munit_assert_int(expect.start_column, ==, tok->start_column);
@@ -510,6 +535,12 @@ test_illegal_token(__attribute__((unused)) const MunitParameter params[],
         {"$$$", "SyntaxError: illegal character '$' in <stdin>:1:1"},
         {"\xbf", "SyntaxError: invalid utf8 encoding character in <stdin>:1:1"},
         {"'a\n'", "SyntaxError: unclosed string literal in <stdin>:1:3"},
+        {"'a\\", "SyntaxError: unclosed string literal in <stdin>:1:4"},
+        {"'a\\'", "SyntaxError: unclosed string literal in <stdin>:1:5"},
+        {"'\\x'", "SyntaxError: invalid \\xXX escape in <stdin>:1:4"},
+        {"'\\xz'", "SyntaxError: invalid \\xXX escape in <stdin>:1:4"},
+        {"'\\x1'", "SyntaxError: invalid \\xXX escape in <stdin>:1:5"},
+        {"'\\x1z'", "SyntaxError: invalid \\xXX escape in <stdin>:1:5"},
         {"01",
          "SyntaxError: leading zeros in decimal integer literals are not permitted in <stdin>:1:1"},
         {".01",
@@ -574,6 +605,7 @@ test_token_type_string(__attribute__((unused)) const MunitParameter params[],
     munit_assert_string_equal(s, "DaiTokenType_end");
     return MUNIT_OK;
 }
+
 MunitTest tokenize_suite_tests[] = {
     {(char*)"/test_next_token", test_next_token, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_tokenize_file", test_tokenize_file, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
