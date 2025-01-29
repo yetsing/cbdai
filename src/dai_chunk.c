@@ -59,7 +59,7 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpIterNext2] = {.name = "DaiOpIterNext2", .operand_bytes = 3},
 
     // 操作数：与当前帧的栈顶的偏移量
-    [DaiOpLoop] = {.name = "DaiOpLoop", .operand_bytes = 1},
+    [DaiOpSetStackTop] = {.name = "DaiOpSetStackTop", .operand_bytes = 1},
 
     [DaiOpPop] = {.name = "DaiOpPop", .operand_bytes = 0},
     // 操作数：弹出的个数

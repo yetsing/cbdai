@@ -863,7 +863,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             if (DaiSymbolTable_isLocal(compiler->symbolTable)) {
                 loop_offset = DaiSymbolTable_countOuter(compiler->symbolTable);
             }
-            DaiCompiler_emit1(compiler, DaiOpLoop, loop_offset, stmt->start_line);
+            DaiCompiler_emit1(compiler, DaiOpSetStackTop, loop_offset, stmt->start_line);
             DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
             if (err != NULL) {
                 return err;
@@ -1297,7 +1297,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             DaiSymbol itertor_symbol         = DaiSymbolTable_define(
                 blockSymbolTable, "//iterator");   // 一个特殊的变量名表示迭代器
             DaiCompiler_emit1(compiler,
-                              DaiOpLoop,
+                              DaiOpSetStackTop,
                               DaiSymbolTable_countOuter(compiler->symbolTable),
                               stmt->start_line);
             DaiSymbolTable_define(blockSymbolTable, stmt->i->value);

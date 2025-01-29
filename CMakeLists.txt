@@ -21,6 +21,12 @@ add_executable(santest main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(mem main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(coverage main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)
 add_executable(debug main.c ${MAIN_SRC} ${TEST_SRC} munit/munit.c)  # for cli debug
+target_link_libraries(cbdai m)
+target_link_libraries(cbdai-debug m)
+target_link_libraries(santest m)
+target_link_libraries(mem m)
+target_link_libraries(coverage m)
+target_link_libraries(debug m)
 
 add_executable(test_atstr atstr/test_atstr.c atstr/atstr.c munit/munit.c)
 
@@ -45,12 +51,15 @@ target_compile_definitions(mem PRIVATE DAI_TEST)
 
 target_compile_options(coverage PRIVATE -fprofile-instr-generate -fcoverage-mapping)
 target_link_options(coverage PRIVATE -fprofile-instr-generate)
+target_link_libraries(coverage m)
 
 target_compile_options(santest PRIVATE -fsanitize=address)
 target_link_options(santest PRIVATE -fsanitize=address)
 
 add_executable(repl repl.c ${MAIN_SRC} atstr/atstr.c)
+target_link_libraries(repl m)
 add_executable(show_ast show_ast.c ${MAIN_SRC})
+target_link_libraries(show_ast m)
 
 add_executable(benchmark_profile benchmark.c ${MAIN_SRC})
 target_compile_options(benchmark_profile PRIVATE -pg)
@@ -58,8 +67,14 @@ target_link_options(benchmark_profile PRIVATE -pg)
 # target_compile_options(benchmark_profile PRIVATE -fprofile-instr-generate)
 # target_link_options(benchmark_profile PRIVATE -fprofile-instr-generate)
 target_compile_definitions(benchmark_profile PRIVATE BENCHMARK_PROFILE)
+target_link_libraries(benchmark_profile m)
 
 add_executable(benchmark benchmark.c ${MAIN_SRC})
 target_compile_definitions(benchmark PRIVATE BENCHMARK)
+target_link_libraries(benchmark m)
 
 add_executable(runfile runfile.c ${MAIN_SRC})
+target_link_libraries(runfile m)
+
+add_executable(dis dis.c ${MAIN_SRC})
+target_link_libraries(dis m)

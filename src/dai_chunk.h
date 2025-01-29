@@ -72,8 +72,8 @@ typedef enum __attribute__((__packed__)) {
     DaiOpIterInit,
     DaiOpIterNext2,
 
-    // 循环指令，在每次循环开始时重置栈顶，操作数是与当前帧的栈顶的偏移量（局部变量数量）
-    DaiOpLoop,
+    // 重置栈顶，操作数是与当前帧的栈顶的偏移量（局部变量数量）
+    DaiOpSetStackTop,
 
     DaiOpPop,
     DaiOpPopN,

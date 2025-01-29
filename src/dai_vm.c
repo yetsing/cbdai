@@ -593,7 +593,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
 
-            case DaiOpLoop: {
+            case DaiOpSetStackTop: {
                 uint8_t n     = READ_BYTE();
                 vm->stack_top = frame->slots + n;
                 break;

@@ -193,6 +193,11 @@ function runfile() {
 	./cmake-build-debug/runfile "$@"
 }
 
+function dis() {
+	compile "dis"
+	./cmake-build-debug/dis "$@"
+}
+
 find_os_name
 find_cmake
 find_ninja
