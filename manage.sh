@@ -66,7 +66,7 @@ function compile() {
 
 function test() {
 	# if param is start with -D, it will be passed to cmake, other will be passed to program
-	cmake_params=()
+	cmake_params=("-DDAI_DEBUG_GC=OFF")
 	program_params=()
 
 	for param in "$@"; do
@@ -77,6 +77,8 @@ function test() {
 		fi
 	done
 
+	compile "cbdai" -DDAI_DEBUG_GC=ON
+	./cmake-build-debug/cbdai "${program_params[@]}"
 	compile "cbdai" "${cmake_params[@]}"
 	cp_compile_commands_json
 	time ./cmake-build-debug/cbdai "${program_params[@]}"

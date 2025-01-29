@@ -523,11 +523,14 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
 
             case DaiOpMinus: {
                 DaiValue a = DaiVM_pop(vm);
-                if (IS_NOT_INTEGER(a)) {
+                if (IS_INTEGER(a)) {
+                    DaiVM_push(vm, INTEGER_VAL(-AS_INTEGER(a)));
+                } else if (IS_FLOAT(a)) {
+                    DaiVM_push(vm, FLOAT_VAL(-AS_FLOAT(a)));
+                } else {
                     return DaiObjError_Newf(
                         vm, "unsupported operand type(s) for -: '%s'", dai_value_ts(a));
                 }
-                DaiVM_push(vm, INTEGER_VAL(-AS_INTEGER(a)));
                 break;
             }
             case DaiOpBang: {

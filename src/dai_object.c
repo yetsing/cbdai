@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <limits.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -2241,6 +2242,20 @@ builtin_time_time(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) Dai
 }
 
 static DaiValue
+builtin_time_timef(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                   int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "time_timef() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return FLOAT_VAL(ts.tv_sec + (double)ts.tv_nsec / 1e9);
+}
+
+
+static DaiValue
 builtin_time_sleep(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
                    int argc, DaiValue* argv) {
     if (argc != 1) {
@@ -2256,9 +2271,114 @@ builtin_time_sleep(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) Da
     } else if (IS_FLOAT(val)) {
         req.tv_sec  = (time_t)AS_FLOAT(val);
         req.tv_nsec = (long)((AS_FLOAT(val) - (double)req.tv_sec) * 1e9);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "time_sleep() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
     }
     nanosleep(&req, NULL);
     return NIL_VAL;
+}
+
+static DaiValue
+builtin_range(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+              int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "range() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_INTEGER(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "range() expected int arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    int n              = AS_INTEGER(argv[0]);
+    DaiObjArray* array = DaiObjArray_New2(vm, NULL, 0, n);
+    DaiVM_setTempRef(vm, OBJ_VAL(array));
+    for (int i = 0; i < n; i++) {
+        DaiObjArray_append2(vm, array, 1, INTEGER_VAL(i));
+    }
+    DaiVM_setTempRef(vm, NIL_VAL);
+    return OBJ_VAL(array);
+}
+
+static DaiValue
+builtin_math_sqrt(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                  int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "math_sqrt() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[0])) {
+        double n = sqrt(AS_INTEGER(argv[0]));
+        return FLOAT_VAL(n);
+    } else if (IS_FLOAT(argv[0])) {
+        double n = sqrt(AS_FLOAT(argv[0]));
+        return FLOAT_VAL(n);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math_sqrt() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+}
+
+static DaiValue
+builtin_math_sin(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                 int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "math_sin() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[0])) {
+        double n = sin(AS_INTEGER(argv[0]));
+        return FLOAT_VAL(n);
+    } else if (IS_FLOAT(argv[0])) {
+        double n = sin(AS_FLOAT(argv[0]));
+        return FLOAT_VAL(n);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math_sin() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+}
+
+static DaiValue
+builtin_math_cos(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                 int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "math_cos() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[0])) {
+        double n = cos(AS_INTEGER(argv[0]));
+        return FLOAT_VAL(n);
+    } else if (IS_FLOAT(argv[0])) {
+        double n = cos(AS_FLOAT(argv[0]));
+        return FLOAT_VAL(n);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math_cos() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+}
+
+static DaiValue
+builtin_abs(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+            DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "abs() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[0])) {
+        return INTEGER_VAL(llabs(AS_INTEGER(argv[0])));
+    } else if (IS_FLOAT(argv[0])) {
+        return FLOAT_VAL(fabs(AS_FLOAT(argv[0])));
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "abs() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
 }
 
 DaiObjBuiltinFunction builtin_funcs[256] = {
@@ -2294,8 +2414,38 @@ DaiObjBuiltinFunction builtin_funcs[256] = {
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "time_timef",
+        .function = builtin_time_timef,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "time_sleep",
         .function = builtin_time_sleep,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "range",
+        .function = builtin_range,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "math_sqrt",
+        .function = builtin_math_sqrt,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "math_sin",
+        .function = builtin_math_sin,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "math_cos",
+        .function = builtin_math_cos,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "abs",
+        .function = builtin_abs,
     },
 
     {

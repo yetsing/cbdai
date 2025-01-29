@@ -1277,8 +1277,19 @@ test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
         {"assert_eq(1, 1, 'error message');", NIL_VAL},
         // time
         {"var t = time_time(); t > 1737965587;", dai_true},
+        {"var t = time_timef(); t > 1737965587;", dai_true},
         {"var t1 = time_time(); time_sleep(1); var t2 = time_time(); t2 > t1;", dai_true},
         {"var t1 = time_time(); time_sleep(1.1); var t2 = time_time(); t2 > t1;", dai_true},
+        {"var m = range(10); m[0];", INTEGER_VAL(0)},
+        {"var m = range(10); var sum = 0; for(var i, e in m) { sum += e; }; sum;", INTEGER_VAL(45)},
+        {"math_sqrt(4);", FLOAT_VAL(2.0)},
+        {"math_sin(0);", FLOAT_VAL(0)},
+        {"math_cos(0);", FLOAT_VAL(1)},
+        {"abs(0);", INTEGER_VAL(0)},
+        {"abs(1);", INTEGER_VAL(1)},
+        {"abs(-1);", INTEGER_VAL(1)},
+        {"abs(1.0);", FLOAT_VAL(1.0)},
+        {"abs(-1.0);", FLOAT_VAL(1.0)},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
@@ -2062,8 +2073,68 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             "assert_eq(0, 1, 'error message');",
             OBJ_VAL(DaiObjError_Newf(&vm, "assertion failed: 0 != 1 error message")),
         },
+        {
+            "type(1, 2);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "type() expected 1 argument, but got 2")),
+        },
+        {
+            "time_time(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "time_time() expected no arguments, but got 1")),
+        },
+        {
+            "time_timef(1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "time_timef() expected no arguments, but got 1")),
+        },
+        {
+            "time_sleep(1, 1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "time_sleep() expected 1 argument, but got 2")),
+        },
+        {
+            "time_sleep('1');",
+            OBJ_VAL(
+                DaiObjError_Newf(&vm, "time_sleep() expected number arguments, but got string")),
+        },
+        {
+            "range(1, 2, 3, 4);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "range() expected 1 argument, but got 4")),
+        },
+        {
+            "range('1');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "range() expected int arguments, but got string")),
+        },
+        {
+            "math_sqrt(1, 1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "math_sqrt() expected 1 argument, but got 2")),
+        },
+        {
+            "math_sqrt('1');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "math_sqrt() expected number arguments, but got string")),
+        },
+        {
+            "math_sin(1, 1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "math_sin() expected 1 argument, but got 2")),
+        },
+        {
+            "math_sin('1');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "math_sin() expected number arguments, but got string")),
+        },
+        {
+            "math_cos(1, 1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "math_cos() expected 1 argument, but got 2")),
+        },
+        {
+            "math_cos('1');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "math_cos() expected number arguments, but got string")),
+        },
+        {
+            "abs(1, 1);",
+            OBJ_VAL(DaiObjError_Newf(&vm, "abs() expected 1 argument, but got 2")),
+        },
+        {
+            "abs('1');",
+            OBJ_VAL(DaiObjError_Newf(&vm, "abs() expected number arguments, but got string")),
+        },
         // #endregion
-
 
         // 函数调用
         {

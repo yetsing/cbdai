@@ -30,6 +30,12 @@ option(DAI_TEST_VERBOSE "Enable verbose testing" OFF)
 if(DAI_TEST_VERBOSE)
     target_compile_definitions(cbdai PRIVATE DAI_TEST_VERBOSE)
 endif()
+option(DAI_DEBUG_GC "Enable debug gc" OFF)
+# Step 2: Update target definitions conditionally
+if(DAI_DEBUG_GC)
+    target_compile_definitions(cbdai PRIVATE DEBUG_STRESS_GC)
+endif()
+
 
 target_compile_definitions(cbdai PRIVATE DAI_TEST)
 target_compile_definitions(cbdai-debug PRIVATE DAI_TEST)
