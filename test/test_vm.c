@@ -2651,6 +2651,14 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
             "var m = [1, 1, 1, 1]; var a = 0; for (var i, e in m) { a += i; }; a;",
             INTEGER_VAL(6),
         },
+        {
+            "var m = [1, 1, 1, 1]; var a = 0; for (var e in m) { a += e; }; a;",
+            INTEGER_VAL(4),
+        },
+        {
+            "var m = [1, 1, 1, 1]; var a = 0; for (var e in range(4)) { a += e; }; a;",
+            INTEGER_VAL(6),
+        },
 
         {
             "var m = {}; for (var k, v in m) {}; 1;",
@@ -2687,6 +2695,10 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var m = {1: 1, 2: 2, 3: 3, 4: 4}; var a = 0; for (var k, v in m) { a += k; }; a;",
+            INTEGER_VAL(10),
+        },
+        {
+            "var m = {1: 1, 2: 2, 3: 3, 4: 4}; var a = 0; for (var v in m) { a += v; }; a;",
             INTEGER_VAL(10),
         },
     };

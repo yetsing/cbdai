@@ -2461,6 +2461,30 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
         munit_assert_int(forin_stmt->body->length, ==, 0);
         program->free_fn((DaiAstBase*)program, true);
     }
+    {
+        const char* input = "for (var e in arr) { }";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_ForInStatement);
+        DaiAstForInStatement* forin_stmt = (DaiAstForInStatement*)stmt;
+        {
+            munit_assert_int(forin_stmt->start_line, ==, 1);
+            munit_assert_int(forin_stmt->start_column, ==, 1);
+            munit_assert_int(forin_stmt->end_line, ==, 1);
+            munit_assert_int(forin_stmt->end_column, ==, 23);
+        }
+        munit_assert_null(forin_stmt->i);
+        check_identifier((DaiAstExpression*)forin_stmt->e, "e");
+        check_identifier(forin_stmt->expression, "arr");
+        munit_assert_int(forin_stmt->body->length, ==, 0);
+        program->free_fn((DaiAstBase*)program, true);
+    }
+
     return MUNIT_OK;
 }
 

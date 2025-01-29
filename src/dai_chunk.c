@@ -56,7 +56,7 @@ static DaiOpCodeDefinition definitions[] = {
 
     [DaiOpIterInit] = {.name = "DaiOpIterInit", .operand_bytes = 0},
     // 操作数：迭代器的索引，循环末尾的偏移量
-    [DaiOpIterNext2] = {.name = "DaiOpIterNext2", .operand_bytes = 3},
+    [DaiOpIterNext] = {.name = "DaiOpIterNext", .operand_bytes = 3},
 
     // 操作数：与当前帧的栈顶的偏移量
     [DaiOpSetStackTop] = {.name = "DaiOpSetStackTop", .operand_bytes = 1},

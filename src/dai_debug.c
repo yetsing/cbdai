@@ -61,7 +61,7 @@ simple_instruction2(const char* name, const DaiChunk* chunk, const int offset) {
 }
 
 static int
-iter_next2_instruction(const char* name, const DaiChunk* chunk, const int offset) {
+iter_next_instruction(const char* name, const DaiChunk* chunk, const int offset) {
     uint8_t n           = DaiChunk_read(chunk, offset + 1);
     uint16_t end_offset = DaiChunk_readu16(chunk, offset + 2);
     printf("%s %d %d\n", name, n, end_offset);
@@ -197,7 +197,7 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpJumpBack: return jump_back_instruction("OP_JUMP_BACK", chunk, offset);
 
         case DaiOpIterInit: return simple_instruction("OP_ITER", offset);
-        case DaiOpIterNext2: return iter_next2_instruction("OP_ITER_NEXT2", chunk, offset);
+        case DaiOpIterNext: return iter_next_instruction("OP_ITER_NEXT", chunk, offset);
 
         case DaiOpSetStackTop: return simple_instruction1("OP_SET_STACK_TOP", chunk, offset);
 

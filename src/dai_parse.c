@@ -1659,17 +1659,19 @@ Parser_parseForInStatement(Parser* p) {
         return NULL;
     }
     DaiAstIdentifier* ident = (DaiAstIdentifier*)Parser_parseIdentifier(p);
-    forin_stmt->i           = ident;
-    if (!Parser_expectPeek(p, DaiTokenType_comma)) {
-        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
-        return NULL;
+    if (Parser_peekTokenIs(p, DaiTokenType_comma)) {
+        forin_stmt->i = ident;
+        if (!Parser_expectPeek(p, DaiTokenType_comma)) {
+            forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+            return NULL;
+        }
+        // 解析 for in 语句的变量
+        if (!Parser_expectPeek(p, DaiTokenType_ident)) {
+            forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
+            return NULL;
+        }
+        ident = (DaiAstIdentifier*)Parser_parseIdentifier(p);
     }
-    // 解析 for in 语句的变量
-    if (!Parser_expectPeek(p, DaiTokenType_ident)) {
-        forin_stmt->free_fn((DaiAstBase*)forin_stmt, true);
-        return NULL;
-    }
-    ident         = (DaiAstIdentifier*)Parser_parseIdentifier(p);
     forin_stmt->e = ident;
     // 解析 for in 语句的 in
     if (!Parser_expectPeek(p, DaiTokenType_in)) {

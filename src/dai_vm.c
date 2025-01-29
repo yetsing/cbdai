@@ -579,7 +579,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 }
                 break;
             }
-            case DaiOpIterNext2: {
+            case DaiOpIterNext: {
                 uint8_t iterator_index = READ_BYTE();
                 uint16_t end_offset    = READ_UINT16();
                 DaiValue iterator      = frame->slots[iterator_index];

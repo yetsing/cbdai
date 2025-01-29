@@ -188,8 +188,7 @@ static int
 DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_t operand2,
                   int line);
 static int
-DaiCompiler_emitIterNext2(const DaiCompiler* compiler, uint8_t operand1, uint16_t operand2,
-                          int line);
+DaiCompiler_emitIterNext(const DaiCompiler* compiler, uint8_t operand1, int line);
 static void
 DaiCompiler_patchJump(const DaiCompiler* compiler, int offset);
 static void
@@ -1300,10 +1299,14 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                               DaiOpSetStackTop,
                               DaiSymbolTable_countOuter(compiler->symbolTable),
                               stmt->start_line);
-            DaiSymbolTable_define(blockSymbolTable, stmt->i->value);
+            if (stmt->i == NULL) {
+                DaiSymbolTable_define(blockSymbolTable, "//i");   // 占个位置保持一致
+            } else {
+                DaiSymbolTable_define(blockSymbolTable, stmt->i->value);
+            }
             DaiSymbolTable_define(blockSymbolTable, stmt->e->value);
             int jump_if_end_offset =
-                DaiCompiler_emitIterNext2(compiler, itertor_symbol.index, 9999, stmt->start_line);
+                DaiCompiler_emitIterNext(compiler, itertor_symbol.index, stmt->start_line);
             err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
             if (err != NULL) {
                 return err;
@@ -1313,7 +1316,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 int jump_back = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
                 DaiCompiler_patchJumpBack(compiler, jump_back, for_start);
                 // 更新 jump 到循环末尾的偏移量
-                // DaiOpIterNext2 比 jump 指令长度多 1 ，所以这里加 1 适配 jump 格式
+                // DaiOpIterNext 比 jump 指令长度多 1 ，所以这里加 1 适配 jump 格式
                 DaiCompiler_patchJump(compiler, jump_if_end_offset + 1);
             }
             // 更新 break 跳转指令的偏移量
@@ -1392,12 +1395,11 @@ DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, 
 }
 
 static int
-DaiCompiler_emitIterNext2(const DaiCompiler* compiler, uint8_t operand1, uint16_t operand2,
-                          int line) {
+DaiCompiler_emitIterNext(const DaiCompiler* compiler, uint8_t operand1, int line) {
     DaiChunk* chunk = &(compiler->function->chunk);
-    DaiChunk_write(chunk, DaiOpIterNext2, line);
+    DaiChunk_write(chunk, DaiOpIterNext, line);
     DaiChunk_write(chunk, operand1, line);
-    DaiChunk_write2(chunk, operand2, line);
+    DaiChunk_write2(chunk, 65535, line);
     return chunk->count - 4;
 }
 
