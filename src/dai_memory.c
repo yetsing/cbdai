@@ -51,6 +51,10 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     printf("%p free type %d\n", (void*)object, object->type);
 #endif
     switch (object->type) {
+        case DaiObjType_rangeIterator: {
+            VM_FREE(vm, DaiObjRangeIterator, object);
+            break;
+        }
         case DaiObjType_mapIterator: {
             VM_FREE(vm, DaiObjMapIterator, object);
             break;
@@ -114,10 +118,6 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
         case DaiObjType_builtinFn: {
             break;
         }
-        default: {
-            unreachable();
-            break;
-        };
     }
 }
 
@@ -259,6 +259,7 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             markArray(vm, &(function->chunk.constants));
             break;
         }
+        case DaiObjType_rangeIterator:
         case DaiObjType_error:
         case DaiObjType_builtinFn:
         case DaiObjType_string: {

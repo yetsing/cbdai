@@ -1701,6 +1701,48 @@ DaiObjArrayIterator_New(DaiVM* vm, DaiObjArray* array) {
 
 // #endregion
 
+// #region DaiObjRangeIterator
+static DaiValue
+DaiObjRangeIterator_iter_next(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue* index,
+                              DaiValue* element) {
+    DaiObjRangeIterator* iterator = AS_RANGE_ITERATOR(receiver);
+    if ((iterator->step >= 0 && iterator->curr >= iterator->end) ||
+        (iterator->step < 0 && iterator->curr <= iterator->end)) {
+        return UNDEFINED_VAL;
+    }
+    *index   = INTEGER_VAL(iterator->index);
+    *element = INTEGER_VAL(iterator->curr);
+    iterator->curr += iterator->step;
+    iterator->index++;
+    return NIL_VAL;
+}
+
+static struct DaiOperation range_iterator_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = dai_default_string_func,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = dai_iter_init_return_self,
+    .iter_next_func     = DaiObjRangeIterator_iter_next,
+};
+
+DaiObjRangeIterator*
+DaiObjRangeIterator_New(DaiVM* vm, int64_t start, int64_t end, int64_t step) {
+    DaiObjRangeIterator* range_iterator =
+        ALLOCATE_OBJ(vm, DaiObjRangeIterator, DaiObjType_rangeIterator);
+    range_iterator->obj.operation = &range_iterator_operation;
+    range_iterator->start         = start;
+    range_iterator->end           = end;
+    range_iterator->step          = step;
+    range_iterator->curr          = start;
+    range_iterator->index         = 0;
+    return range_iterator;
+}
+
+// #endregion
 
 // #region 字典 DaiObjMap
 
@@ -2128,10 +2170,13 @@ dai_object_ts(DaiValue value) {
             return "function";
         }
         case DaiObjType_array: return "array";
+        case DaiObjType_arrayIterator: return "array_iterator";
         case DaiObjType_map: return "map";
+        case DaiObjType_mapIterator: return "map_iterator";
+        case DaiObjType_rangeIterator: return "range_iterator";
         case DaiObjType_error: return "error";
-        default: return "unknown";
     }
+    return "unknown";
 }
 
 // #region 内置函数
@@ -2283,23 +2328,30 @@ builtin_time_sleep(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) Da
 static DaiValue
 builtin_range(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
               int argc, DaiValue* argv) {
-    if (argc != 1) {
-        DaiObjError* err = DaiObjError_Newf(vm, "range() expected 1 argument, but got %d", argc);
+    if (argc == 0 || argc > 3) {
+        DaiObjError* err = DaiObjError_Newf(vm, "range() expected 1-3 argument, but got %d", argc);
         return OBJ_VAL(err);
     }
-    if (!IS_INTEGER(argv[0])) {
-        DaiObjError* err = DaiObjError_Newf(
-            vm, "range() expected int arguments, but got %s", dai_value_ts(argv[0]));
-        return OBJ_VAL(err);
+    for (int i = 0; i < argc; ++i) {
+        if (!IS_INTEGER(argv[i])) {
+            DaiObjError* err = DaiObjError_Newf(
+                vm, "range() expected int arguments, but got %s", dai_value_ts(argv[0]));
+            return OBJ_VAL(err);
+        }
     }
-    int n              = AS_INTEGER(argv[0]);
-    DaiObjArray* array = DaiObjArray_New2(vm, NULL, 0, n);
-    DaiVM_setTempRef(vm, OBJ_VAL(array));
-    for (int i = 0; i < n; i++) {
-        DaiObjArray_append2(vm, array, 1, INTEGER_VAL(i));
+    int64_t start = 0, end = 0, step = 1;
+    if (argc == 1) {
+        end = AS_INTEGER(argv[0]);
+    } else if (argc == 2) {
+        start = AS_INTEGER(argv[0]);
+        end   = AS_INTEGER(argv[1]);
+    } else {
+        start = AS_INTEGER(argv[0]);
+        end   = AS_INTEGER(argv[1]);
+        step  = AS_INTEGER(argv[2]);
     }
-    DaiVM_setTempRef(vm, NIL_VAL);
-    return OBJ_VAL(array);
+    DaiObjRangeIterator* iterator = DaiObjRangeIterator_New(vm, start, end, step);
+    return OBJ_VAL(iterator);
 }
 
 static DaiValue

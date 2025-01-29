@@ -24,6 +24,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_ARRAY_ITERATOR(value) dai_is_obj_type(value, DaiObjType_arrayIterator)
 #define IS_MAP(value) dai_is_obj_type(value, DaiObjType_map)
 #define IS_MAP_ITERATOR(value) dai_is_obj_type(value, DaiObjType_mapIterator)
+#define IS_RANGE_ITERATOR(value) dai_is_obj_type(value, DaiObjType_rangeIterator)
 #define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
@@ -38,6 +39,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_ARRAY_ITERATOR(value) ((DaiObjArrayIterator*)AS_OBJ(value))
 #define AS_MAP(value) ((DaiObjMap*)AS_OBJ(value))
 #define AS_MAP_ITERATOR(value) ((DaiObjMapIterator*)AS_OBJ(value))
+#define AS_RANGE_ITERATOR(value) ((DaiObjRangeIterator*)AS_OBJ(value))
 #define AS_ERROR(value) ((DaiObjError*)AS_OBJ(value))
 
 typedef enum {
@@ -52,6 +54,7 @@ typedef enum {
     DaiObjType_arrayIterator,
     DaiObjType_map,
     DaiObjType_mapIterator,
+    DaiObjType_rangeIterator,
     DaiObjType_error,
 } DaiObjType;
 
@@ -198,6 +201,17 @@ typedef struct {
 } DaiObjArrayIterator;
 DaiObjArrayIterator*
 DaiObjArrayIterator_New(DaiVM* vm, DaiObjArray* array);
+
+typedef struct {
+    DaiObj obj;
+    int64_t start;
+    int64_t end;
+    int64_t step;
+    int64_t curr;
+    int64_t index;
+} DaiObjRangeIterator;
+DaiObjRangeIterator*
+DaiObjRangeIterator_New(DaiVM* vm, int64_t start, int64_t end, int64_t step);
 
 typedef struct {
     DaiObj obj;

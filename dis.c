@@ -5,13 +5,13 @@
 
 #include "dai_assert.h"
 #include "dai_compile.h"
+#include "dai_debug.h"
 #include "dai_malloc.h"
 #include "dai_object.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_vm.h"
-#include "dai_debug.h"
 
 int
 main(int argc, char** argv) {
@@ -57,7 +57,7 @@ main(int argc, char** argv) {
         DaiChunk_disassemble(&function->chunk, function->name->chars);
         DaiValueArray constants = function->chunk.constants;
         for (int i = 0; i < constants.count; i++) {
-            DaiObjFunction *func = NULL;
+            DaiObjFunction* func = NULL;
             if (IS_CLOSURE(constants.values[i])) {
                 func = AS_CLOSURE(constants.values[i])->function;
             } else if (IS_FUNCTION(constants.values[i])) {
