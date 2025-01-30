@@ -253,7 +253,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
 #ifdef DEBUG_TRACE_EXECUTION
     const char* name = NULL;
 #endif
-    while (frame->ip < chunk->code + chunk->count) {
+    //        while (frame->ip < chunk->code + chunk->count) {
+    while (true) {
 #ifdef DEBUG_TRACE_EXECUTION
         const char* funcname = DaiObjFunction_name(frame->function);
         if (name != funcname) {
@@ -287,7 +288,22 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     concatenate_string(vm, a, b);
                     break;
                 }
-                ARITHMETIC_OPERATION(+);
+                DaiVM_popN(vm, 2);
+                if (IS_INTEGER(a) && IS_INTEGER(b)) {
+                    DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) + AS_INTEGER(b)));
+                } else if (IS_FLOAT(a) && IS_INTEGER(b)) {
+                    DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) + (double)AS_INTEGER(b)));
+                } else if (IS_INTEGER(a) && IS_FLOAT(b)) {
+                    DaiVM_push(vm, FLOAT_VAL((double)AS_INTEGER(a) + AS_FLOAT(b)));
+                } else if (IS_FLOAT(a) && IS_FLOAT(b)) {
+                    DaiVM_push(vm, FLOAT_VAL(AS_FLOAT(a) + AS_FLOAT(b)));
+                } else {
+                    return DaiObjError_Newf(vm,
+                                            "unsupported operand type(s) for %s: '%s' and '%s'",
+                                            "+",
+                                            dai_value_ts(a),
+                                            dai_value_ts(b));
+                }
                 break;
             }
             case DaiOpSub: {
@@ -933,6 +949,8 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
 
+            case DaiOpEnd: return NULL;
+
             default: {
                 return DaiObjError_Newf(vm,
 
@@ -1053,7 +1071,6 @@ static void
 DaiVM_push(DaiVM* vm, DaiValue value) {
     *vm->stack_top = value;
     vm->stack_top++;
-    assert(vm->stack_top <= vm->stack + STACK_MAX);
 }
 static DaiValue
 DaiVM_pop(DaiVM* vm) {

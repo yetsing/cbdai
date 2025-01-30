@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <stdio.h>
 
 #include "dai_chunk.h"
@@ -87,12 +86,12 @@ flat_constants(DaiValueArray* target, const DaiValueArray* source) {
 }
 
 static void
-run_compiler_tests2(const DaiCompilerTestCase* tests, const size_t count, bool verbose) {
+run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
     for (size_t i = 0; i < count; i++) {
-        if (verbose) {
-            printf("=========================== %zu \n", i);
-            printf("%s\n", tests[i].input);
-        }
+#ifdef DAI_TEST_VERBOSE
+        printf("=========================== %zu \n", i);
+        printf("%s\n", tests[i].input);
+#endif
         DaiVM vm;
         DaiVM_init(&vm);
         DaiObjFunction* function = DaiObjFunction_New(&vm, "<test>", "<test>");
@@ -123,18 +122,13 @@ run_compiler_tests2(const DaiCompilerTestCase* tests, const size_t count, bool v
     }
 }
 
-static void
-run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
-    run_compiler_tests2(tests, count, false);
-}
-
 static MunitResult
 test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                         __attribute__((unused)) void* user_data) {
     const DaiCompilerTestCase tests[] = {
         {
             "1 + 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -144,6 +138,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpAdd,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -152,7 +147,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1; 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -162,6 +157,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 0,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -171,7 +167,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1 - 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -181,6 +177,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpSub,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -189,7 +186,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1 * 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -199,6 +196,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpMul,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -207,7 +205,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "2 / 1;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -217,6 +215,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpDiv,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -225,7 +224,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "2 % 1;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -235,6 +234,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpMod,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -244,13 +244,14 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
 
         {
             "-1;",
-            5,
+            5 + 1,
             {
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpMinus,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -258,13 +259,14 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "~1;",
-            5,
+            5 + 1,
             {
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpBitwiseNot,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -272,13 +274,14 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "-1.0;",
-            5,
+            5 + 1,
             {
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpMinus,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 FLOAT_VAL(1.0),
@@ -286,12 +289,13 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "3.1415926;",
-            4,
+            4 + 1,
             {
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 FLOAT_VAL(3.1415926),
@@ -299,7 +303,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "2 << 1;",
-            9,
+            9 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -310,6 +314,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 DaiOpBinary,
                 BinaryOpLeftShift,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -319,7 +324,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "2 >> 1;",
-            9,
+            9 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -330,6 +335,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 DaiOpBinary,
                 BinaryOpRightShift,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -338,7 +344,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "2 & 1;",
-            9,
+            9 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -349,6 +355,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 DaiOpBinary,
                 BinaryOpBitwiseAnd,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -357,7 +364,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "2 | 1;",
-            9,
+            9 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -368,6 +375,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 DaiOpBinary,
                 BinaryOpBitwiseOr,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -376,7 +384,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "2 ^ 1;",
-            9,
+            9 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -387,6 +395,7 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
                 DaiOpBinary,
                 BinaryOpBitwiseXor,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -394,8 +403,6 @@ test_integer_arithmetic(__attribute__((unused)) const MunitParameter params[],
             },
 
         },
-
-
     };
     run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
@@ -407,32 +414,35 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
     const DaiCompilerTestCase tests[] = {
         {
             "true;",
-            2,
+            2 + 1,
             {
                 DaiOpTrue,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "false;",
-            2,
+            2 + 1,
             {
                 DaiOpFalse,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "nil;",
-            2,
+            2 + 1,
             {
                 DaiOpNil,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
 
         {
             "1 > 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -442,6 +452,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpGreaterThan,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -450,7 +461,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1 < 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -460,6 +471,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpGreaterThan,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -468,7 +480,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1 >= 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -478,6 +490,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpGreaterEqualThan,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -486,7 +499,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1 <= 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -496,6 +509,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpGreaterEqualThan,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(2),
@@ -504,7 +518,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1 == 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -514,6 +528,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpEqual,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -522,7 +537,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "1 != 2;",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -532,6 +547,7 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
                 1,
                 DaiOpNotEqual,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -540,79 +556,87 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "true == false;",
-            4,
+            4 + 1,
             {
                 DaiOpTrue,
                 DaiOpFalse,
                 DaiOpEqual,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "true != false;",
-            4,
+            4 + 1,
             {
                 DaiOpTrue,
                 DaiOpFalse,
                 DaiOpNotEqual,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "!true;",
-            3,
+            3 + 1,
             {
                 DaiOpTrue,
                 DaiOpBang,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "nil != nil;",
-            4,
+            4 + 1,
             {
                 DaiOpNil,
                 DaiOpNil,
                 DaiOpNotEqual,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "!nil;",
-            3,
+            3 + 1,
             {
                 DaiOpNil,
                 DaiOpBang,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "not nil;",
-            3,
+            3 + 1,
             {
                 DaiOpNil,
                 DaiOpNot,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "nil and nil;",
-            4,
+            4 + 1,
             {
                 DaiOpNil,
                 DaiOpNil,
                 DaiOpAnd,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
         {
             "nil or nil;",
-            4,
+            4 + 1,
             {
                 DaiOpNil,
                 DaiOpNil,
                 DaiOpOr,
                 DaiOpPop,
+                DaiOpEnd,
             },
         },
 
@@ -627,7 +651,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "if (true) {10;};\n 3333;",
-            12,
+            12 + 1,
             {
                 DaiOpTrue,
                 DaiOpJumpIfFalse,
@@ -641,6 +665,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
                 0,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(10),
@@ -649,11 +674,11 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "if (true) {10;} \nelse {20;};\n 3333;",
-            19,
+            19 + 1,
             {
-                DaiOpTrue, DaiOpJumpIfFalse, 0, 7, DaiOpConstant, 0, 0,
-                DaiOpPop,  DaiOpJump,        0, 4, DaiOpConstant, 0, 1,
-                DaiOpPop,  DaiOpConstant,    0, 2, DaiOpPop,
+                DaiOpTrue, DaiOpJumpIfFalse, 0, 7, DaiOpConstant, 0,        0,
+                DaiOpPop,  DaiOpJump,        0, 4, DaiOpConstant, 0,        1,
+                DaiOpPop,  DaiOpConstant,    0, 2, DaiOpPop,      DaiOpEnd,
             },
             {
                 INTEGER_VAL(10),
@@ -668,10 +693,10 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
             "    2;\n"
             "};\n"
             "",
-            19,
+            19 + 1,
             {
                 DaiOpTrue, DaiOpJumpIfFalse, 0, 7, DaiOpConstant, 0, 0, DaiOpPop, DaiOpJump, 0, 8,
-                DaiOpTrue, DaiOpJumpIfFalse, 0, 4, DaiOpConstant, 0, 1, DaiOpPop,
+                DaiOpTrue, DaiOpJumpIfFalse, 0, 4, DaiOpConstant, 0, 1, DaiOpPop, DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -688,7 +713,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
             "    3;\n"
             "};\n"
             "",
-            26,
+            26 + 1,
             {
                 DaiOpTrue,
                 DaiOpJumpIfFalse,
@@ -718,6 +743,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
                 0,
                 2,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -737,7 +763,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
             "    9;\n"
             "};\n"
             "",
-            37,
+            37 + 1,
             {
                 DaiOpTrue,
                 DaiOpJumpIfFalse,
@@ -779,6 +805,7 @@ test_conditionals(__attribute__((unused)) const MunitParameter params[],
                 0,
                 3,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -799,7 +826,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "while (false) { }",
-            9,
+            9 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -810,12 +837,13 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 9,
+                DaiOpEnd,
             },
             {},
         },
         {
             "while (false) { 1; }",
-            13,
+            13 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -830,6 +858,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 13,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -837,7 +866,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { 1; break; }",
-            16,
+            16 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -855,6 +884,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 16,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -862,7 +892,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { 1; continue; }",
-            16,
+            16 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -880,6 +910,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 16,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -887,7 +918,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { break; 1; break; }",
-            19,
+            19 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -908,6 +939,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 19,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -915,7 +947,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (false) { continue; 1; continue; }",
-            19,
+            19 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -936,6 +968,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 19,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -943,7 +976,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "while (true) { while (false) { break; 1; break; } break; }",
-            31,
+            31 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -978,6 +1011,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 31,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -994,7 +1028,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
             "  break;\n"
             "}\n"
             "",
-            34,
+            34 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -1032,6 +1066,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 34,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -1049,7 +1084,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
             "  break;\n"
             "}"
             "",
-            37,
+            37 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -1090,6 +1125,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 37,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -1108,7 +1144,7 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
             "  break;\n"
             "}"
             "",
-            40,
+            40 + 1,
             {
                 DaiOpSetStackTop,
                 0,
@@ -1152,13 +1188,14 @@ test_while_statements(__attribute__((unused)) const MunitParameter params[],
                 DaiOpJumpBack,
                 0,
                 40,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
             },
         },
     };
-    run_compiler_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
 
@@ -1168,7 +1205,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
     DaiCompilerTestCase tests[] = {
         {
             "var one = 1;\n var two = 2;",
-            12,
+            12 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -1182,6 +1219,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
                 DaiOpDefineGlobal,
                 0,
                 1,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -1190,7 +1228,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
         },
         {
             "var one = 1;\n one;",
-            10,
+            10 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -1202,6 +1240,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -1209,7 +1248,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
         },
         {
             "var one = 1;\n var two = one;\n two;",
-            16,
+            16 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -1227,6 +1266,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
                 0,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -1234,7 +1274,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
         },
         {
             "var one = 1;\n one = 1;\n one;",
-            16,
+            16 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -1252,6 +1292,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -1270,12 +1311,13 @@ test_string_expressions(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "\"monkey\";",
-            4,
+            4 + 1,
             {
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -1283,12 +1325,13 @@ test_string_expressions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "\"monkey\";",
-            4,
+            4 + 1,
             {
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -1360,13 +1403,14 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "fn() {return 5 + 10;};",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(5),
@@ -1376,13 +1420,14 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "fn() {5 + 10;};",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(5),
@@ -1392,13 +1437,14 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "fn() {};",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func3),
@@ -1406,7 +1452,7 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "fn foo() {};",
-            7,
+            7 + 1,
             {
                 DaiOpClosure,
                 0,
@@ -1415,6 +1461,7 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineGlobal,
                 0,
                 0,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func4),
@@ -1495,7 +1542,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "fn() {24;}();",
-            7,
+            7 + 1,
             {
                 DaiOpClosure,
                 0,
@@ -1504,6 +1551,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
                 DaiOpCall,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(24),
@@ -1512,7 +1560,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var noArg = fn() {24;};\n noArg();",
-            13,
+            13 + 1,
             {
                 DaiOpClosure,
                 0,
@@ -1527,6 +1575,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
                 DaiOpCall,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(24),
@@ -1535,7 +1584,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var oneArg = fn(a) {};\n oneArg(24);",
-            16,
+            16 + 1,
             {
                 DaiOpClosure,
                 0,
@@ -1553,6 +1602,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
                 DaiOpCall,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func2),
@@ -1561,7 +1611,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var manyArg = fn(a, b, c) {};\n manyArg(24, 25, 26);",
-            22,
+            22 + 1,
             {
                 DaiOpClosure,
                 0,
@@ -1585,6 +1635,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
                 DaiOpCall,
                 3,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func3),
@@ -1595,7 +1646,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var oneArg = fn(a) { return a; };\n oneArg(24);",
-            16,
+            16 + 1,
             {
                 DaiOpClosure,
                 0,
@@ -1613,6 +1664,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
                 DaiOpCall,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func4),
@@ -1621,7 +1673,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var manyArg = fn(a, b, c) { a; b; c;};\n manyArg(24, 25, 26);",
-            22,
+            22 + 1,
             {
                 DaiOpClosure,
                 0,
@@ -1645,6 +1697,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
                 DaiOpCall,
                 3,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func5),
@@ -1722,7 +1775,7 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "var num = 55; fn() {num;};",
-            11,
+            11 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -1735,6 +1788,7 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
                 1,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(55),
@@ -1743,13 +1797,14 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "fn() {var num = 55; num;};",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(55),
@@ -1758,13 +1813,14 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "fn() { var a = 55; var b = 77; a + b; };",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(55),
@@ -1773,7 +1829,7 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
             },
         },
     };
-    run_compiler_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     DaiVM_reset(&vm);
     return MUNIT_OK;
 }
@@ -1805,7 +1861,7 @@ test_builtins(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "len(\"monkey\");",
-            8,
+            8 + 1,
             {
                 DaiOpGetBuiltin,
                 1,
@@ -1815,6 +1871,7 @@ test_builtins(__attribute__((unused)) const MunitParameter params[],
                 DaiOpCall,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -1822,13 +1879,14 @@ test_builtins(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "fn() {len(\"monkey\");};",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -2003,13 +2061,14 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "fn(a) {fn(b) {a + b;};};",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func1_1),
@@ -2024,13 +2083,14 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             "        };\n"
             "    };\n"
             "};",
-            5,
+            5 + 1,
             {
                 DaiOpClosure,
                 0,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(func2_1),
@@ -2050,7 +2110,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             "        };\n"
             "    };\n"
             "};",
-            11,
+            11 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2063,6 +2123,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
                 1,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(55),
@@ -2233,7 +2294,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
     DaiCompilerTestCase tests[] = {
         {
             "class C {};\n",
-            10,
+            10 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2245,6 +2306,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -2254,7 +2316,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "class C {\n"
             "  var s2;\n"
             "};\n",
-            14,
+            14 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2270,6 +2332,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 0,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -2281,7 +2344,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "  var s2;\n"
             "  var s3 = 0;\n"
             "};\n",
-            20,
+            20 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2306,6 +2369,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 3,
 
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -2320,7 +2384,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "  var s3 = 0;\n"
             "  fn s4() {};\n"
             "};\n",
-            27,
+            27 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2353,6 +2417,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 5,
 
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -2370,7 +2435,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "  fn s4() {};\n"
             "  class var classVar = 3;\n"
             "};\n",
-            33,
+            33 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2409,6 +2474,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 0,
                 7,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -2437,7 +2503,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "    c.s3;\n"
             "  };\n"
             "};\n",
-            40,
+            40 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2484,6 +2550,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 0,
                 9,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&s),
@@ -2525,7 +2592,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "    c.s3;\n"
             "  };\n"
             "};\n",
-            54,
+            54 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2587,6 +2654,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 0,
                 10,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 OBJ_VAL(&sa),
@@ -2667,18 +2735,19 @@ test_array(__attribute__((unused)) const MunitParameter params[],
     const DaiCompilerTestCase tests[] = {
         {
             "[];",
-            4,
+            4 + 1,
             {
                 DaiOpArray,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {},
         },
         {
             "[1];",
-            7,
+            7 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2687,6 +2756,7 @@ test_array(__attribute__((unused)) const MunitParameter params[],
                 0,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -2694,7 +2764,7 @@ test_array(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "[1, 23];",
-            10,
+            10 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2706,6 +2776,7 @@ test_array(__attribute__((unused)) const MunitParameter params[],
                 0,
                 2,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -2714,7 +2785,7 @@ test_array(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "[1, 23, 1 + 2];",
-            17,
+            17 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2734,6 +2805,7 @@ test_array(__attribute__((unused)) const MunitParameter params[],
                 0,
                 3,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -2754,7 +2826,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
     const DaiCompilerTestCase tests[] = {
         {
             "[][1];",
-            8,
+            8 + 1,
             {
                 DaiOpArray,
                 0,
@@ -2764,12 +2836,13 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
                 0,
                 DaiOpSubscript,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {INTEGER_VAL(1)},
         },
         {
             "[0, 1, 2][0];",
-            17,
+            17 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2788,6 +2861,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
                 3,
                 DaiOpSubscript,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(0),
@@ -2799,7 +2873,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
 
         {
             "[1, 2, 3][1 + 1];",
-            21,
+            21 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2822,6 +2896,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
                 DaiOpAdd,
                 DaiOpSubscript,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -2833,7 +2908,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "[1, 2, 3][1 - 1];",
-            21,
+            21 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2856,6 +2931,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
                 DaiOpSub,
                 DaiOpSubscript,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -2868,7 +2944,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
 
         {
             "var m = {}; m[0];",
-            14,
+            14 + 1,
             {
                 DaiOpMap,
                 0,
@@ -2884,6 +2960,7 @@ test_subscript_expression(__attribute__((unused)) const MunitParameter params[],
                 0,
                 DaiOpSubscript,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {INTEGER_VAL(0)},
         },
@@ -2899,7 +2976,7 @@ test_subscript_set_expression(__attribute__((unused)) const MunitParameter param
     const DaiCompilerTestCase tests[] = {
         {
             "var m = []; m[0] = 1;",
-            16,
+            16 + 1,
             {
                 DaiOpArray,
                 0,
@@ -2917,12 +2994,13 @@ test_subscript_set_expression(__attribute__((unused)) const MunitParameter param
                 0,
                 1,
                 DaiOpSubscriptSet,
+                DaiOpEnd,
             },
             {INTEGER_VAL(1), INTEGER_VAL(0)},
         },
         {
             "var m = []; var n = 0; m[n] = 1;",
-            22,
+            22 + 1,
             {
                 // var m = [];
                 DaiOpArray,
@@ -2949,6 +3027,7 @@ test_subscript_set_expression(__attribute__((unused)) const MunitParameter param
                 0,
                 1,
                 DaiOpSubscriptSet,
+                DaiOpEnd,
             },
             {INTEGER_VAL(0), INTEGER_VAL(1)},
         },
@@ -2965,18 +3044,19 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
     const DaiCompilerTestCase tests[] = {
         {
             "{1;};",
-            4,
+            4 + 1,
             {
                 DaiOpConstant,
                 0,
                 0,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {INTEGER_VAL(1)},
         },
         {
             "{1; 2;};",
-            8,
+            8 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -2986,12 +3066,13 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
                 0,
                 1,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {INTEGER_VAL(1), INTEGER_VAL(2)},
         },
         {
             "{1; 2; 3;};",
-            12,
+            12 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3005,6 +3086,7 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
                 0,
                 2,
                 DaiOpPop,
+                DaiOpEnd,
             },
             {INTEGER_VAL(1), INTEGER_VAL(2), INTEGER_VAL(3)},
         },
@@ -3019,7 +3101,7 @@ test_map(__attribute__((unused)) const MunitParameter params[],
     const DaiCompilerTestCase tests[] = {
         {
             "var m = {};",
-            6,
+            6 + 1,
             {
                 DaiOpMap,
                 0,
@@ -3027,12 +3109,13 @@ test_map(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineGlobal,
                 0,
                 0,
+                DaiOpEnd,
             },
             {},
         },
         {
             "var m = {1: 2};",
-            12,
+            12 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3046,6 +3129,7 @@ test_map(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineGlobal,
                 0,
                 0,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3054,26 +3138,11 @@ test_map(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var m = {1: 2, 3: 4};",
-            18,
+            18 + 1,
             {
-                DaiOpConstant,
-                0,
-                0,
-                DaiOpConstant,
-                0,
-                1,
-                DaiOpConstant,
-                0,
-                2,
-                DaiOpConstant,
-                0,
-                3,
-                DaiOpMap,
-                0,
-                2,
-                DaiOpDefineGlobal,
-                0,
-                0,
+                DaiOpConstant, 0, 0, DaiOpConstant, 0, 1, DaiOpConstant,     0, 2,
+                DaiOpConstant, 0, 3, DaiOpMap,      0, 2, DaiOpDefineGlobal, 0, 0,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3084,11 +3153,11 @@ test_map(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var m = {1: 2, 3: 4, 5: 6};",
-            24,
+            24 + 1,
             {
                 DaiOpConstant, 0, 0, DaiOpConstant,     0, 1, DaiOpConstant, 0, 2,
                 DaiOpConstant, 0, 3, DaiOpConstant,     0, 4, DaiOpConstant, 0, 5,
-                DaiOpMap,      0, 3, DaiOpDefineGlobal, 0, 0,
+                DaiOpMap,      0, 3, DaiOpDefineGlobal, 0, 0, DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3110,7 +3179,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
     const DaiCompilerTestCase tests[] = {
         {
             "var a = 1; a += 1;",
-            16,
+            16 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3128,6 +3197,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
                 DaiOpSetGlobal,
                 0,
                 0,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3136,7 +3206,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = 1; a -= 1;",
-            16,
+            16 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3154,6 +3224,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
                 DaiOpSetGlobal,
                 0,
                 0,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3162,7 +3233,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = 1; a *= 1;",
-            16,
+            16 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3180,6 +3251,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
                 DaiOpSetGlobal,
                 0,
                 0,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3188,7 +3260,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = 1; a /= 1;",
-            16,
+            16 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3206,6 +3278,7 @@ test_assign_statement(__attribute__((unused)) const MunitParameter params[],
                 DaiOpSetGlobal,
                 0,
                 0,
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3223,7 +3296,7 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
     const DaiCompilerTestCase tests[] = {
         {
             "var a = [1, 2, 3]; for (var i, e in a) {};",
-            30,
+            30 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3256,6 +3329,7 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
                 9,
                 DaiOpPopN,
                 3,
+                DaiOpEnd,
 
             },
             {
@@ -3266,7 +3340,7 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = [1, 2, 3]; for (var i, e in a) { break; continue; };",
-            36,
+            36 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3308,7 +3382,7 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
                 // after for-in loop, pop iterator i e
                 DaiOpPopN,
                 3,
-
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3318,7 +3392,7 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "var a = [1, 2, 3]; for (var e in a) { break; continue; };",
-            36,
+            36 + 1,
             {
                 DaiOpConstant,
                 0,
@@ -3360,7 +3434,7 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
                 // after for-in loop, pop iterator i e
                 DaiOpPopN,
                 3,
-
+                DaiOpEnd,
             },
             {
                 INTEGER_VAL(1),
@@ -3370,10 +3444,9 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
         },
 
     };
-    run_compiler_tests2(tests, sizeof(tests) / sizeof(tests[0]), false);
+    run_compiler_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;
 }
-
 
 MunitTest compile_tests[] = {
     {(char*)"/test_integer_arithmetic",

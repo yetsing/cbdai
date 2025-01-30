@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "dai_memory.h"
 #include "dai_object.h"
@@ -86,7 +85,7 @@ static struct DaiOperation default_operation = {
 static char*
 DaiObjBuiltinFunction_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjBuiltinFunction* builtin = AS_BUILTINFN(value);
-    int size                       = strlen(builtin->name) + 16;
+    size_t size                    = strlen(builtin->name) + 16;
     char* buf                      = ALLOCATE(char, size);
     snprintf(buf, size, "<builtin-fn %s>", builtin->name);
     return buf;
@@ -232,7 +231,8 @@ DaiObjInstance_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     DaiObjError* err = DaiObjError_Newf(
         vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
     return OBJ_VAL(err);
-};
+}
+
 static DaiValue
 DaiObjInstance_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     assert(IS_OBJ(receiver));
@@ -273,7 +273,8 @@ DaiObjClass_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     DaiObjError* err = DaiObjError_Newf(
         vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
     return OBJ_VAL(err);
-};
+}
+
 static DaiValue
 DaiObjClass_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     assert(IS_OBJ(receiver));
@@ -397,8 +398,8 @@ static char*
 DaiObjBoundMethod_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(value);
     char* instance_str              = dai_value_string(bound_method->receiver);
-    int size  = strlen(instance_str) + bound_method->method->function->name->length + 32;
-    char* buf = ALLOCATE(char, size);
+    size_t size = strlen(instance_str) + bound_method->method->function->name->length + 32;
+    char* buf   = ALLOCATE(char, size);
     snprintf(buf,
              size,
              "<bound method %s of %s>",
@@ -984,7 +985,7 @@ DaiObjString_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     DaiObjError* err = DaiObjError_Newf(
         vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
     return OBJ_VAL(err);
-};
+}
 
 static char*
 DaiObjString_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {

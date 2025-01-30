@@ -1,7 +1,6 @@
 /*
 工具函数
 */
-#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -68,11 +67,17 @@ dai_string_from_file(const char* filename) {
     if (fp == NULL) {
         return NULL;
     }
-    fseek(fp, 0L, SEEK_END);
+    if (fseek(fp, 0L, SEEK_END) < 0) {
+        fclose(fp);
+        return NULL;
+    }
     size_t length = ftell(fp);
     rewind(fp);
     char* s = dai_malloc(length + 1);
-    fread(s, 1, length, fp);
+    if (fread(s, 1, length, fp) < length) {
+        fclose(fp);
+        return NULL;
+    }
     s[length] = '\0';
     fclose(fp);
     return s;
@@ -80,7 +85,7 @@ dai_string_from_file(const char* filename) {
 
 char*
 dai_get_line(const char* s, int lineno) {
-    const char* s1 = s;
+    const char* s1;
     for (int i = 0; i < lineno - 1; i++) {
         s1 = strchr(s, '\n');
         if (s1 == NULL) {

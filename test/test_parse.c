@@ -9,6 +9,7 @@
 #include "dai_malloc.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
+#include "dai_utils.h"
 
 
 // 获取当前文件所在文件夹路径
@@ -182,19 +183,6 @@ parse_error(const char* input) {
     return err;
 }
 
-static char*
-string_from_file(const char* filename) {
-    FILE* fp = fopen(filename, "r");
-    munit_assert(fp != NULL);
-    fseek(fp, 0, SEEK_END);
-    long size = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
-    char* buf = (char*)dai_malloc(size + 1);
-    fread(buf, 1, size, fp);
-    fclose(fp);
-    buf[size] = '\0';
-    return buf;
-}
 // #endregion
 
 static MunitResult
@@ -416,8 +404,7 @@ test_if_elif_else_statements(__attribute__((unused)) const MunitParameter params
         DaiBranch branch = ifstatement->elif_branches[0];
         check_infix_expression_string(branch.condition, "x", ">", "y");
         munit_assert_int(branch.then_branch->length, ==, 1);
-        DaiAstExpressionStatement* stmt =
-            (DaiAstExpressionStatement*)branch.then_branch->statements[0];
+        stmt = (DaiAstExpressionStatement*)branch.then_branch->statements[0];
         munit_assert_int(stmt->type, ==, DaiAstType_ExpressionStatement);
         check_identifier(stmt->expression, "y");
     }
@@ -2109,7 +2096,8 @@ test_parse_example(__attribute__((unused)) const MunitParameter params[],
     char resolved_path[PATH_MAX];
     get_file_directory(resolved_path);
     strcat(resolved_path, "parse_example.dai");
-    char* input = string_from_file(resolved_path);
+    char* input = dai_string_from_file(resolved_path);
+    munit_assert_not_null(input);
 
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
@@ -2262,15 +2250,15 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
     parse_helper(input, program);
 
     munit_assert_int(program->length, ==, 1);
-    DaiAstStatement* stmt = program->statements[0];
-    munit_assert_int(stmt->type, ==, DaiAstType_BlockStatement);
     {
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_BlockStatement);
         munit_assert_int(stmt->start_line, ==, 1);
         munit_assert_int(stmt->start_column, ==, 1);
         munit_assert_int(stmt->end_line, ==, 1);
         munit_assert_int(stmt->end_column, ==, 40);
     }
-    DaiAstBlockStatement* block = (DaiAstBlockStatement*)stmt;
+    DaiAstBlockStatement* block = (DaiAstBlockStatement*)program->statements[0];
     munit_assert_int(block->length, ==, 3);
     {
         DaiAstStatement* stmt = block->statements[0];
@@ -2313,7 +2301,7 @@ test_block_statement(__attribute__((unused)) const MunitParameter params[],
     }
     program->free_fn((DaiAstBase*)program, true);
     return MUNIT_OK;
-};
+}
 
 static MunitResult
 test_map_literal_expression(__attribute__((unused)) const MunitParameter params[],

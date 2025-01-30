@@ -110,6 +110,8 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpCallSelfMethod] = {.name = "DaiOpCallSelfMethod", .operand_bytes = 2},
     // 操作数：方法名的常量索引
     [DaiOpCallSuperMethod] = {.name = "DaiOpCallSuperMethod", .operand_bytes = 2},
+
+    [DaiOpEnd] = {.name = "DaiOpEnd", .operand_bytes = 0},
 };
 
 const char*

@@ -77,11 +77,14 @@ function test() {
 		fi
 	done
 
-	compile "cbdai" -DDAI_DEBUG_GC=ON
-	./cmake-build-debug/cbdai "${program_params[@]}"
 	compile "cbdai" "${cmake_params[@]}"
 	cp_compile_commands_json
+	./cmake-build-debug/cbdai "${program_params[@]}"
 	time ./cmake-build-debug/cbdai "${program_params[@]}"
+	echo "############## DEBUG GC #######################################################"
+	compile "cbdai" -DDAI_DEBUG_GC=ON
+	./cmake-build-debug/cbdai "${program_params[@]}"
+	echo "############## Sanitizer Test #################################################"
 	# 运行包含 Sanitizer 检查的测试
 	compile "santest"
 	./cmake-build-debug/santest "${program_params[@]}"

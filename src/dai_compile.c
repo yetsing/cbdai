@@ -1449,6 +1449,7 @@ dai_compile(DaiAstProgram* program, DaiObjFunction* function, DaiVM* vm) {
         return err;
     }
     err = DaiCompiler_compile(&compiler, (DaiAstBase*)program);
+    DaiCompiler_emit(&compiler, DaiOpEnd, 0);
     // free comiler
     DaiCompiler_reset(&compiler);
     // free ast

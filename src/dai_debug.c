@@ -15,13 +15,14 @@ DaiChunk_disassemble(DaiChunk* chunk, const char* name) {
     for (int offset = 0; offset < chunk->count;) {
         offset = DaiChunk_disassembleInstruction(chunk, offset);
     }
+    printf("== end %s ==\n\n", name);
 }
 
 static int
 constant_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t constant = DaiChunk_readu16(chunk, offset + 1);
     printf("%-16s %4d '", name, constant);
-    dai_print_value(chunk->constants.values[constant]);
+    //    dai_print_value(chunk->constants.values[constant]);
     printf("'\n");
     return offset + 3;
 }
@@ -242,6 +243,8 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
             return call_method_instruction("OP_CALL_SELF_METHOD", chunk, offset);
         case DaiOpCallSuperMethod:
             return call_method_instruction("OP_CALL_SUPER_METHOD", chunk, offset);
+
+        case DaiOpEnd: return simple_instruction("OP_END", offset);
     }
     return offset + 1;
 }

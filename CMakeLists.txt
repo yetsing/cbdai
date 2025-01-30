@@ -11,6 +11,7 @@ include_directories(src/hashmap.c)
 include_directories(test)
 
 add_compile_options(-g -Wno-unused-function -Werror -Wall)
+add_compile_options(-O3 -flto)
 
 file(GLOB_RECURSE MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c)
