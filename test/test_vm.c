@@ -1776,6 +1776,13 @@ test_array(__attribute__((unused)) const MunitParameter params[],
             "var m = [1, 1, 1, 1]; m.sort(fn(e1, e2) {return e2 - e1;}); m[-1];",
             INTEGER_VAL(1),
         },
+
+        // grow and shrink
+        {
+            "var m = []; for (var i in range(1000)) { m.append(i); }; for (var i in range(1000)) { "
+            "m.pop(); }; m.length();",
+            INTEGER_VAL(0),
+        },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

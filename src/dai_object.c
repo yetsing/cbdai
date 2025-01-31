@@ -193,7 +193,7 @@ DaiObjClosure_New(DaiVM* vm, DaiObjFunction* function) {
     return closure;
 }
 
-const char*
+__attribute__((unused)) const char*
 DaiObjClosure_name(DaiObjClosure* closure) {
     return closure->function->name->chars;
 }
@@ -580,7 +580,7 @@ DaiObjString_sub(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
         return OBJ_VAL(dai_copy_string(vm, "", 0));
     }
     char* s = utf8offset(string->chars, start);
-    char* e = utf8offset(string->chars, end);
+    char* e = utf8offset(s, end - start);
     return OBJ_VAL(dai_copy_string(vm, s, e - s));
 }
 
@@ -1093,7 +1093,25 @@ DaiObjString_cmp(DaiObjString* a, DaiObjString* b) {
 // #endregion
 
 // #region 数组 DaiObjArray
-// TODO 缩容
+static void
+DaiObjArray_shrink(DaiObjArray* array) {
+    if (array->length > (array->capacity >> 2)) {
+        return;
+    }
+    int old_capacity = array->capacity;
+    array->capacity  = array->capacity >> 1;
+    array->elements  = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
+}
+
+static void
+DaiObjArray_grow(DaiObjArray* array, int want) {
+    int old_capacity = array->capacity;
+    array->capacity  = GROW_CAPACITY(array->capacity);
+    if (want > array->capacity) {
+        array->capacity = want;
+    }
+    array->elements = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
+}
 
 static DaiObjArray*
 DaiObjArray_pcopy(DaiVM* vm, DaiObjArray* array) {
@@ -1150,6 +1168,7 @@ DaiObjArray_pop(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, 
     }
     DaiValue value = array->elements[array->length - 1];
     array->length--;
+    DaiObjArray_shrink(array);
     return value;
 }
 
@@ -1213,6 +1232,7 @@ DaiObjArray_remove(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
                 array->elements[j] = array->elements[j + 1];
             }
             array->length--;
+            DaiObjArray_shrink(array);
             return receiver;
         }
     }
@@ -1246,6 +1266,7 @@ DaiObjArray_removeIndex(__attribute__((unused)) DaiVM* vm, DaiValue receiver, in
         array->elements[i] = array->elements[i + 1];
     }
     array->length--;
+    DaiObjArray_shrink(array);
     return NIL_VAL;
 }
 
@@ -1264,12 +1285,7 @@ DaiObjArray_extend(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int arg
     DaiObjArray* other = AS_ARRAY(argv[0]);
     int want           = array->length + other->length;
     if (want > array->capacity) {
-        int old_capacity = array->capacity;
-        array->capacity  = GROW_CAPACITY(array->capacity);
-        if (want > array->capacity) {
-            array->capacity = want;
-        }
-        array->elements = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
+        DaiObjArray_grow(array, want);
     }
     for (int i = 0; i < other->length; i++) {
         array->elements[array->length + i] = other->elements[i];
@@ -1635,12 +1651,7 @@ DaiObjArray*
 DaiObjArray_append1(DaiVM* vm, DaiObjArray* array, int n, DaiValue* values) {
     int want = array->length + n;
     if (want > array->capacity) {
-        int old_capacity = array->capacity;
-        array->capacity  = GROW_CAPACITY(array->capacity);
-        if (want > array->capacity) {
-            array->capacity = want;
-        }
-        array->elements = GROW_ARRAY(DaiValue, array->elements, old_capacity, array->capacity);
+        DaiObjArray_grow(array, want);
     }
     for (int i = 0; i < n; i++) {
         array->elements[array->length + i] = values[i];
@@ -1653,10 +1664,15 @@ DaiObjArray*
 DaiObjArray_append2(DaiVM* vm, DaiObjArray* array, int n, ...) {
     va_list args;
     va_start(args, n);
-    for (int i = 0; i < n; i++) {
-        DaiValue value = va_arg(args, DaiValue);
-        DaiObjArray_append1(vm, array, 1, &value);
+    int want = array->length + n;
+    if (want > array->capacity) {
+        DaiObjArray_grow(array, want);
     }
+    for (int i = 0; i < n; i++) {
+        DaiValue value                     = va_arg(args, DaiValue);
+        array->elements[array->length + i] = value;
+    }
+    array->length += n;
     va_end(args);
     return array;
 }
