@@ -537,302 +537,302 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
         // string concat operation
         {
             "\"monkey\";",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"mon\" + \"key\";",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"mon\" + \"key\" + \"banana\";",
-            OBJ_VAL(dai_copy_string(&vm, "monkeybanana", 12)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkeybanana", 12)),
         },
 
         // #region format (use {})
         {
             "\"{}\".format(1);",
-            OBJ_VAL(dai_copy_string(&vm, "1", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "1", 1)),
         },
         {
             "\"{{}}\".format(1);",
-            OBJ_VAL(dai_copy_string(&vm, "{1}", 3)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "{1}", 3)),
         },
         {
             "\"{}\".format(1);",
-            OBJ_VAL(dai_copy_string(&vm, "1", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "1", 1)),
         },
         {
             "\"{}{}\".format(1, 2);",
-            OBJ_VAL(dai_copy_string(&vm, "12", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "12", 2)),
         },
         {
             "\"{}{}\".format(1, 2);",
-            OBJ_VAL(dai_copy_string(&vm, "12", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "12", 2)),
         },
         {
             "\"{}{}{}\".format(1, 2, 3);",
-            OBJ_VAL(dai_copy_string(&vm, "123", 3)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "123", 3)),
         },
         {
             "\"{}{}{}\".format(1, 2, 3);",
-            OBJ_VAL(dai_copy_string(&vm, "123", 3)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "123", 3)),
         },
         {
             "\"{}{}{}{}\".format(1, 2, 3, 4);",
-            OBJ_VAL(dai_copy_string(&vm, "1234", 4)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "1234", 4)),
         },
         {
             "\"{}{}{}{}\".format(1, 2, 3, 4);",
-            OBJ_VAL(dai_copy_string(&vm, "1234", 4)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "1234", 4)),
         },
         {
             "\"{}{}{}{}{}\".format(1, 2, 3, 4, 5);",
-            OBJ_VAL(dai_copy_string(&vm, "12345", 5)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "12345", 5)),
         },
         {
             "\"{}{}{}{}{}\".format(1, 2, 3, 4, 5, );",
-            OBJ_VAL(dai_copy_string(&vm, "12345", 5)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "12345", 5)),
         },
         {
             "\"{}{}{}{}{}{}\".format(1, 2, 3, 4, 5, 6);",
-            OBJ_VAL(dai_copy_string(&vm, "123456", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "123456", 6)),
         },
         {
             "\"{}{}{}{}{}{}\".format(1, 2, 3, 4, 5, 6, );",
-            OBJ_VAL(dai_copy_string(&vm, "123456", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "123456", 6)),
         },
         {
             "\"{} is {}\".format(1, 'good');",
-            OBJ_VAL(dai_copy_string(&vm, "1 is good", 9)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "1 is good", 9)),
         },
         {
             "\"{} is {} {}\".format(1, 'good', []);",
-            OBJ_VAL(dai_copy_string(&vm, "1 is good []", 12)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "1 is good []", 12)),
         },
         {
             "\"{} is {} {}\".format('中文', 'good', []);",
-            OBJ_VAL(dai_copy_string(&vm, "中文 is good []", 17)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "中文 is good []", 17)),
         },
         {
             "\"{} is {} {} {}\".format('中文', 'good', [], {});",
-            OBJ_VAL(dai_copy_string(&vm, "中文 is good [] {}", 20)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "中文 is good [] {}", 20)),
         },
         {
             "\"{} is {} {} {}\".format('中文', 'good', [1], {1: 1});",
-            OBJ_VAL(dai_copy_string(&vm, "中文 is good [1] {1: 1, }", 27)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "中文 is good [1] {1: 1, }", 27)),
         },
         {
             "\"{} is {} {} {}\".format('中文', 'good', [1, 2], {1: 1, 2: 2});",
-            OBJ_VAL(dai_copy_string(&vm, "中文 is good [1, 2] {1: 1, 2: 2, }", 36)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "中文 is good [1, 2] {1: 1, 2: 2, }", 36)),
         },
         {
             "\"{} is {} {} {}\".format('中文', 'good', [1, 2, 3], {1: 1, 2: 2, 3: 3});",
-            OBJ_VAL(dai_copy_string(&vm, "中文 is good [1, 2, 3] {1: 1, 2: 2, 3: 3, }", 45)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "中文 is good [1, 2, 3] {1: 1, 2: 2, 3: 3, }", 45)),
         },
         // #endregion
 
         // string index access
         {
             "\"monkey\"[0];",
-            OBJ_VAL(dai_copy_string(&vm, "m", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "m", 1)),
         },
         {
             "\"monkey\"[1];",
-            OBJ_VAL(dai_copy_string(&vm, "o", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "o", 1)),
         },
         {
             "\"monkey\"[2];",
-            OBJ_VAL(dai_copy_string(&vm, "n", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "n", 1)),
         },
         {
             "\"monkey\"[3];",
-            OBJ_VAL(dai_copy_string(&vm, "k", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "k", 1)),
         },
         {
             "\"monkey\"[4];",
-            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "e", 1)),
         },
         {
             "\"monkey\"[5];",
-            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "y", 1)),
         },
         {
             "\"monkey\"[-1];",
-            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "y", 1)),
         },
         {
             "\"monkey\"[-2];",
-            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "e", 1)),
         },
         {
             "\"monkey\"[-3];",
-            OBJ_VAL(dai_copy_string(&vm, "k", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "k", 1)),
         },
         {
             "\"monkey\"[-4];",
-            OBJ_VAL(dai_copy_string(&vm, "n", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "n", 1)),
         },
         {
             "\"monkey\"[-5];",
-            OBJ_VAL(dai_copy_string(&vm, "o", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "o", 1)),
         },
         {
             "\"monkey\"[-6];",
-            OBJ_VAL(dai_copy_string(&vm, "m", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "m", 1)),
         },
 
         // #region sub method
         {
             "\"monkey\".sub(0, 1);",
-            OBJ_VAL(dai_copy_string(&vm, "m", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "m", 1)),
         },
         {
             "\"monkey\".sub(1, 2);",
-            OBJ_VAL(dai_copy_string(&vm, "o", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "o", 1)),
         },
         {
             "\"monkey\".sub(2, 3);",
-            OBJ_VAL(dai_copy_string(&vm, "n", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "n", 1)),
         },
         {
             "\"monkey\".sub(3, 4);",
-            OBJ_VAL(dai_copy_string(&vm, "k", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "k", 1)),
         },
         {
             "\"monkey\".sub(4, 5);",
-            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "e", 1)),
         },
         {
             "\"monkey\".sub(5, 6);",
-            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "y", 1)),
         },
         {
             "\"monkey\".sub(0, 2);",
-            OBJ_VAL(dai_copy_string(&vm, "mo", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "mo", 2)),
         },
         {
             "\"monkey\".sub(1, 3);",
-            OBJ_VAL(dai_copy_string(&vm, "on", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "on", 2)),
         },
         {
             "\"monkey\".sub(2, 4);",
-            OBJ_VAL(dai_copy_string(&vm, "nk", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "nk", 2)),
         },
         {
             "\"monkey\".sub(3, 5);",
-            OBJ_VAL(dai_copy_string(&vm, "ke", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "ke", 2)),
         },
         {
             "\"monkey\".sub(4, 6);",
-            OBJ_VAL(dai_copy_string(&vm, "ey", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "ey", 2)),
         },
         {
             "\"monkey\".sub(5, 7);",
-            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "y", 1)),
         },
         {
             "\"monkey\".sub(0, 0);",
-            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
         },
         {
             "\"monkey\".sub(0, 6);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".sub(0, 7);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".sub(0, 100);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".sub(0, -1);",
-            OBJ_VAL(dai_copy_string(&vm, "monke", 5)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monke", 5)),
         },
         {
             "\"monkey\".sub(0);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".sub(1);",
-            OBJ_VAL(dai_copy_string(&vm, "onkey", 5)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "onkey", 5)),
         },
         {
             "\"monkey\".sub(2);",
-            OBJ_VAL(dai_copy_string(&vm, "nkey", 4)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "nkey", 4)),
         },
         {
             "\"monkey\".sub(3);",
-            OBJ_VAL(dai_copy_string(&vm, "key", 3)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "key", 3)),
         },
         {
             "\"monkey\".sub(4);",
-            OBJ_VAL(dai_copy_string(&vm, "ey", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "ey", 2)),
         },
         {
             "\"monkey\".sub(5);",
-            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "y", 1)),
         },
         {
             "\"monkey\".sub(6);",
-            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
         },
         {
             "\"monkey\".sub(7);",
-            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
         },
         {
             "\"monkey\".sub(100);",
-            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
         },
         {
             "\"monkey\".sub(-1);",
-            OBJ_VAL(dai_copy_string(&vm, "y", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "y", 1)),
         },
         {
             "\"monkey\".sub(-2);",
-            OBJ_VAL(dai_copy_string(&vm, "ey", 2)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "ey", 2)),
         },
         {
             "\"monkey\".sub(-3);",
-            OBJ_VAL(dai_copy_string(&vm, "key", 3)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "key", 3)),
         },
         {
             "\"monkey\".sub(-4);",
-            OBJ_VAL(dai_copy_string(&vm, "nkey", 4)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "nkey", 4)),
         },
         {
             "\"monkey\".sub(-5);",
-            OBJ_VAL(dai_copy_string(&vm, "onkey", 5)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "onkey", 5)),
         },
         {
             "\"monkey\".sub(-6);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".sub(-7);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".sub(-100);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".sub(-1, -1);",
-            OBJ_VAL(dai_copy_string(&vm, "", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 1)),
         },
         {
             "\"monkey\".sub(-2, -1);",
-            OBJ_VAL(dai_copy_string(&vm, "e", 1)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "e", 1)),
         },
         {
             "\"monkey\".sub(-2, -2);",
-            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
         },
         {
             "\"monkey\".sub(-2, -3);",
-            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
         },
         // #endregion
 
@@ -886,94 +886,94 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
         // #region replace method
         {
             "\"monkey\".replace(\"m\", \"M\");",
-            OBJ_VAL(dai_copy_string(&vm, "Monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "Monkey", 6)),
         },
         {
             "\"monkey\".replace(\"o\", \"O\");",
-            OBJ_VAL(dai_copy_string(&vm, "mOnkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "mOnkey", 6)),
         },
         {
             "\"monkey\".replace(\"n\", \"N\");",
-            OBJ_VAL(dai_copy_string(&vm, "moNkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "moNkey", 6)),
         },
         {
             "\"monkey\".replace(\"k\", \"K\");",
-            OBJ_VAL(dai_copy_string(&vm, "monKey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monKey", 6)),
         },
         {
             "\"monkey\".replace(\"e\", \"E\");",
-            OBJ_VAL(dai_copy_string(&vm, "monkEy", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkEy", 6)),
         },
         {
             "\"monkey\".replace(\"y\", \"Y\");",
-            OBJ_VAL(dai_copy_string(&vm, "monkeY", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkeY", 6)),
         },
         {
             "\"monkey\".replace(\"a\", \"A\");",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkey\".replace(\"monkey\", \"MONKEY\");",
-            OBJ_VAL(dai_copy_string(&vm, "MONKEY", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "MONKEY", 6)),
         },
         {
             "\"monkey中文\".replace(\"中文\", \"Chinese\");",
-            OBJ_VAL(dai_copy_string(&vm, "monkeyChinese", 13)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkeyChinese", 13)),
         },
         {
             "\"monkey中文end\".replace(\"end\", \"END\");",
-            OBJ_VAL(dai_copy_string(&vm, "monkey中文END", 15)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey中文END", 15)),
         },
         {
             "\"monkey\".replace(\"monkeybanana\", \"MONKEY\");",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"monkeymonkey\".replace(\"monkey\", \"MONKEY\");",
-            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEY", 12)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "MONKEYMONKEY", 12)),
         },
         {
             "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\");",
-            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYMONKEY", 18)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "MONKEYMONKEYMONKEY", 18)),
         },
         {
             "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 0);",
-            OBJ_VAL(dai_copy_string(&vm, "monkeymonkeymonkey", 18)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkeymonkeymonkey", 18)),
         },
         {
             "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 1);",
-            OBJ_VAL(dai_copy_string(&vm, "MONKEYmonkeymonkey", 18)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "MONKEYmonkeymonkey", 18)),
         },
         {
             "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 2);",
-            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYmonkey", 18)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "MONKEYMONKEYmonkey", 18)),
         },
         {
             "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 3);",
-            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYMONKEY", 18)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "MONKEYMONKEYMONKEY", 18)),
         },
         {
             "\"monkeymonkeymonkey\".replace(\"monkey\", \"MONKEY\", 4);",
-            OBJ_VAL(dai_copy_string(&vm, "MONKEYMONKEYMONKEY", 18)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "MONKEYMONKEYMONKEY", 18)),
         },
         // #endregion
 
         // #region join method
         {
             "''.join([]);",
-            OBJ_VAL(dai_copy_string(&vm, "", 0)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
         },
         {
             "''.join(['monkey']);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "''.join(['mon', 'key']);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "''.join(['mo', 'n', 'key']);",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         // #endregion
 
@@ -995,11 +995,11 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
         // #region strip method
         {
             "\"monkey\".strip();",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         {
             "\"   monkey   \".strip();",
-            OBJ_VAL(dai_copy_string(&vm, "monkey", 6)),
+            OBJ_VAL(dai_copy_string_intern(&vm, "monkey", 6)),
         },
         // #endregion
 
@@ -1040,35 +1040,35 @@ test_string_operation(__attribute__((unused)) const MunitParameter params[],
     DaiObjArray_append2(&vm,
                         array1,
                         2,
-                        OBJ_VAL(dai_copy_string(&vm, "mon", 3)),
-                        OBJ_VAL(dai_copy_string(&vm, "key", 3)));
+                        OBJ_VAL(dai_copy_string_intern(&vm, "mon", 3)),
+                        OBJ_VAL(dai_copy_string_intern(&vm, "key", 3)));
     DaiObjArray* array2 = DaiObjArray_New(&vm, NULL, 0);
     DaiObjArray_append2(&vm,
                         array2,
                         2,
-                        OBJ_VAL(dai_copy_string(&vm, "", 0)),
-                        OBJ_VAL(dai_copy_string(&vm, "onkey", 5)));
+                        OBJ_VAL(dai_copy_string_intern(&vm, "", 0)),
+                        OBJ_VAL(dai_copy_string_intern(&vm, "onkey", 5)));
     DaiObjArray* array3 = DaiObjArray_New(&vm, NULL, 0);
     DaiObjArray_append2(&vm,
                         array3,
                         2,
-                        OBJ_VAL(dai_copy_string(&vm, "mo", 2)),
-                        OBJ_VAL(dai_copy_string(&vm, "ey", 2)));
+                        OBJ_VAL(dai_copy_string_intern(&vm, "mo", 2)),
+                        OBJ_VAL(dai_copy_string_intern(&vm, "ey", 2)));
     DaiObjArray* array4 = DaiObjArray_New(&vm, NULL, 0);
-    DaiObjArray_append2(&vm, array4, 1, OBJ_VAL(dai_copy_string(&vm, "i am good", 9)));
+    DaiObjArray_append2(&vm, array4, 1, OBJ_VAL(dai_copy_string_intern(&vm, "i am good", 9)));
     DaiObjArray* array5 = DaiObjArray_New(&vm, NULL, 0);
     DaiObjArray_append2(&vm,
                         array5,
                         2,
-                        OBJ_VAL(dai_copy_string(&vm, "i", 1)),
-                        OBJ_VAL(dai_copy_string(&vm, "am good", 8)));
+                        OBJ_VAL(dai_copy_string_intern(&vm, "i", 1)),
+                        OBJ_VAL(dai_copy_string_intern(&vm, "am good", 8)));
     DaiObjArray* array6 = DaiObjArray_New(&vm, NULL, 0);
     DaiObjArray_append2(&vm,
                         array6,
                         3,
-                        OBJ_VAL(dai_copy_string(&vm, "i", 1)),
-                        OBJ_VAL(dai_copy_string(&vm, "am", 2)),
-                        OBJ_VAL(dai_copy_string(&vm, "good", 4)));
+                        OBJ_VAL(dai_copy_string_intern(&vm, "i", 1)),
+                        OBJ_VAL(dai_copy_string_intern(&vm, "am", 2)),
+                        OBJ_VAL(dai_copy_string_intern(&vm, "good", 4)));
     DaiVMTestCase split_tests[] = {
         {
             "\"mon key\".split();",   // [ "mon", "key" ]
@@ -2362,7 +2362,7 @@ test_map(__attribute__((unused)) const MunitParameter params[],
                         INTEGER_VAL(1),
                         INTEGER_VAL(2),
                         INTEGER_VAL(3),
-                        OBJ_VAL(dai_copy_string(&vm, "four", 4)));
+                        OBJ_VAL(dai_copy_string_intern(&vm, "four", 4)));
 
     const DaiVMTestCase tests[] = {
         // #region map subscript get

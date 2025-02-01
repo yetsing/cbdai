@@ -174,6 +174,10 @@ struct DaiObjString {
     uint32_t hash;
 };
 
+__attribute__((unused)) DaiObjString*
+dai_take_string_intern(DaiVM* vm, char* chars, int length);
+DaiObjString*
+dai_copy_string_intern(DaiVM* vm, const char* chars, int length);
 DaiObjString*
 dai_take_string(DaiVM* vm, char* chars, int length);
 DaiObjString*

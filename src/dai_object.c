@@ -147,7 +147,7 @@ DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename) {
     DaiObjFunction* function = ALLOCATE_OBJ(vm, DaiObjFunction, DaiObjType_function);
     function->obj.operation  = &function_operation;
     function->arity          = 0;
-    function->name           = dai_copy_string(vm, name, strlen(name));
+    function->name           = dai_copy_string_intern(vm, name, strlen(name));
     DaiChunk_init(&function->chunk, filename);
     function->superclass = NULL;
     return function;
@@ -1018,6 +1018,14 @@ DaiObjString_subscript_set(__attribute__((unused)) DaiVM* vm, DaiValue receiver,
     return OBJ_VAL(err);
 }
 
+static int
+DaiObjString_equal(DaiValue a, DaiValue b, __attribute__((unused)) int* limit) {
+    DaiObjString* sa = AS_STRING(a);
+    DaiObjString* sb = AS_STRING(b);
+    return (sa == sb) ||
+           (sa->length == sb->length && strncmp(sa->chars, sb->chars, sa->length) == 0);
+}
+
 static uint64_t
 DaiObjString_hash(DaiValue value) {
     return AS_STRING(value)->hash;
@@ -1029,11 +1037,10 @@ static struct DaiOperation string_operation = {
     .subscript_get_func = DaiObjString_subscript_get,
     .subscript_set_func = DaiObjString_subscript_set,
     .string_func        = DaiObjString_String,
-    // 因为相同的字符串会被重用，所以直接比较指针（字符串驻留）
-    .equal_func     = dai_default_equal,
-    .hash_func      = DaiObjString_hash,
-    .iter_init_func = NULL,
-    .iter_next_func = NULL,
+    .equal_func         = DaiObjString_equal,
+    .hash_func          = DaiObjString_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
 };
 
 
@@ -1057,8 +1064,8 @@ hash_string(const char* key, int length) {
     }
     return hash;
 }
-DaiObjString*
-dai_take_string(DaiVM* vm, char* chars, int length) {
+__attribute__((unused)) DaiObjString*
+dai_take_string_intern(DaiVM* vm, char* chars, int length) {
     uint32_t hash          = hash_string(chars, length);
     DaiObjString* interned = DaiTable_findString(&vm->strings, chars, length, hash);
     if (interned != NULL) {
@@ -1069,11 +1076,26 @@ dai_take_string(DaiVM* vm, char* chars, int length) {
     return allocate_string(vm, chars, length, hash);
 }
 DaiObjString*
-dai_copy_string(DaiVM* vm, const char* chars, int length) {
+dai_copy_string_intern(DaiVM* vm, const char* chars, int length) {
     uint32_t hash          = hash_string(chars, length);
     DaiObjString* interned = DaiTable_findString(&vm->strings, chars, length, hash);
     if (interned != NULL) return interned;
 
+    char* heap_chars = VM_ALLOCATE(vm, char, length + 1);
+    memcpy(heap_chars, chars, length);
+    heap_chars[length] = '\0';
+    return allocate_string(vm, heap_chars, length, hash);
+}
+
+DaiObjString*
+dai_take_string(DaiVM* vm, char* chars, int length) {
+    uint32_t hash = hash_string(chars, length);
+    return allocate_string(vm, chars, length, hash);
+}
+
+DaiObjString*
+dai_copy_string(DaiVM* vm, const char* chars, int length) {
+    uint32_t hash    = hash_string(chars, length);
     char* heap_chars = VM_ALLOCATE(vm, char, length + 1);
     memcpy(heap_chars, chars, length);
     heap_chars[length] = '\0';
@@ -2236,7 +2258,7 @@ builtin_type(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue
     }
     const DaiValue arg = argv[0];
     const char* s      = dai_value_ts(arg);
-    return OBJ_VAL(dai_copy_string(vm, s, strlen(s)));
+    return OBJ_VAL(dai_copy_string_intern(vm, s, strlen(s)));
 }
 
 static DaiValue
