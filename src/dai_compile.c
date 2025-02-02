@@ -143,8 +143,8 @@ typedef struct {
     // 匿名函数数量，用来给匿名函数命名区分
     int anonymous_count;
 
-    IntArray scope_stack;   // 记录作用域
-    IntArray break_array;   // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
+    IntArray scope_stack;      // 记录作用域
+    IntArray break_array;      // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
     IntArray continue_array;   // 记录 continue 跳转指令的位置，用于后续更新跳转偏移量
 
 } DaiCompiler;
