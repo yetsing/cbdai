@@ -1,0 +1,42 @@
+# donut 甜甜圈
+fn donut_2d(x, y) {
+    # same radius as before, though the donut will appear larger as
+    # half the thickness is outside this radius
+    var radius = 0.4;
+    # how thick the donut will be
+    var thickness = 0.3;
+    # take the abs of the circle calculation from before, subtracting
+    # `thickness / 2`. `abs(...)` will be 0 on the edge of the circle, and
+    # increase as you move away. therefore, `abs(...) - thickness / 2` will
+    # be ≤ 0 only `thickness / 2` units away from the circle's edge on either
+    # side, giving a donut with a total width of `thickness`
+    return abs(math_sqrt(x * x + y * y) - radius) - thickness / 2;
+}
+
+fn sample(x, y) {
+  # return a '#' if we're inside the circle, and ' ' otherwise
+  if (donut_2d(x, y) <= 0) {
+    return '#';
+  } else {
+    return ' ';
+  }
+}
+
+while (true) {
+    # loop over each position and sample a character
+    var frame_chars = [];
+    for (var _, y in range(20)) {
+        for (var _, x in range(80)) {
+            # remap to -1..1 range (for x)...
+            var remapped_x = x / 80.0 * 2 - 1;
+            # ...and corrected for aspect ratio range (for y)
+            var remapped_y = (y / 20.0 * 2 - 1) * (2 * 20.0 / 80);
+            frame_chars.append(sample(remapped_x, remapped_y));
+        }
+        frame_chars.append('\n');
+    }
+    # print out a control sequence to clear the terminal, then the frame.
+    # important note! if you're using windows, see the note below.
+    print('\x1b[2J' + ''.join(frame_chars));
+    time_sleep(1.0 / 30);
+}

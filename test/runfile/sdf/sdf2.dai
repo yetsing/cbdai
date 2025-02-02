@@ -1,0 +1,36 @@
+fn circle(x, y) {
+    # since the range of x is -1..1, the circle's radius will be 40%,
+    # meaning the circle's diameter is 40% of the screen
+    var radius = 0.4;
+    # calculate the distance from the center of the screen and subtract the
+    # radius, so d will be < 0 inside the circle, 0 on the edge, and > 0 outside
+    return math_sqrt(x * x + y*y) - radius;
+}
+
+fn sample(x, y) {
+  # return a '#' if we're inside the circle, and ' ' otherwise
+  if (circle(x, y) <= 0) {
+    return '#';
+  } else {
+    return ' ';
+  }
+}
+
+while (true) {
+    # loop over each position and sample a character
+    var frame_chars = [];
+    for (var _, y in range(20)) {
+        for (var _, x in range(80)) {
+            # remap to -1..1 range (for x)...
+            var remapped_x = x / 80.0 * 2 - 1;
+            # ...and corrected for aspect ratio range (for y)
+            var remapped_y = (y / 20.0 * 2 - 1) * (2 * 20.0 / 80);
+            frame_chars.append(sample(remapped_x, remapped_y));
+        }
+        frame_chars.append('\n');
+    }
+    # print out a control sequence to clear the terminal, then the frame.
+    # important note! if you're using windows, see the note below.
+    print('\x1b[2J' + ''.join(frame_chars));
+    time_sleep(1.0 / 30);
+}

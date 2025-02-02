@@ -1,0 +1,38 @@
+# sphere 球
+fn sphere(x, y, z) {
+    var radius = 0.4;
+    return math_sqrt(x*x + y*y + z*z) - radius;
+}
+
+fn sample(x, y) {
+    var radius = 0.4;
+    var z = -10;
+    for (var _, _step in range(30)) {
+        var d = sphere(x, y, z);
+        if (d <= 0.01) {
+            return '#';
+        } else {
+            z += d;
+        }
+    }
+    return ' ';
+}
+
+while (true) {
+    # loop over each position and sample a character
+    var frame_chars = [];
+    for (var _, y in range(20)) {
+        for (var _, x in range(80)) {
+            # remap to -1..1 range (for x)...
+            var remapped_x = x / 80.0 * 2 - 1;
+            # ...and corrected for aspect ratio range (for y)
+            var remapped_y = (y / 20.0 * 2 - 1) * (2 * 20.0 / 80);
+            frame_chars.append(sample(remapped_x, remapped_y));
+        }
+        frame_chars.append('\n');
+    }
+    # print out a control sequence to clear the terminal, then the frame.
+    # important note! if you're using windows, see the note below.
+    print('\x1b[2J' + ''.join(frame_chars));
+    time_sleep(1.0 / 30);
+}

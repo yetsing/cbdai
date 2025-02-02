@@ -1,0 +1,24 @@
+
+fn sample(x, y) {
+  # draw an alternating checkboard pattern
+  if ((x + y + time_time()) % 2) {
+    return '#';
+  } else {
+    return ' ';
+  }
+}
+
+while (true) {
+    # loop over each position and sample a character
+    var frame_chars = [];
+    for (var _, y in range(20)) {
+        for (var _, x in range(80)) {
+            frame_chars.append(sample(x, y));
+        }
+        frame_chars.append('\n');
+    }
+    # print out a control sequence to clear the terminal, then the frame.
+    # important note! if you're using windows, see the note below.
+    print('\x1b[2J' + ''.join(frame_chars));
+    time_sleep(1.0 / 30);
+}
