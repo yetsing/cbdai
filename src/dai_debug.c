@@ -119,7 +119,7 @@ static int
 closure_instruction(const char* name, DaiChunk* chunk, int offset) {
     int index = DaiChunk_readu16(chunk, offset + 1);
     int count = DaiChunk_read(chunk, offset + 3);
-    printf("%-16s %4d %4d(free)\n", name, index, count);
+    printf("%-16s %4d %4d(free variable)\n", name, index, count);
     return offset + 4;
 }
 
@@ -217,6 +217,9 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpGetLocal: return local_instruction("OP_GET_LOCAL", chunk, offset);
 
         case DaiOpGetBuiltin: return builtin_instruction("OP_GET_BUILTIN", chunk, offset);
+
+        case DaiOpSetFunctionDefault:
+            return simple_instruction1("OP_SET_FUNCTION_DEFAULT", chunk, offset);
 
         case DaiOpClosure: return closure_instruction("OP_CLOSURE", chunk, offset);
 

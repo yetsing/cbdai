@@ -2,6 +2,7 @@
 内存操作封装，用于编译和运行时
 */
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "dai_memory.h"
@@ -99,13 +100,18 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
         }
         case DaiObjType_closure: {
             DaiObjClosure* closure = (DaiObjClosure*)object;
-            VM_FREE_ARRAY(vm, DaiValue, closure->frees, closure->free_count);
+            if (closure->frees != NULL) {
+                VM_FREE_ARRAY(vm, DaiValue, closure->frees, closure->free_count);
+            }
             VM_FREE(vm, DaiObjClosure, object);
             break;
         }
         case DaiObjType_function: {
             DaiObjFunction* function = (DaiObjFunction*)object;
             DaiChunk_reset(&function->chunk);
+            if (function->defaults != NULL) {
+                VM_FREE_ARRAY(vm, DaiValue, function->defaults, function->default_count);
+            }
             VM_FREE(vm, DaiObjFunction, object);
             break;
         }
@@ -257,6 +263,9 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             DaiObjFunction* function = (DaiObjFunction*)object;
             markObject(vm, (DaiObj*)function->name);
             markArray(vm, &(function->chunk.constants));
+            for (int i = 0; i < function->default_count; i++) {
+                markValue(vm, function->defaults[i]);
+            }
             break;
         }
         case DaiObjType_rangeIterator:

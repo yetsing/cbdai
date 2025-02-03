@@ -104,6 +104,8 @@ typedef struct {
     DaiChunk chunk;
     DaiObjString* name;
     DaiObjClass* superclass;   // 用于实现 super
+    DaiValue* defaults;        // 函数参数的默认值
+    int default_count;
 } DaiObjFunction;
 DaiObjFunction*
 DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename);

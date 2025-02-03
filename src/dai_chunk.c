@@ -78,6 +78,9 @@ static DaiOpCodeDefinition definitions[] = {
 
     [DaiOpGetBuiltin] = {.name = "DaiOpGetBuiltin", .operand_bytes = 1},
 
+    // 操作数：uint8 函数默认值的个数
+    [DaiOpSetFunctionDefault] = {.name = "DaiOpSetFunctionDefault", .operand_bytes = 1},
+
     // 操作数: uint16 函数常量的索引，uint8 自由变量个数
     [DaiOpClosure] = {.name = "DaiOpClosure", .operand_bytes = 3},
 

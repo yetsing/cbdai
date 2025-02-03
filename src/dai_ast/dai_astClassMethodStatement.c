@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "dai_array.h"
 #include "dai_ast/dai_astClassMethodStatement.h"
 #include "dai_ast/dai_astcommon.h"
 #include "dai_malloc.h"
@@ -18,12 +19,27 @@ DaiAstClassMethodStatement_string(DaiAstBase* base, bool recursive) {
     DaiStringBuffer_writef(sb, "%sname: %s,\n", indent, stmt->name);
     {
         DaiStringBuffer_write(sb, indent);
-        DaiStringBuffer_write(sb, "parameters: [");
+        DaiStringBuffer_write(sb, "parameters: [\n");
+        size_t default_length = DaiArray_length(stmt->defaults);
         for (size_t i = 0; i < stmt->parameters_count; i++) {
+            DaiStringBuffer_write(sb, doubleindent);
             DaiAstIdentifier* param = stmt->parameters[i];
             DaiStringBuffer_write(sb, param->value);
-            DaiStringBuffer_write(sb, ", ");
+            if (i >= stmt->parameters_count - default_length) {
+                DaiStringBuffer_write(sb, " = ");
+                DaiAstExpression* e = *(DaiAstExpression**)DaiArray_get(
+                    stmt->defaults, i - (stmt->parameters_count - default_length));
+                if (recursive) {
+                    char* s = e->string_fn((DaiAstBase*)e, recursive);
+                    DaiStringBuffer_writeWithLinePrefix(sb, s, doubleindent);
+                    dai_free(s);
+                } else {
+                    DaiStringBuffer_writePointer(sb, e);
+                }
+            }
+            DaiStringBuffer_write(sb, ",\n");
         }
+        DaiStringBuffer_write(sb, indent);
         DaiStringBuffer_write(sb, "],\n");
     }
 
@@ -56,6 +72,15 @@ DaiAstClassMethodStatement_free(DaiAstBase* base, bool recursive) {
         }
         dai_free(stmt->parameters);
     }
+    if (stmt->defaults != NULL) {
+        if (recursive) {
+            for (size_t i = 0; i < DaiArray_length(stmt->defaults); i++) {
+                DaiAstExpression* e = *(DaiAstExpression**)DaiArray_get(stmt->defaults, i);
+                e->free_fn((DaiAstBase*)e, true);
+            }
+        }
+        DaiArray_free(stmt->defaults);
+    }
     if (stmt->body != NULL) {
         if (recursive) {
             stmt->body->free_fn((DaiAstBase*)stmt->body, true);
@@ -71,6 +96,7 @@ DaiAstClassMethodStatement_New(void) {
     f->name                       = NULL;
     f->parameters_count           = 0;
     f->parameters                 = NULL;
+    f->defaults                   = DaiArray_New(sizeof(DaiAstExpression*));
     f->body                       = NULL;
     {
         f->type      = DaiAstType_ClassMethodStatement;

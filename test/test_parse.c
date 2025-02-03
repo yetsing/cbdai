@@ -1,6 +1,7 @@
 #include <limits.h>
 #include <stdio.h>
 
+#include "dai_array.h"
 #include "dai_ast/dai_astexpression.h"
 #include "dai_ast/dai_asttype.h"
 #include "munit/munit.h"
@@ -892,34 +893,75 @@ test_function_literal_parsing(__attribute__((unused)) const MunitParameter param
 static MunitResult
 test_function_statements(__attribute__((unused)) const MunitParameter params[],
                          __attribute__((unused)) void* user_data) {
-    const char* input = "fn add(x, y) {x + y;};";
-    DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
-    DaiAstProgram* program = &prog;
-    parse_helper(input, program);
-
-    munit_assert_int(program->length, ==, 1);
-    DaiAstStatement* stmt = program->statements[0];
-    munit_assert_int(stmt->type, ==, DaiAstType_FunctionStatement);
     {
-        munit_assert_int(stmt->start_line, ==, 1);
-        munit_assert_int(stmt->start_column, ==, 1);
-        munit_assert_int(stmt->end_line, ==, 1);
-        munit_assert_int(stmt->end_column, ==, 23);
+
+        const char* input = "fn add(x, y) {x + y;};";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
+
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_FunctionStatement);
+        {
+            munit_assert_int(stmt->start_line, ==, 1);
+            munit_assert_int(stmt->start_column, ==, 1);
+            munit_assert_int(stmt->end_line, ==, 1);
+            munit_assert_int(stmt->end_column, ==, 23);
+        }
+
+        DaiAstFunctionStatement* func = (DaiAstFunctionStatement*)stmt;
+        munit_assert_string_equal(func->name, "add");
+        munit_assert_int(func->parameters_count, ==, 2);
+        check_identifier((DaiAstExpression*)func->parameters[0], "x");
+        check_identifier((DaiAstExpression*)func->parameters[1], "y");
+
+        munit_assert_size(DaiArray_length(func->defaults), ==, 0);
+
+        munit_assert_int(func->body->length, ==, 1);
+        DaiAstExpressionStatement* body_stmt =
+            (DaiAstExpressionStatement*)func->body->statements[0];
+        munit_assert_int(body_stmt->type, ==, DaiAstType_ExpressionStatement);
+        check_infix_expression_string(body_stmt->expression, "x", "+", "y");
+
+        program->free_fn((DaiAstBase*)program, true);
     }
+    {
 
-    DaiAstFunctionStatement* func = (DaiAstFunctionStatement*)stmt;
-    munit_assert_string_equal(func->name, "add");
-    munit_assert_int(func->parameters_count, ==, 2);
-    check_identifier((DaiAstExpression*)func->parameters[0], "x");
-    check_identifier((DaiAstExpression*)func->parameters[1], "y");
+        const char* input = "fn add(x, y=2) {x + y;};";
+        DaiAstProgram prog;
+        DaiAstProgram_init(&prog);
+        DaiAstProgram* program = &prog;
+        parse_helper(input, program);
 
-    munit_assert_int(func->body->length, ==, 1);
-    DaiAstExpressionStatement* body_stmt = (DaiAstExpressionStatement*)func->body->statements[0];
-    munit_assert_int(body_stmt->type, ==, DaiAstType_ExpressionStatement);
-    check_infix_expression_string(body_stmt->expression, "x", "+", "y");
+        munit_assert_int(program->length, ==, 1);
+        DaiAstStatement* stmt = program->statements[0];
+        munit_assert_int(stmt->type, ==, DaiAstType_FunctionStatement);
+        {
+            munit_assert_int(stmt->start_line, ==, 1);
+            munit_assert_int(stmt->start_column, ==, 1);
+            munit_assert_int(stmt->end_line, ==, 1);
+            munit_assert_int(stmt->end_column, ==, 25);
+        }
 
-    program->free_fn((DaiAstBase*)program, true);
+        DaiAstFunctionStatement* func = (DaiAstFunctionStatement*)stmt;
+        munit_assert_string_equal(func->name, "add");
+        munit_assert_int(func->parameters_count, ==, 2);
+        check_identifier((DaiAstExpression*)func->parameters[0], "x");
+        check_identifier((DaiAstExpression*)func->parameters[1], "y");
+
+        munit_assert_size(DaiArray_length(func->defaults), ==, 1);
+        check_integer_literal(*(DaiAstExpression**)DaiArray_get(func->defaults, 0), 2);
+
+        munit_assert_int(func->body->length, ==, 1);
+        DaiAstExpressionStatement* body_stmt =
+            (DaiAstExpressionStatement*)func->body->statements[0];
+        munit_assert_int(body_stmt->type, ==, DaiAstType_ExpressionStatement);
+        check_infix_expression_string(body_stmt->expression, "x", "+", "y");
+
+        program->free_fn((DaiAstBase*)program, true);
+    }
     return MUNIT_OK;
 }
 
@@ -1726,6 +1768,16 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
             "SyntaxError: no prefix parse function for \"DaiTokenType_eof\" "
             "found in <test>:1:10",
         },
+        {
+            "fn func(a=1, b) {};",
+            "SyntaxError: parameter with default value must be at the end of the parameter list in "
+            "<test>:1:14",
+        },
+        {
+            "var func = fn(a=1, b) {};",
+            "SyntaxError: parameter with default value must be at the end of the parameter list in "
+            "<test>:1:20",
+        },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiSyntaxError* syntax_error = parse_error(tests[i].input);
@@ -1820,6 +1872,12 @@ recursive_string_and_free(DaiAstBase* ast) {
             for (size_t i = 0; i < statement->parameters_count; i++) {
                 recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
             }
+            {
+                size_t default_length = DaiArray_length(statement->defaults);
+                for (size_t i = 0; i < default_length; i++) {
+                    recursive_string_and_free(*(DaiAstBase**)DaiArray_get(statement->defaults, i));
+                }
+            }
             recursive_string_and_free((DaiAstBase*)statement->body);
             statement->free_fn((DaiAstBase*)statement, false);
             break;
@@ -1853,6 +1911,12 @@ recursive_string_and_free(DaiAstBase* ast) {
             for (size_t i = 0; i < statement->parameters_count; i++) {
                 recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
             }
+            {
+                size_t default_length = DaiArray_length(statement->defaults);
+                for (size_t i = 0; i < default_length; i++) {
+                    recursive_string_and_free(*(DaiAstBase**)DaiArray_get(statement->defaults, i));
+                }
+            }
             recursive_string_and_free((DaiAstBase*)statement->body);
             statement->free_fn((DaiAstBase*)statement, false);
             break;
@@ -1872,6 +1936,12 @@ recursive_string_and_free(DaiAstBase* ast) {
             free(s);
             for (size_t i = 0; i < statement->parameters_count; i++) {
                 recursive_string_and_free((DaiAstBase*)statement->parameters[i]);
+            }
+            {
+                size_t default_length = DaiArray_length(statement->defaults);
+                for (size_t i = 0; i < default_length; i++) {
+                    recursive_string_and_free(*(DaiAstBase**)DaiArray_get(statement->defaults, i));
+                }
             }
             recursive_string_and_free((DaiAstBase*)statement->body);
             statement->free_fn((DaiAstBase*)statement, false);
@@ -1964,6 +2034,12 @@ recursive_string_and_free(DaiAstBase* ast) {
             }
             for (size_t i = 0; i < literal->parameters_count; i++) {
                 recursive_string_and_free((DaiAstBase*)literal->parameters[i]);
+            }
+            {
+                size_t default_length = DaiArray_length(literal->defaults);
+                for (size_t i = 0; i < default_length; i++) {
+                    recursive_string_and_free(*(DaiAstBase**)DaiArray_get(literal->defaults, i));
+                }
             }
             recursive_string_and_free((DaiAstBase*)literal->body);
             literal->free_fn((DaiAstBase*)literal, false);

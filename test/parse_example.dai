@@ -58,6 +58,9 @@ class Foo {
         super.set(a);
         s = a;
     }
+    fn say(msg, name='world') {
+        print(msg, name);
+    }
 
     class var c = 4;
     class fn cget() {}
@@ -65,6 +68,9 @@ class Foo {
         self.c = c;
         s = c;
     };
+    class fn csay(msg, name='world') {
+        print(msg, name);
+    }
 };
 
 class Goo < Foo {};
@@ -121,3 +127,9 @@ var m = {
 for (var k, v in m) {
     print(k, v);
 }
+
+fn has_default_param(a, b = 2) {
+
+}
+
+var has_default_fn = fn(a, b = 2) {};

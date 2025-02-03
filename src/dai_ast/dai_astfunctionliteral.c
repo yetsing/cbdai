@@ -1,5 +1,6 @@
 #include <assert.h>
 
+#include "dai_array.h"
 #include "dai_ast/dai_astcommon.h"
 #include "dai_ast/dai_astfunctionliteral.h"
 #include "dai_malloc.h"
@@ -17,12 +18,27 @@ DaiAstFunctionLiteral_string(DaiAstBase* base, bool recursive) {
                           KEY_COLOR("type") ": " TYPE_COLOR("DaiAstType_FunctionLiteral") ",\n");
     {
         DaiStringBuffer_write(sb, indent);
-        DaiStringBuffer_write(sb, "parameters: [");
+        DaiStringBuffer_write(sb, "parameters: [\n");
+        size_t default_length = DaiArray_length(expr->defaults);
         for (size_t i = 0; i < expr->parameters_count; i++) {
+            DaiStringBuffer_write(sb, doubleindent);
             DaiAstIdentifier* param = expr->parameters[i];
             DaiStringBuffer_write(sb, param->value);
-            DaiStringBuffer_write(sb, ", ");
+            if (i >= expr->parameters_count - default_length) {
+                DaiStringBuffer_write(sb, " = ");
+                DaiAstExpression* e = *(DaiAstExpression**)DaiArray_get(
+                    expr->defaults, i - (expr->parameters_count - default_length));
+                if (recursive) {
+                    char* s = e->string_fn((DaiAstBase*)e, recursive);
+                    DaiStringBuffer_writeWithLinePrefix(sb, s, doubleindent);
+                    dai_free(s);
+                } else {
+                    DaiStringBuffer_writePointer(sb, e);
+                }
+            }
+            DaiStringBuffer_write(sb, ",\n");
         }
+        DaiStringBuffer_write(sb, indent);
         DaiStringBuffer_write(sb, "],\n");
     }
 
@@ -55,6 +71,15 @@ DaiAstFunctionLiteral_free(DaiAstBase* base, bool recursive) {
         }
         dai_free(expr->parameters);
     }
+    if (expr->defaults != NULL) {
+        if (recursive) {
+            for (size_t i = 0; i < DaiArray_length(expr->defaults); i++) {
+                DaiAstExpression* e = *(DaiAstExpression**)DaiArray_get(expr->defaults, i);
+                e->free_fn((DaiAstBase*)e, true);
+            }
+        }
+        DaiArray_free(expr->defaults);
+    }
     if (expr->body != NULL) {
         if (recursive) {
             expr->body->free_fn((DaiAstBase*)expr->body, true);
@@ -69,9 +94,18 @@ DaiAstFunctionLiteral_literal(DaiAstExpression* base) {
     DaiAstFunctionLiteral* expr = (DaiAstFunctionLiteral*)base;
     DaiStringBuffer* sb         = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "fn(");
+    size_t default_length = DaiArray_length(expr->defaults);
     for (size_t i = 0; i < expr->parameters_count; i++) {
         DaiAstIdentifier* param = expr->parameters[i];
         DaiStringBuffer_write(sb, param->value);
+        if (i >= expr->parameters_count - default_length) {
+            DaiStringBuffer_write(sb, " = ");
+            DaiAstExpression* e = *(DaiAstExpression**)DaiArray_get(
+                expr->defaults, i - (expr->parameters_count - default_length));
+            char* s = e->literal_fn(e);
+            DaiStringBuffer_write(sb, s);
+            dai_free(s);
+        }
         DaiStringBuffer_write(sb, ", ");
     }
 
@@ -85,6 +119,7 @@ DaiAstFunctionLiteral_New(void) {
     DaiAstFunctionLiteral* f = dai_malloc(sizeof(DaiAstFunctionLiteral));
     f->parameters_count      = 0;
     f->parameters            = NULL;
+    f->defaults              = DaiArray_New(sizeof(DaiAstExpression*));
     f->body                  = NULL;
     {
         f->type       = DaiAstType_FunctionLiteral;

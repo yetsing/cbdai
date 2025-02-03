@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "dai_array.h"
 #include "dai_assert.h"
 #include "dai_ast.h"
 #include "dai_ast/dai_astForInStatement.h"
@@ -653,7 +654,7 @@ Parser_FreeFunctionParameters(DaiAstIdentifier** params, size_t param_count) {
 
 // 返回 NULL 表示解析失败
 static DaiAstIdentifier**
-Parser_parseFunctionParameters(Parser* p, size_t* param_count) {
+Parser_parseFunctionParameters(Parser* p, size_t* param_count, DaiArray* defaults) {
     size_t param_size         = 4;
     DaiAstIdentifier** params = dai_malloc(sizeof(DaiAstIdentifier*) * param_size);
     *param_count              = 0;
@@ -665,6 +666,8 @@ Parser_parseFunctionParameters(Parser* p, size_t* param_count) {
         return params;
     }
 
+    bool found_default = false;
+
     // 第一个参数
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
         Parser_FreeFunctionParameters(params, *param_count);
@@ -673,6 +676,19 @@ Parser_parseFunctionParameters(Parser* p, size_t* param_count) {
     DaiAstIdentifier* param = DaiAstIdentifier_New(p->cur_token);
     params[*param_count]    = param;
     (*param_count)++;
+    // 解析默认值
+    if (Parser_peekTokenIs(p, DaiTokenType_assign)) {
+        Parser_nextToken(p);
+        Parser_nextToken(p);
+        DaiAstExpression* default_value = Parser_parseExpression(p, Precedence_Lowest);
+        if (default_value == NULL) {
+            Parser_FreeFunctionParameters(params, *param_count);
+            return NULL;
+        }
+        DaiArray_append(defaults, &default_value);
+        found_default = true;
+    }
+
     // 解析后面的参数，格式为 (, ident) ...
     while (Parser_peekTokenIs(p, DaiTokenType_comma)) {
         Parser_nextToken(p);
@@ -698,6 +714,30 @@ Parser_parseFunctionParameters(Parser* p, size_t* param_count) {
         param                = DaiAstIdentifier_New(p->cur_token);
         params[*param_count] = param;
         (*param_count)++;
+        if (!Parser_peekTokenIs(p, DaiTokenType_assign)) {
+            if (found_default) {
+                char buf[256];
+                snprintf(buf,
+                         sizeof(buf),
+                         "parameter with default value must be at the end of the parameter list");
+                int line        = p->cur_token->start_line;
+                int column      = p->cur_token->start_column;
+                p->syntax_error = DaiSyntaxError_New(buf, line, column);
+                Parser_FreeFunctionParameters(params, *param_count);
+                return NULL;
+            }
+            continue;
+        }
+        // 解析默认值
+        Parser_nextToken(p);
+        Parser_nextToken(p);
+        DaiAstExpression* default_value = Parser_parseExpression(p, Precedence_Lowest);
+        if (default_value == NULL) {
+            Parser_FreeFunctionParameters(params, *param_count);
+            return NULL;
+        }
+        DaiArray_append(defaults, &default_value);
+        found_default = true;
     }
     // 结尾右括号
     if (!Parser_expectPeek(p, DaiTokenType_rparen)) {
@@ -720,7 +760,7 @@ Parser_parseFunctionLiteral(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count);
+    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count, func->defaults);
     if (func->parameters == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
@@ -989,7 +1029,7 @@ Parser_parseClassMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count);
+    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count, func->defaults);
     if (func->parameters == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
@@ -1123,7 +1163,7 @@ Parser_parseMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count);
+    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count, func->defaults);
     if (func->parameters == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
@@ -1279,7 +1319,7 @@ Parser_parseFunctionStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count);
+    func->parameters = Parser_parseFunctionParameters(p, &func->parameters_count, func->defaults);
     if (func->parameters == NULL) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;

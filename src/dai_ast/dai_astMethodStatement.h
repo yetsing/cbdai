@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "dai_array.h"
 #include "dai_ast/dai_astblockstatement.h"
 #include "dai_ast/dai_astidentifier.h"
 
@@ -11,6 +12,7 @@ typedef struct {
     char* name;
     size_t parameters_count;
     DaiAstIdentifier** parameters;
+    DaiArray* defaults;   // DaiAstExpression* array
     DaiAstBlockStatement* body;
 } DaiAstMethodStatement;
 

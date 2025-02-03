@@ -2713,6 +2713,39 @@ test_forin_statement(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_calling_functions_with_defalut(__attribute__((unused)) const MunitParameter params[],
+                                    __attribute__((unused)) void* user_data) {
+    DaiVMTestCase tests[] = {
+        {
+            "fn f(a = 1) { return a; }; f();",
+            INTEGER_VAL(1),
+        },
+        {
+            "fn f(a = 1) { return a; }; f(2);",
+            INTEGER_VAL(2),
+        },
+        {
+            "fn f(a, b=1, c=2) { return a + b + c; }; f(1);",
+            INTEGER_VAL(4),
+        },
+        {
+            "fn f(a, b=1, c=2) { return a + b + c; }; f(1, 2);",
+            INTEGER_VAL(5),
+        },
+        {
+            "fn f(a, b=1, c=2) { return a + b + c; }; f(1, 2, 3);",
+            INTEGER_VAL(6),
+        },
+        {
+            "var a = 30; fn f(a, b=1, c=2, d = a) { return a + b + c + d; }; f(1, 2, 3);",
+            INTEGER_VAL(36),
+        },
+    };
+    run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
+    return MUNIT_OK;
+}
+
 MunitTest vm_tests[] = {
     {(char*)"/test_number_arithmetic",
      test_number_arithmetic,
@@ -2789,5 +2822,11 @@ MunitTest vm_tests[] = {
     {(char*)"/test_map", test_map, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/test_assign_statement", test_assign_statement, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {"/test_forin_statement", test_forin_statement, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/test_calling_functions_with_defalut",
+     test_calling_functions_with_defalut,
+     NULL,
+     NULL,
+     MUNIT_TEST_OPTION_NONE,
+     NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

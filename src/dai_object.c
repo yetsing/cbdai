@@ -149,7 +149,9 @@ DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename) {
     function->arity          = 0;
     function->name           = dai_copy_string_intern(vm, name, strlen(name));
     DaiChunk_init(&function->chunk, filename);
-    function->superclass = NULL;
+    function->superclass    = NULL;
+    function->defaults      = NULL;
+    function->default_count = 0;
     return function;
 }
 

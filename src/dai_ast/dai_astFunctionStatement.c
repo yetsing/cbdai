@@ -8,22 +8,37 @@
 static char*
 DaiAstFunctionStatement_string(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_FunctionStatement);
-    DaiAstFunctionStatement* expr = (DaiAstFunctionStatement*)base;
+    DaiAstFunctionStatement* stmt = (DaiAstFunctionStatement*)base;
     DaiStringBuffer* sb           = DaiStringBuffer_New();
     DaiStringBuffer_write(sb, "{\n");
     DaiStringBuffer_write(sb, indent);
     // DaiStringBuffer_write(sb, "type: DaiAstType_FunctionStatement,\n");
     DaiStringBuffer_write(sb,
                           KEY_COLOR("type") ": " TYPE_COLOR("DaiAstType_FunctionStatement") ",\n");
-    DaiStringBuffer_writef(sb, "%sname: %s,\n", indent, expr->name);
+    DaiStringBuffer_writef(sb, "%sname: %s,\n", indent, stmt->name);
     {
         DaiStringBuffer_write(sb, indent);
-        DaiStringBuffer_write(sb, "parameters: [");
-        for (size_t i = 0; i < expr->parameters_count; i++) {
-            DaiAstIdentifier* param = expr->parameters[i];
+        DaiStringBuffer_write(sb, "parameters: [\n");
+        size_t default_length = DaiArray_length(stmt->defaults);
+        for (size_t i = 0; i < stmt->parameters_count; i++) {
+            DaiStringBuffer_write(sb, doubleindent);
+            DaiAstIdentifier* param = stmt->parameters[i];
             DaiStringBuffer_write(sb, param->value);
-            DaiStringBuffer_write(sb, ", ");
+            if (i >= stmt->parameters_count - default_length) {
+                DaiStringBuffer_write(sb, " = ");
+                DaiAstExpression* e = *(DaiAstExpression**)DaiArray_get(
+                    stmt->defaults, i - (stmt->parameters_count - default_length));
+                if (recursive) {
+                    char* s = e->string_fn((DaiAstBase*)e, recursive);
+                    DaiStringBuffer_writeWithLinePrefix(sb, s, doubleindent);
+                    dai_free(s);
+                } else {
+                    DaiStringBuffer_writePointer(sb, e);
+                }
+            }
+            DaiStringBuffer_write(sb, ",\n");
         }
+        DaiStringBuffer_write(sb, indent);
         DaiStringBuffer_write(sb, "],\n");
     }
 
@@ -31,11 +46,11 @@ DaiAstFunctionStatement_string(DaiAstBase* base, bool recursive) {
         DaiStringBuffer_write(sb, indent);
         DaiStringBuffer_write(sb, "body: ");
         if (recursive) {
-            char* s = expr->body->string_fn((DaiAstBase*)expr->body, recursive);
+            char* s = stmt->body->string_fn((DaiAstBase*)stmt->body, recursive);
             DaiStringBuffer_writeWithLinePrefix(sb, s, indent);
             dai_free(s);
         } else {
-            DaiStringBuffer_writePointer(sb, expr->body);
+            DaiStringBuffer_writePointer(sb, stmt->body);
         }
         DaiStringBuffer_write(sb, ",\n");
     }
@@ -47,21 +62,30 @@ DaiAstFunctionStatement_string(DaiAstBase* base, bool recursive) {
 static void
 DaiAstFunctionStatement_free(DaiAstBase* base, bool recursive) {
     assert(base->type == DaiAstType_FunctionStatement);
-    DaiAstFunctionStatement* expr = (DaiAstFunctionStatement*)base;
-    if (expr->parameters != NULL) {
+    DaiAstFunctionStatement* stmt = (DaiAstFunctionStatement*)base;
+    if (stmt->parameters != NULL) {
         if (recursive) {
-            for (size_t i = 0; i < expr->parameters_count; i++) {
-                expr->parameters[i]->free_fn((DaiAstBase*)expr->parameters[i], true);
+            for (size_t i = 0; i < stmt->parameters_count; i++) {
+                stmt->parameters[i]->free_fn((DaiAstBase*)stmt->parameters[i], true);
             }
         }
-        dai_free(expr->parameters);
+        dai_free(stmt->parameters);
     }
-    if (expr->body != NULL) {
+    if (stmt->defaults != NULL) {
         if (recursive) {
-            expr->body->free_fn((DaiAstBase*)expr->body, true);
+            for (size_t i = 0; i < DaiArray_length(stmt->defaults); i++) {
+                DaiAstExpression* e = *(DaiAstExpression**)DaiArray_get(stmt->defaults, i);
+                e->free_fn((DaiAstBase*)e, true);
+            }
+        }
+        DaiArray_free(stmt->defaults);
+    }
+    if (stmt->body != NULL) {
+        if (recursive) {
+            stmt->body->free_fn((DaiAstBase*)stmt->body, true);
         }
     }
-    dai_free(expr->name);
+    dai_free(stmt->name);
     dai_free(base);
 }
 
@@ -71,6 +95,7 @@ DaiAstFunctionStatement_New(void) {
     f->name                    = NULL;
     f->parameters_count        = 0;
     f->parameters              = NULL;
+    f->defaults                = DaiArray_New(sizeof(DaiAstExpression*));
     f->body                    = NULL;
     {
         f->type      = DaiAstType_FunctionStatement;

@@ -91,6 +91,8 @@ typedef enum __attribute__((__packed__)) {
 
     DaiOpGetBuiltin,
 
+    DaiOpSetFunctionDefault,   // 设置函数默认值
+
     DaiOpClosure,
 
     DaiOpGetFree,

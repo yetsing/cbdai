@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "dai_array.h"
+#include "dai_ast/dai_astbase.h"
+#include "dai_ast/dai_astexpression.h"
 #include "dai_ast/dai_asttype.h"
 #include "dai_chunk.h"
 #include "dai_compile.h"
@@ -264,14 +267,14 @@ DaiCompiler_reset(DaiCompiler* compiler) {
 
 static DaiCompileError*
 DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
-    // 函数名字
-    const char* name;
+    const char* name;   // 函数名字
     FunctionType function_type    = FunctionType_function;
     DaiAstBlockStatement* body    = NULL;
     int parameters_count          = 0;
     DaiAstIdentifier** parameters = NULL;
     int start_line                = 0;
     int end_line                  = 0;
+    DaiArray* defaults            = NULL;
     char buf[32];
     switch (node->type) {
         case DaiAstType_FunctionLiteral: {
@@ -282,6 +285,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
             parameters       = ((DaiAstFunctionLiteral*)node)->parameters;
             start_line       = ((DaiAstFunctionLiteral*)node)->start_line;
             end_line         = ((DaiAstFunctionLiteral*)node)->end_line;
+            defaults         = ((DaiAstFunctionLiteral*)node)->defaults;
             compiler->anonymous_count++;
             break;
         }
@@ -292,6 +296,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
             parameters       = ((DaiAstFunctionStatement*)node)->parameters;
             start_line       = ((DaiAstFunctionStatement*)node)->start_line;
             end_line         = ((DaiAstFunctionStatement*)node)->end_line;
+            defaults         = ((DaiAstFunctionStatement*)node)->defaults;
             break;
         }
         case DaiAstType_MethodStatement: {
@@ -302,6 +307,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
             start_line       = ((DaiAstMethodStatement*)node)->start_line;
             end_line         = ((DaiAstMethodStatement*)node)->end_line;
             function_type    = FunctionType_method;
+            defaults         = ((DaiAstMethodStatement*)node)->defaults;
             break;
         }
         case DaiAstType_ClassMethodStatement: {
@@ -312,6 +318,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
             start_line       = ((DaiAstClassMethodStatement*)node)->start_line;
             end_line         = ((DaiAstClassMethodStatement*)node)->end_line;
             function_type    = FunctionType_classMethod;
+            defaults         = ((DaiAstClassMethodStatement*)node)->defaults;
             break;
         }
         default: {
@@ -368,6 +375,17 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
                       num_free,
                       start_line);
     compiler->anonymous_count = subcompiler.anonymous_count;
+    size_t default_count      = DaiArray_length(defaults);
+    if (default_count > 0) {
+        for (int i = 0; i < default_count; i++) {
+            DaiAstExpression* expr = *(DaiAstExpression**)DaiArray_get(defaults, i);
+            DaiCompileError* err2  = DaiCompiler_compile(compiler, (DaiAstBase*)expr);
+            if (err2 != NULL) {
+                return err2;
+            }
+        }
+        DaiCompiler_emit1(compiler, DaiOpSetFunctionDefault, DaiArray_length(defaults), start_line);
+    }
     return NULL;
 }
 

@@ -11,7 +11,6 @@ include_directories(src/hashmap.c)
 include_directories(test)
 
 add_compile_options(-g -Wno-unused-function -Werror -Wall)
-add_compile_options(-O3 -flto)
 
 file(GLOB_RECURSE MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE TEST_SRC ${CMAKE_CURRENT_SOURCE_DIR}/test/*.c)
@@ -71,10 +70,12 @@ target_compile_definitions(benchmark_profile PRIVATE BENCHMARK_PROFILE)
 target_link_libraries(benchmark_profile m)
 
 add_executable(benchmark benchmark.c ${MAIN_SRC})
+target_compile_options(benchmark PRIVATE -O3 -flto)
 target_compile_definitions(benchmark PRIVATE BENCHMARK)
 target_link_libraries(benchmark m)
 
 add_executable(runfile runfile.c ${MAIN_SRC})
+target_compile_options(runfile PRIVATE -O3 -flto)
 target_link_libraries(runfile m)
 
 add_executable(dis dis.c ${MAIN_SRC})

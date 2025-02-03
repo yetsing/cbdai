@@ -113,7 +113,7 @@ concatenate_string(DaiVM* vm, DaiValue v1, DaiValue v2) {
 
 static DaiObjError*
 DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
-    if (argCount != function->arity) {
+    if (argCount < function->arity - function->default_count || argCount > function->arity) {
         return DaiObjError_Newf(vm,
                                 "%s() expected %d arguments but got %d",
                                 function->name->chars,
@@ -123,6 +123,12 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     if (vm->frameCount == FRAMES_MAX) {
         return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
     }
+    // push default values
+    {
+        for (int i = argCount; i < function->arity; i++) {
+            DaiVM_push(vm, function->defaults[i - (function->arity - function->default_count)]);
+        }
+    }
     // new frame
     CallFrame* frame = &vm->frames[vm->frameCount++];
     frame->function  = function;
@@ -131,7 +137,7 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     // 前面有一个空位用来放 self ，实际是占了被调用函数本身的位置，会在后续操作中更新成 self
     // (例如 DaiVM_callValue DaiObjType_boundMethod 分支)。
     // 因为帧上面有函数的指针，所以占了也没关系
-    frame->slots = vm->stack_top - argCount - 1;
+    frame->slots = vm->stack_top - function->arity - 1;
     return NULL;
 }
 
@@ -702,15 +708,34 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
 
+            case DaiOpSetFunctionDefault: {
+                uint8_t default_count    = READ_BYTE();
+                DaiValue value           = DaiVM_peek(vm, default_count);
+                DaiObjFunction* function = NULL;
+                if (IS_CLOSURE(value)) {
+                    function = AS_CLOSURE(value)->function;
+                } else {
+                    function = AS_FUNCTION(value);
+                }
+                DaiValue* defaults = VM_ALLOCATE(vm, DaiValue, default_count);
+                memcpy(defaults, vm->stack_top - default_count, default_count * sizeof(DaiValue));
+                vm->stack_top -= default_count;
+                function->defaults      = defaults;
+                function->default_count = default_count;
+                break;
+            }
+
             case DaiOpClosure: {
                 uint16_t function_index = READ_UINT16();
                 uint8_t free_var_count  = READ_BYTE();
                 DaiValue constant       = chunk->constants.values[function_index];
-                assert(IS_FUNCTION(constant));
-                DaiValue* frees = VM_ALLOCATE(vm, DaiValue, free_var_count);
-                for (int i = 0; i < free_var_count; i++) {
-                    frees[i] =
-                        DaiVM_peek(vm, free_var_count - i - 1);   // peek 里面 -1 ，所以这里要 -1
+                DaiValue* frees         = NULL;
+                if (free_var_count > 0) {
+                    frees = VM_ALLOCATE(vm, DaiValue, free_var_count);
+                    for (int i = 0; i < free_var_count; i++) {
+                        frees[i] = DaiVM_peek(
+                            vm, free_var_count - i - 1);   // peek 里面 -1 ，所以这里要 -1
+                    }
                 }
                 DaiObjClosure* closure = DaiObjClosure_New(vm, AS_FUNCTION(constant));
                 closure->frees         = frees;
