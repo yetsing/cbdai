@@ -133,3 +133,5 @@ fn has_default_param(a, b = 2) {
 }
 
 var has_default_fn = fn(a, b = 2) {};
+
+con const_v = 123;

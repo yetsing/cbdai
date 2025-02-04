@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "munit/munit.h"
@@ -65,7 +66,7 @@ test_define(__attribute__((unused)) const MunitParameter params[],
 
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         if (tests[i].symbol.depth == 0) {
-            DaiSymbol got = DaiSymbolTable_define(global, tests[i].name);
+            DaiSymbol got = DaiSymbolTable_define(global, tests[i].name, false);
             munit_assert_string_equal(got.name, tests[i].name);
             munit_assert_int(got.depth, ==, tests[i].symbol.depth);
             munit_assert_int(got.index, ==, tests[i].symbol.index);
@@ -74,7 +75,7 @@ test_define(__attribute__((unused)) const MunitParameter params[],
     DaiSymbolTable* first_local = DaiSymbolTable_NewEnclosed(global);
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         if (tests[i].symbol.depth == 1) {
-            DaiSymbol got = DaiSymbolTable_define(first_local, tests[i].name);
+            DaiSymbol got = DaiSymbolTable_define(first_local, tests[i].name, false);
             munit_assert_string_equal(got.name, tests[i].name);
             munit_assert_int(got.depth, ==, tests[i].symbol.depth);
             munit_assert_int(got.index, ==, tests[i].symbol.index);
@@ -83,7 +84,7 @@ test_define(__attribute__((unused)) const MunitParameter params[],
     DaiSymbolTable* second_local = DaiSymbolTable_NewEnclosed(first_local);
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         if (tests[i].symbol.depth == 2) {
-            DaiSymbol got = DaiSymbolTable_define(second_local, tests[i].name);
+            DaiSymbol got = DaiSymbolTable_define(second_local, tests[i].name, false);
             munit_assert_string_equal(got.name, tests[i].name);
             munit_assert_int(got.depth, ==, tests[i].symbol.depth);
             munit_assert_int(got.index, ==, tests[i].symbol.index);
@@ -100,8 +101,8 @@ static MunitResult
 test_resolve_global(__attribute__((unused)) const MunitParameter params[],
                     __attribute__((unused)) void* user_data) {
     DaiSymbolTable* table = DaiSymbolTable_New();
-    DaiSymbolTable_define(table, "a");
-    DaiSymbolTable_define(table, "b");
+    DaiSymbolTable_define(table, "a", false);
+    DaiSymbolTable_define(table, "b", false);
 
     DaiSymbol expected[] = {
         {
@@ -133,14 +134,14 @@ static MunitResult
 test_resolve_local(__attribute__((unused)) const MunitParameter params[],
                    __attribute__((unused)) void* user_data) {
     DaiSymbolTable* global = DaiSymbolTable_New();
-    DaiSymbolTable_define(global, "a");
-    DaiSymbolTable_define(global, "b");
+    DaiSymbolTable_define(global, "a", false);
+    DaiSymbolTable_define(global, "b", false);
     DaiSymbolTable* local = DaiSymbolTable_NewEnclosed(global);
-    DaiSymbolTable_define(local, "c");
-    DaiSymbolTable_define(local, "d");
+    DaiSymbolTable_define(local, "c", false);
+    DaiSymbolTable_define(local, "d", false);
     DaiSymbolTable* secondLocal = DaiSymbolTable_NewEnclosed(local);
-    DaiSymbolTable_define(secondLocal, "e");
-    DaiSymbolTable_define(secondLocal, "f");
+    DaiSymbolTable_define(secondLocal, "e", false);
+    DaiSymbolTable_define(secondLocal, "f", false);
 
     DaiSymbol expected[] = {
         {

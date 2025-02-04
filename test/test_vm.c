@@ -440,6 +440,7 @@ test_global_var_statements(__attribute__((unused)) const MunitParameter params[]
         {"var one = 1; one = 2; one;", INTEGER_VAL(2)},
         {"var one = 1; var two = 2; one + two;", INTEGER_VAL(3)},
         {"var one = 1; var two = 2; var three = one + two; three;", INTEGER_VAL(3)},
+        {"con one = 1; con two = 2; con three = one + two; three;", INTEGER_VAL(3)},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

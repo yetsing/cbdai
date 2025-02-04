@@ -1763,8 +1763,8 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
 }
 
 static MunitResult
-test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
-                          __attribute__((unused)) void* user_data) {
+test_var_statement(__attribute__((unused)) const MunitParameter params[],
+                   __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>", "<test>");
@@ -1876,6 +1876,51 @@ test_var_statement_scopes(__attribute__((unused)) const MunitParameter params[],
                 INTEGER_VAL(55),
                 INTEGER_VAL(77),
                 OBJ_VAL(func3),
+            },
+        },
+        {
+            "con num = 55; fn() {num;};",
+            11 + 1,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpClosure,
+                0,
+                1,
+                0,
+                DaiOpPop,
+                DaiOpEnd,
+            },
+            {
+                INTEGER_VAL(55),
+                OBJ_VAL(func1),
+            },
+        },
+        {
+            "con num = 3; fn() {var num = 55; num;};",
+            11 + 1,
+            {
+                DaiOpConstant,
+                0,
+                0,
+                DaiOpDefineGlobal,
+                0,
+                0,
+                DaiOpClosure,
+                0,
+                1,
+                0,
+                DaiOpPop,
+                DaiOpEnd,
+            },
+            {
+                INTEGER_VAL(3),
+                INTEGER_VAL(55),
+                OBJ_VAL(func2),
             },
         },
     };
@@ -2763,6 +2808,10 @@ test_compile_error(__attribute__((unused)) const MunitParameter params[],
             "class Foo {var a; fn a() {};};",
             "CompileError: property 'a' already defined in <test>:1:19",
         },
+        {
+            "con a = 1; a = 2;",
+            "CompileError: cannot assign to const variable 'a' in <test>:1:12",
+        },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiVM vm;
@@ -3532,12 +3581,7 @@ MunitTest compile_tests[] = {
      NULL},
     {(char*)"/test_functions", test_functions, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_function_calls", test_function_calls, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {(char*)"/test_var_statement_scopes",
-     test_var_statement_scopes,
-     NULL,
-     NULL,
-     MUNIT_TEST_OPTION_NONE,
-     NULL},
+    {(char*)"/test_var_statement", test_var_statement, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_builtins", test_builtins, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_closures", test_closures, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_class", test_class, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},

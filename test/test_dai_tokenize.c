@@ -295,7 +295,9 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
 
         {DaiTokenType_str, "\"\x1b\xc3\xbf\"", 39, 1, 39, 11},
 
-        {DaiTokenType_eof, "", 40, 1},
+        {DaiTokenType_con, "con", 40, 1, 40, 4},
+
+        {DaiTokenType_eof, "", 41, 1},
     };
 
     DaiTokenList list;

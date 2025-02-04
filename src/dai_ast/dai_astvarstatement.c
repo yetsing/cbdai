@@ -18,6 +18,10 @@ DaiAstVarStatement_string(DaiAstBase* base, bool recursive) {
     // DaiStringBuffer_write(sb, "type: DaiAstType_VarStatement,\n");
     DaiStringBuffer_write(sb, KEY_COLOR("type") ": " TYPE_COLOR("DaiAstType_VarStatement") ",\n");
     DaiStringBuffer_write(sb, indent);
+    DaiStringBuffer_write(sb, "is_con: ");
+    DaiStringBuffer_write(sb, stmt->is_con ? "true" : "false");
+    DaiStringBuffer_write(sb, ",\n");
+    DaiStringBuffer_write(sb, indent);
     DaiStringBuffer_write(sb, "name: ");
     DaiStringBuffer_write(sb, stmt->name->value);
     DaiStringBuffer_write(sb, ",\n");
@@ -61,7 +65,8 @@ DaiAstVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value) {
         stmt->string_fn = DaiAstVarStatement_string;
         stmt->free_fn   = DaiAstVarStatement_free;
     }
-    stmt->name  = name;
-    stmt->value = value;
+    stmt->is_con = false;
+    stmt->name   = name;
+    stmt->value  = value;
     return stmt;
 }

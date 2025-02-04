@@ -1463,6 +1463,7 @@ Parser_parseVarStatement(Parser* p) {
     DaiAstVarStatement* stmt = DaiAstVarStatement_New(NULL, NULL);
     stmt->start_line         = p->cur_token->start_line;
     stmt->start_column       = p->cur_token->start_column;
+    stmt->is_con             = Parser_curTokenIs(p, DaiTokenType_con);
 
     // 下一个 token 应该是 identifier
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
@@ -1758,6 +1759,7 @@ Parser_parseStatement(Parser* p) {
             // class 语句
             return (DaiAstStatement*)Parser_parseClassStatement(p);
         }
+        case DaiTokenType_con:
         case DaiTokenType_var: {
             // var 语句
             return (DaiAstStatement*)Parser_parseVarStatement(p);

@@ -20,6 +20,7 @@ typedef struct {
     int index;
     bool defined;   // 是否已经定义，用于全局变量，全局变量会先预定义一波，以备后续解析
     DaiSymbolType type;
+    bool is_const;   // 是否是 const variable (const variable 不能被重新赋值)
 } DaiSymbol;
 
 typedef struct _DaiSymbolTable DaiSymbolTable;
@@ -35,7 +36,7 @@ DaiSymbolTable_free(DaiSymbolTable* table);
 DaiSymbol
 DaiSymbolTable_predefine(DaiSymbolTable* table, const char* name);
 DaiSymbol
-DaiSymbolTable_define(DaiSymbolTable* table, const char* name);
+DaiSymbolTable_define(DaiSymbolTable* table, const char* name, bool is_const);
 DaiSymbol
 DaiSymbolTable_defineBuiltin(DaiSymbolTable* table, int index, const char* name);
 DaiSymbol

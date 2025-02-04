@@ -37,3 +37,4 @@ for in
 "\r\n\t\"\'"
 "\z"
 "\x1b\xff"
+con

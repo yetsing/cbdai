@@ -1,4 +1,5 @@
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 
 #include "dai_array.h"
@@ -228,10 +229,12 @@ test_var_statements(__attribute__((unused)) const MunitParameter params[],
         const char* expected_identifier;
         ExpectedValueType expected_value_type;
         void* expected_value;
+        bool is_con;
     } tests2[] = {
-        {"var x = 5;", "x", ExpectedValueType_int64, (void*)5},
-        {"var y = true;", "y", ExpectedValueType_bool, (void*)true},
-        {"var foobar = y;", "foobar", ExpectedValueType_string, "y"},
+        {"var x = 5;", "x", ExpectedValueType_int64, (void*)5, false},
+        {"var y = true;", "y", ExpectedValueType_bool, (void*)true, false},
+        {"var foobar = y;", "foobar", ExpectedValueType_string, "y", false},
+        {"con foobar = y;", "foobar", ExpectedValueType_string, "y", true},
     };
     for (int i = 0; i < sizeof(tests2) / sizeof(tests2[0]); i++) {
         parse_helper(tests2[i].input, program);
@@ -241,6 +244,7 @@ test_var_statements(__attribute__((unused)) const MunitParameter params[],
         check_var_statement((DaiAstStatement*)var_stmt, tests2[i].expected_identifier);
         check_literal_expression(
             var_stmt->value, tests2[i].expected_value, tests2[i].expected_value_type);
+        munit_assert_int(var_stmt->is_con, ==, tests2[i].is_con);
         program->free_fn((DaiAstBase*)program, true);
     }
     return MUNIT_OK;

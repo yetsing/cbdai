@@ -226,7 +226,7 @@ DaiSymbolTable_predefine(DaiSymbolTable* table, const char* name) {
 }
 
 DaiSymbol
-DaiSymbolTable_define(DaiSymbolTable* table, const char* name) {
+DaiSymbolTable_define(DaiSymbolTable* table, const char* name, bool is_const) {
     DaiSymbol symbol;
     bool found = SymbolMap_get(&table->store, name, &symbol);
     if (found) {
@@ -243,7 +243,8 @@ DaiSymbolTable_define(DaiSymbolTable* table, const char* name) {
     } else {
         symbol.type = DaiSymbolType_local;
     }
-    bool isNewKey = SymbolMap_set(&table->store, symbol.name, symbol);
+    symbol.is_const = is_const;
+    bool isNewKey   = SymbolMap_set(&table->store, symbol.name, symbol);
     assert((found && !isNewKey) || (!found && isNewKey));
     return symbol;
 }

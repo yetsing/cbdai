@@ -22,6 +22,7 @@ typedef enum {
     // #region 关键字
     DaiTokenType_function,   // "function"
     DaiTokenType_var,        // "var"
+    DaiTokenType_con,        // "con"
     DaiTokenType_true,       // "true"
     DaiTokenType_false,      // "false"
     DaiTokenType_nil,        // "nil"

@@ -347,7 +347,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     // 定义参数
     for (int i = 0; i < parameters_count; i++) {
         DaiAstIdentifier* param = parameters[i];
-        DaiSymbolTable_define(functable, param->value);
+        DaiSymbolTable_define(functable, param->value, false);
     }
     // 编译函数体
     DaiCompileError* err = DaiCompiler_compile(&subcompiler, (DaiAstBase*)body);
@@ -554,7 +554,8 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                             "symbol '%s' already defined",
                                             stmt->name->value);
             }
-            DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name->value);
+            DaiSymbol symbol =
+                DaiSymbolTable_define(compiler->symbolTable, stmt->name->value, stmt->is_con);
             switch (symbol.type) {
                 case DaiSymbolType_global: {
                     DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
@@ -610,6 +611,13 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                                     ident->start_line,
                                                     ident->start_column,
                                                     "undefined variable: '%s'",
+                                                    ident->value);
+                    }
+                    if (symbol.is_const) {
+                        return DaiCompileError_Newf(compiler->filename,
+                                                    ident->start_line,
+                                                    ident->start_column,
+                                                    "cannot assign to const variable '%s'",
                                                     ident->value);
                     }
                     switch (symbol.type) {
@@ -708,7 +716,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             if (err != NULL) {
                 return err;
             }
-            DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name);
+            DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name, true);
             switch (symbol.type) {
                 case DaiSymbolType_global: {
                     DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
@@ -755,7 +763,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 DaiCompiler_emit(compiler, DaiOpInherit, stmt->start_line);
             }
-            DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name);
+            DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name, true);
             switch (symbol.type) {
                 case DaiSymbolType_global: {
                     DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
@@ -1315,17 +1323,17 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
             compiler->symbolTable            = blockSymbolTable;
             DaiSymbol itertor_symbol         = DaiSymbolTable_define(
-                blockSymbolTable, "//iterator");   // 一个特殊的变量名表示迭代器
+                blockSymbolTable, "//iterator", true);   // 一个特殊的变量名表示迭代器
             DaiCompiler_emit1(compiler,
                               DaiOpSetStackTop,
                               DaiSymbolTable_countOuter(compiler->symbolTable),
                               stmt->start_line);
             if (stmt->i == NULL) {
-                DaiSymbolTable_define(blockSymbolTable, "//i");   // 占个位置保持一致
+                DaiSymbolTable_define(blockSymbolTable, "//i", true);   // 占个位置保持一致
             } else {
-                DaiSymbolTable_define(blockSymbolTable, stmt->i->value);
+                DaiSymbolTable_define(blockSymbolTable, stmt->i->value, false);
             }
-            DaiSymbolTable_define(blockSymbolTable, stmt->e->value);
+            DaiSymbolTable_define(blockSymbolTable, stmt->e->value, false);
             int jump_if_end_offset =
                 DaiCompiler_emitIterNext(compiler, itertor_symbol.index, stmt->start_line);
             err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
