@@ -1,0 +1,3 @@
+var intv = 1;
+var floatv = 1.1;
+var strv = 'hello';

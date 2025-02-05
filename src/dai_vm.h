@@ -93,6 +93,11 @@ DaiVM_stackTop(const DaiVM* vm);
 void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value);
 
+bool
+DaiVM_getGlobal(DaiVM* vm, const char* name, DaiValue* value);
+bool
+DaiVM_setGlobal(DaiVM* vm, const char* name, DaiValue value);
+
 // #region 用于测试的函数
 DaiValue
 DaiVM_lastPopedStackElem(const DaiVM* vm);

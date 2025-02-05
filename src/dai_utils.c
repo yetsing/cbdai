@@ -2,9 +2,9 @@
 工具函数
 */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "dai_malloc.h"
 #include "dai_utils.h"
 
 void
@@ -73,7 +73,11 @@ dai_string_from_file(const char* filename) {
     }
     size_t length = ftell(fp);
     rewind(fp);
-    char* s = dai_malloc(length + 1);
+    char* s = malloc(length + 1);
+    if (s == NULL) {
+        fclose(fp);
+        return NULL;
+    }
     if (fread(s, 1, length, fp) < length) {
         fclose(fp);
         return NULL;

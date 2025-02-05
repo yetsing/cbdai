@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,6 +9,7 @@
 #include "dai_malloc.h"
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_symboltable.h"
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
@@ -1114,6 +1116,26 @@ DaiVM_stackTop(const DaiVM* vm) {
 void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value) {
     vm->temp_ref = value;
+}
+
+bool
+DaiVM_getGlobal(DaiVM* vm, const char* name, DaiValue* value) {
+    DaiSymbol symbol;
+    if (DaiSymbolTable_resolve(vm->globalSymbolTable, name, &symbol)) {
+        *value = vm->globals[symbol.index];
+        return true;
+    }
+    return false;
+}
+
+bool
+DaiVM_setGlobal(DaiVM* vm, const char* name, DaiValue value) {
+    DaiSymbol symbol;
+    if (DaiSymbolTable_resolve(vm->globalSymbolTable, name, &symbol)) {
+        vm->globals[symbol.index] = value;
+        return true;
+    }
+    return false;
 }
 
 // #region 用于测试的函数

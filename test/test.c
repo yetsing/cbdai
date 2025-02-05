@@ -20,6 +20,7 @@ extern MunitTest compile_tests[];
 extern MunitTest vm_tests[];
 extern MunitTest table_tests[];
 extern MunitTest symboltable_tests[];
+extern MunitTest dai_tests[];
 
 static MunitSuite sub_suites[] = {
     {"/demo", demo_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
@@ -34,6 +35,7 @@ static MunitSuite sub_suites[] = {
     {"/vm", vm_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
     {"/table", table_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
     {"/symboltable", symboltable_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
+    {"/dai", dai_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
     {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE},
 };
 
