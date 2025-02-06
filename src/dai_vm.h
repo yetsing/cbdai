@@ -74,7 +74,9 @@ void
 DaiVM_resetStack(DaiVM* vm);
 DaiObjError*
 DaiVM_run(DaiVM* vm, DaiObjFunction* function);
-// 传入参数，将其压入中栈
+void
+DaiVM_push1(DaiVM* vm, DaiValue value);
+// 传入参数
 DaiValue
 DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...);
 // 调用参数已经在栈上

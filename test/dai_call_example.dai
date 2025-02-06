@@ -1,0 +1,11 @@
+fn sum_int(a, b) {
+    return a + b;
+}
+
+fn sum_float(a, b) {
+    return a + b;
+}
+
+fn sum_string(a, b) {
+    return a + b;
+}

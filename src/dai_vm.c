@@ -1008,6 +1008,11 @@ DaiVM_run(DaiVM* vm, DaiObjFunction* function) {
     return DaiVM_dorun(vm, false);
 }
 
+void
+DaiVM_push1(DaiVM* vm, DaiValue value) {
+    DaiVM_push(vm, value);
+}
+
 DaiValue
 DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
     DaiVM_push(vm, callee);
@@ -1032,6 +1037,23 @@ DaiValue
 DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
     DaiObjError* err = NULL;
     err              = DaiVM_callValue(vm, callee, argCount);
+    if (err != NULL) {
+        return OBJ_VAL(err);
+    }
+    err = DaiVM_dorun(vm, true);
+    if (err != NULL) {
+        return OBJ_VAL(err);
+    }
+    return DaiVM_pop(vm);
+}
+DaiValue
+DaiVM_runCall3(DaiVM* vm, DaiValue callee, DaiValueArray* args) {
+    DaiVM_push(vm, callee);
+    for (int i = 0; i < args->count; i++) {
+        DaiVM_push(vm, args->values[i]);
+    }
+    DaiObjError* err = NULL;
+    err              = DaiVM_callValue(vm, callee, args->count);
     if (err != NULL) {
         return OBJ_VAL(err);
     }

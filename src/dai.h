@@ -51,3 +51,59 @@ dai_get_string(Dai* dai, const char* name);
  */
 void
 dai_set_string(Dai* dai, const char* name, const char* value);
+
+// #region Call function in dai script.
+/*
+ * Example:
+ *   dai_func_t func = dai_get_function(dai, "my_function");
+ *   DaiCall* call = dai_call_new(dai, func);
+ *   dai_call_push_arg_int(call, 123);
+ *   dai_call_execute(dai, call);
+ *   int64_t ret_int = dai_call_return_int(call);
+ *   dai_call_free(call);
+ */
+
+typedef uintptr_t dai_func_t;
+
+/**
+ * @brief get function. If not found or not function, abort.
+ */
+dai_func_t
+dai_get_function(Dai* dai, const char* name);
+
+// push argument to function call
+void
+dai_call_push_function(Dai* dai, dai_func_t func);
+void
+dai_call_push_arg_int(Dai* dai, int64_t value);
+void
+dai_call_push_arg_float(Dai* dai, double value);
+void
+dai_call_push_arg_string(Dai* dai, const char* value);
+void
+dai_call_push_arg_function(Dai* dai, dai_func_t value);
+void
+dai_call_push_arg_nil(Dai* dai);
+
+/**
+ * @brief execute function call. If failed, abort.
+ */
+void
+dai_call_execute(Dai* dai);
+
+// get return value from function call
+int64_t
+dai_call_return_int(Dai* dai);
+double
+dai_call_return_float(Dai* dai);
+const char*
+dai_call_return_string(Dai* dai);
+dai_func_t
+dai_call_return_function(Dai* dai);
+
+// #endregion
+
+// #region Register C function
+
+
+// #endregion

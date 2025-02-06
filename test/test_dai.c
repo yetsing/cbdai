@@ -22,11 +22,11 @@ get_file_directory(char* path) {
 }
 
 static MunitResult
-test_dai(__attribute__((unused)) const MunitParameter params[],
-         __attribute__((unused)) void* user_data) {
+test_dai_variable(__attribute__((unused)) const MunitParameter params[],
+                  __attribute__((unused)) void* user_data) {
     char resolved_path[PATH_MAX];
     get_file_directory(resolved_path);
-    strcat(resolved_path, "dai_example.dai");
+    strcat(resolved_path, "dai_variable_example.dai");
     Dai* dai = dai_new();
     dai_load_file(dai, resolved_path);
     {
@@ -46,7 +46,45 @@ test_dai(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static MunitResult
+test_dai_call(__attribute__((unused)) const MunitParameter params[],
+              __attribute__((unused)) void* user_data) {
+    char resolved_path[PATH_MAX];
+    get_file_directory(resolved_path);
+    strcat(resolved_path, "dai_call_example.dai");
+    Dai* dai = dai_new();
+    dai_load_file(dai, resolved_path);
+    dai_func_t sum_int    = dai_get_function(dai, "sum_int");
+    dai_func_t sum_float  = dai_get_function(dai, "sum_float");
+    dai_func_t sum_string = dai_get_function(dai, "sum_string");
+    // implement test
+    // Test sum_int function
+    dai_call_push_function(dai, sum_int);
+    dai_call_push_arg_int(dai, 1);
+    dai_call_push_arg_int(dai, 2);
+    dai_call_execute(dai);
+    munit_assert_int64(dai_call_return_int(dai), ==, 3);
+
+    // Test sum_float function
+    dai_call_push_function(dai, sum_float);
+    dai_call_push_arg_float(dai, 1.1);
+    dai_call_push_arg_float(dai, 2.3);
+    dai_call_execute(dai);
+    munit_assert_double(dai_call_return_float(dai), ==, 3.4);
+
+    // Test sum_string function
+    dai_call_push_function(dai, sum_string);
+    dai_call_push_arg_string(dai, "hello");
+    dai_call_push_arg_string(dai, "world");
+    dai_call_execute(dai);
+    munit_assert_string_equal(dai_call_return_string(dai), "helloworld");
+
+    dai_free(dai);
+    return MUNIT_OK;
+}
+
 MunitTest dai_tests[] = {
-    {(char*)"/test_dai", test_dai, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_dai_variable", test_dai_variable, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_dai_call", test_dai_call, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

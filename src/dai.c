@@ -14,6 +14,12 @@
 typedef struct Dai {
     DaiVM vm;
     bool loaded;
+
+    // for call function
+    DaiObj* function;
+    int argc;
+    DaiValue ret;
+
 } Dai;
 
 Dai*
@@ -25,6 +31,11 @@ dai_new() {
     }
     DaiVM_init(&dai->vm);
     dai->loaded = false;
+
+    dai->function = NULL;
+    dai->argc     = 0;
+    dai->ret      = UNDEFINED_VAL;
+
     return dai;
 }
 
@@ -165,4 +176,115 @@ dai_set_string(Dai* dai, const char* name, const char* value) {
         fprintf(stderr, "dai_set_string: variable '%s' not found.\n", name);
         abort();
     }
+}
+
+dai_func_t
+dai_get_function(Dai* dai, const char* name) {
+    DaiValue value;
+    if (!DaiVM_getGlobal(&dai->vm, name, &value)) {
+        fprintf(stderr, "dai_get_function: variable '%s' not found.\n", name);
+        abort();
+    }
+    if (!IS_FUNCTION(value) && !IS_CLOSURE(value)) {
+        fprintf(stderr,
+                "dai_get_function: variable '%s' expected function, but got %s.\n",
+                name,
+                dai_value_ts(value));
+        abort();
+    }
+    return (dai_func_t)AS_OBJ(value);
+}
+
+
+// #region Call function in dai script.
+void
+dai_call_push_function(Dai* dai, dai_func_t func) {
+    dai->function = (DaiObj*)func;
+    DaiVM_push1(&dai->vm, OBJ_VAL((DaiObjFunction*)func));
+}
+
+// push argument to function call
+void
+dai_call_push_arg_int(Dai* dai, int64_t value) {
+    DaiVM_push1(&dai->vm, INTEGER_VAL(value));
+    dai->argc++;
+}
+void
+dai_call_push_arg_float(Dai* dai, double value) {
+    DaiVM_push1(&dai->vm, FLOAT_VAL(value));
+    dai->argc++;
+}
+void
+dai_call_push_arg_string(Dai* dai, const char* value) {
+    DaiValue v = OBJ_VAL(dai_copy_string(&dai->vm, value, strlen(value)));
+    DaiVM_push1(&dai->vm, v);
+    dai->argc++;
+}
+void
+dai_call_push_arg_function(Dai* dai, dai_func_t value) {
+    DaiValue v = OBJ_VAL((DaiObjFunction*)value);
+    DaiVM_push1(&dai->vm, v);
+    dai->argc++;
+}
+void
+dai_call_push_arg_nil(Dai* dai) {
+    DaiVM_push1(&dai->vm, NIL_VAL);
+    dai->argc++;
+}
+
+void
+dai_call_execute(Dai* dai) {
+    if (dai->function == NULL) {
+        fprintf(stderr, "dai_call_execute: function not set.\n");
+        abort();
+    }
+    DaiValue ret = DaiVM_runCall2(&dai->vm, OBJ_VAL(dai->function), dai->argc);
+    if (IS_ERROR(ret)) {
+        DaiVM_printError(&dai->vm, AS_ERROR(ret));
+        abort();
+    }
+    dai->argc     = 0;
+    dai->function = NULL;
+    dai->ret      = ret;
+}
+
+int64_t
+dai_call_return_int(Dai* dai) {
+    if (!IS_INTEGER(dai->ret)) {
+        fprintf(stderr, "dai_call_return_int: expected int, but got %s.\n", dai_value_ts(dai->ret));
+        abort();
+    }
+    return AS_INTEGER(dai->ret);
+}
+
+double
+dai_call_return_float(Dai* dai) {
+    if (!IS_FLOAT(dai->ret)) {
+        fprintf(
+            stderr, "dai_call_return_float: expected float, but got %s.\n", dai_value_ts(dai->ret));
+        abort();
+    }
+    return AS_FLOAT(dai->ret);
+}
+
+const char*
+dai_call_return_string(Dai* dai) {
+    if (!IS_STRING(dai->ret)) {
+        fprintf(stderr,
+                "dai_call_return_string: expected string, but got %s.\n",
+                dai_value_ts(dai->ret));
+        abort();
+    }
+    return AS_CSTRING(dai->ret);
+}
+
+dai_func_t
+dai_call_return_function(Dai* dai) {
+    if (!IS_FUNCTION(dai->ret) && !IS_CLOSURE(dai->ret)) {
+        fprintf(stderr,
+                "dai_call_return_function: expected function, but got %s.\n",
+                dai_value_ts(dai->ret));
+        abort();
+    }
+    return (dai_func_t)AS_OBJ(dai->ret);
 }
