@@ -103,7 +103,38 @@ dai_call_return_function(Dai* dai);
 
 // #endregion
 
-// #region Register C function
+// #region Register C function to dai script
+// Example:
+//   void my_c_function(Dai* dai) {
+//       int64_t arg1 = dai_call_pop_arg_int(dai);  // first argument
+//       double arg2 = dai_call_pop_arg_float(dai);  // second argument
+//       const char* arg3 = dai_call_pop_arg_string(dai); // third argument
+//       dai_call_push_return_int(dai, arg1 + 1);
+//    }
+//    dai_register_function(dai, "my_c_function", my_c_function, 3);
 
+typedef void (*dai_c_func_t)(Dai* dai);
+
+/**
+ * @brief register C function to dai. Must be called before dai_load_file.
+ */
+void
+dai_register_function(Dai* dai, const char* name, dai_c_func_t func, int arity);
+
+int64_t
+dai_call_pop_arg_int(Dai* dai);
+double
+dai_call_pop_arg_float(Dai* dai);
+const char*
+dai_call_pop_arg_string(Dai* dai);
+
+void
+dai_call_push_return_int(Dai* dai, int64_t value);
+void
+dai_call_push_return_float(Dai* dai, double value);
+void
+dai_call_push_return_string(Dai* dai, const char* value);
+void
+dai_call_push_return_nil(Dai* dai);
 
 // #endregion

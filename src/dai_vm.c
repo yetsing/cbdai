@@ -191,6 +191,16 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
                 vm->frames[vm->frameCount - 1].closure = closure;
                 return err;
             }
+            case DaiObjType_cFunction: {
+                const BuiltinFn func  = AS_CFUNCTION(callee)->wrapper;
+                const DaiValue result = func(vm, callee, argCount, vm->stack_top - argCount);
+                vm->stack_top         = vm->stack_top - argCount - 1;
+                if (IS_ERROR(result)) {
+                    return AS_ERROR(result);
+                }
+                DaiVM_push(vm, result);
+                return NULL;
+            }
             default: break;
         }
     }

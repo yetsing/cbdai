@@ -8,8 +8,11 @@
 #include "dai_value.h"
 #include <stdbool.h>
 
+typedef struct Dai Dai;
 typedef struct _DaiVM DaiVM;
 typedef struct _DaiObjClass DaiObjClass;
+
+#define BUILTIN_FUNCTION_COUNT 256
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
@@ -26,6 +29,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_MAP_ITERATOR(value) dai_is_obj_type(value, DaiObjType_mapIterator)
 #define IS_RANGE_ITERATOR(value) dai_is_obj_type(value, DaiObjType_rangeIterator)
 #define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
+#define IS_CFUNCTION(value) dai_is_obj_type(value, DaiObjType_nativeFn)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
 #define AS_INSTANCE(value) ((DaiObjInstance*)AS_OBJ(value))
@@ -41,6 +45,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_MAP_ITERATOR(value) ((DaiObjMapIterator*)AS_OBJ(value))
 #define AS_RANGE_ITERATOR(value) ((DaiObjRangeIterator*)AS_OBJ(value))
 #define AS_ERROR(value) ((DaiObjError*)AS_OBJ(value))
+#define AS_CFUNCTION(value) ((DaiObjCFunction*)AS_OBJ(value))
 
 typedef enum {
     DaiObjType_function,
@@ -56,8 +61,10 @@ typedef enum {
     DaiObjType_mapIterator,
     DaiObjType_rangeIterator,
     DaiObjType_error,
+    DaiObjType_cFunction,   // c api registered function
 } DaiObjType;
 
+typedef void (*CFunction)(Dai* dai);
 typedef DaiValue (*BuiltinFn)(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);
 typedef DaiValue (*GetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name);
 typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
@@ -260,6 +267,18 @@ typedef struct {
 } DaiObjMapIterator;
 DaiObjMapIterator*
 DaiObjMapIterator_New(DaiVM* vm, DaiObjMap* map);
+
+typedef struct {
+    DaiObj obj;
+    Dai* dai;
+    BuiltinFn wrapper;
+    char* name;
+    CFunction func;
+    int arity;
+} DaiObjCFunction;
+DaiObjCFunction*
+DaiObjCFunction_New(DaiVM* vm, Dai* dai, BuiltinFn wrapper, CFunction func, const char* name,
+                    int arity);
 
 const char*
 dai_object_ts(DaiValue value);

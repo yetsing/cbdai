@@ -83,8 +83,55 @@ test_dai_call(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
+static void
+add_int(Dai* dai) {
+    int64_t a = dai_call_pop_arg_int(dai);
+    int64_t b = dai_call_pop_arg_int(dai);
+    dai_call_push_return_int(dai, a + b);
+}
+
+static void
+add_float(Dai* dai) {
+    double a = dai_call_pop_arg_float(dai);
+    double b = dai_call_pop_arg_float(dai);
+    dai_call_push_return_float(dai, a + b);
+}
+
+static void
+add_string(Dai* dai) {
+    const char* a = dai_call_pop_arg_string(dai);
+    const char* b = dai_call_pop_arg_string(dai);
+    char* result  = malloc(strlen(a) + strlen(b) + 1);
+    strcpy(result, a);
+    strcat(result, b);
+    dai_call_push_return_string(dai, result);
+    free(result);
+}
+
+static void
+return_nil(Dai* dai) {
+    dai_call_push_return_nil(dai);
+}
+
+static MunitResult
+test_dai_c_function(__attribute__((unused)) const MunitParameter params[],
+                    __attribute__((unused)) void* user_data) {
+    char resolved_path[PATH_MAX];
+    get_file_directory(resolved_path);
+    strcat(resolved_path, "dai_c_function_example.dai");
+    Dai* dai = dai_new();
+    dai_register_function(dai, "add_int", add_int, 2);
+    dai_register_function(dai, "add_float", add_float, 2);
+    dai_register_function(dai, "add_string", add_string, 2);
+    dai_register_function(dai, "return_nil", return_nil, 0);
+    dai_load_file(dai, resolved_path);
+    dai_free(dai);
+    return MUNIT_OK;
+}
+
 MunitTest dai_tests[] = {
     {(char*)"/test_dai_variable", test_dai_variable, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_dai_call", test_dai_call, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {(char*)"/test_dai_c_function", test_dai_c_function, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

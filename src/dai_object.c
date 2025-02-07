@@ -2192,6 +2192,44 @@ DaiObjError_Newf(DaiVM* vm, const char* format, ...) {
 
 // #endregion
 
+
+// #region DaiObjCFunction
+static char*
+DaiObjCFunction_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
+    DaiObjCFunction* c_func = AS_CFUNCTION(value);
+    size_t size             = strlen(c_func->name) + 16;
+    char* buf               = ALLOCATE(char, size);
+    snprintf(buf, size, "<c-fn %s>", c_func->name);
+    return buf;
+}
+
+static struct DaiOperation c_function_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjCFunction_String,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+};
+
+DaiObjCFunction*
+DaiObjCFunction_New(DaiVM* vm, Dai* dai, BuiltinFn wrapper, CFunction func, const char* name,
+                    int arity) {
+    DaiObjCFunction* c_func = ALLOCATE_OBJ(vm, DaiObjCFunction, DaiObjType_cFunction);
+    c_func->obj.operation   = &c_function_operation;
+    c_func->dai             = dai;
+    c_func->wrapper         = wrapper;
+    c_func->name            = strdup(name);
+    c_func->func            = func;
+    c_func->arity           = arity;
+    return c_func;
+}
+
+// #endregion
+
 const char*
 dai_object_ts(DaiValue value) {
     switch (OBJ_TYPE(value)) {
@@ -2216,6 +2254,7 @@ dai_object_ts(DaiValue value) {
         case DaiObjType_mapIterator: return "map_iterator";
         case DaiObjType_rangeIterator: return "range_iterator";
         case DaiObjType_error: return "error";
+        case DaiObjType_cFunction: return "native-function";
     }
     return "unknown";
 }
@@ -2474,7 +2513,7 @@ builtin_abs(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue 
     }
 }
 
-DaiObjBuiltinFunction builtin_funcs[256] = {
+DaiObjBuiltinFunction builtin_funcs[BUILTIN_FUNCTION_COUNT] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "print",

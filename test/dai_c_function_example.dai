@@ -1,0 +1,4 @@
+print('add_int', add_int(1, 2));
+print('add_float', add_float(1.1, 2.2));
+print('add_string', add_string('hello', 'world'));
+print('return_nil', return_nil());

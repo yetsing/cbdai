@@ -52,6 +52,11 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     printf("%p free type %d\n", (void*)object, object->type);
 #endif
     switch (object->type) {
+        case DaiObjType_cFunction: {
+            free(((DaiObjCFunction*)object)->name);
+            VM_FREE(vm, DaiObjCFunction, object);
+            break;
+        }
         case DaiObjType_rangeIterator: {
             VM_FREE(vm, DaiObjRangeIterator, object);
             break;
@@ -268,6 +273,7 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             }
             break;
         }
+        case DaiObjType_cFunction:
         case DaiObjType_rangeIterator:
         case DaiObjType_error:
         case DaiObjType_builtinFn:

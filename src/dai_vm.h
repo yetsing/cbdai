@@ -58,7 +58,7 @@ typedef struct _DaiVM {
     VMState state;
 
     // 内置函数
-    DaiValue builtin_funcs[256];
+    DaiValue builtin_funcs[BUILTIN_FUNCTION_COUNT];
 
     // 临时引用，防止被 GC 回收
     // 一些内置函数会创建一些对象，他既不在栈上，也没有被其他对象引用
