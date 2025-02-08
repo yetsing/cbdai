@@ -6,6 +6,7 @@
 
 #include "dai_common.h"
 #include "dai_value.h"
+#include <stdint.h>
 
 // 二元操作类型，比如加减乘除
 typedef enum {
@@ -158,6 +159,9 @@ DaiChunk_readu16(const DaiChunk* chunk, int offset);
 
 int
 DaiChunk_getLine(const DaiChunk* chunk, int offset);
+
+uint8_t
+DaiChunk_pop(DaiChunk* chunk);
 
 #ifdef DISASSEMBLE_VARIABLE_NAME
 void

@@ -369,11 +369,18 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     DaiSymbolTable_free(functable);
     DaiCompiler_reset(&subcompiler);
 
-    DaiCompiler_emit3(compiler,
-                      DaiOpClosure,
-                      DaiCompiler_addConstant(compiler, OBJ_VAL(function)),
-                      num_free,
-                      start_line);
+    if (num_free > 0) {
+        DaiCompiler_emit3(compiler,
+                          DaiOpClosure,
+                          DaiCompiler_addConstant(compiler, OBJ_VAL(function)),
+                          num_free,
+                          start_line);
+    } else {
+        DaiCompiler_emit2(compiler,
+                          DaiOpConstant,
+                          DaiCompiler_addConstant(compiler, OBJ_VAL(function)),
+                          start_line);
+    }
     compiler->anonymous_count = subcompiler.anonymous_count;
     size_t default_count      = DaiArray_length(defaults);
     if (default_count > 0) {

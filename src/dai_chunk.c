@@ -240,6 +240,12 @@ DaiChunk_getLine(const DaiChunk* chunk, int offset) {
     return chunk->lines[offset];
 }
 
+uint8_t
+DaiChunk_pop(DaiChunk* chunk) {
+    chunk->count--;
+    return chunk->code[chunk->count];
+}
+
 #ifdef DISASSEMBLE_VARIABLE_NAME
 void
 DaiChunk_addName(DaiChunk* chunk, const char* name, int back) {
