@@ -1,6 +1,6 @@
 #include "munit/munit.h"
 
-#include "./atstr.h"
+#include "atstr/atstr.h"
 
 static MunitResult
 test_split(__attribute__((unused)) const MunitParameter params[],
@@ -185,15 +185,10 @@ MunitTest atstr_tests[] = {
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };
 
-static const MunitSuite atstr_suite = {
+const MunitSuite atstr_suite = {
     "/dai",                 /* name */
     atstr_tests,            /* tests */
     NULL,                   /* suites */
     1,                      /* iterations */
     MUNIT_SUITE_OPTION_NONE /* options */
 };
-
-int
-main(int argc, const char* argv[]) {
-    return munit_suite_main(&atstr_suite, NULL, argc, (char* const*)argv);
-}

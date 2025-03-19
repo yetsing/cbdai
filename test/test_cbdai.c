@@ -129,7 +129,7 @@ test_dai_c_function(__attribute__((unused)) const MunitParameter params[],
     return MUNIT_OK;
 }
 
-MunitTest dai_tests[] = {
+MunitTest cbdai_tests[] = {
     {(char*)"/test_dai_variable", test_dai_variable, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_dai_call", test_dai_call, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {(char*)"/test_dai_c_function", test_dai_c_function, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},

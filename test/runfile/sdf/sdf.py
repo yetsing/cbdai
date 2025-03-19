@@ -44,3 +44,4 @@ while True:
         frame_chars.append('\n')
     print('\033[2J' + ''.join(frame_chars))
     time.sleep(1/30)
+    break

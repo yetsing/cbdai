@@ -8,7 +8,13 @@ dai_ast: AST 抽象语法树定义
 
 dai_parse: 语法分析
 
-dai_compile
+dai_compile: 编译成字节码
+
+dai_vm: 字节码虚拟机实现
+
+dai: 脚本解释器入口
+
+cbdai: 与 C 语言进行集成交互入口
 
 #### References
 
