@@ -1,17 +1,14 @@
+#include "dai.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "dai.h"
-#include "dai_compile.h"
 #include "dai_object.h"
-#include "dai_parse.h"
-#include "dai_symboltable.h"
-#include "dai_tokenize.h"
-#include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
+#include "dairun.h"
 
 typedef struct Dai {
     DaiVM vm;
@@ -61,50 +58,11 @@ dai_load_file(Dai* dai, const char* filename) {
         abort();
     }
     dai->loaded = true;
-    // convert to absolute path
-    char* filepath = realpath(filename, NULL);
-    if (filepath == NULL) {
-        perror("realpath error");
+    int ret     = Dairun_File(&dai->vm, filename);
+    if (ret != 0) {
+        fprintf(stderr, "dai_load_file failed.\n");
         abort();
     }
-    char* text = dai_string_from_file(filepath);
-    if (text == NULL) {
-        perror("open file error");
-        abort();
-    }
-    DaiError* err = NULL;
-    DaiTokenList tlist;
-    DaiTokenList_init(&tlist);
-    DaiAstProgram program;
-    DaiAstProgram_init(&program);
-
-    err = dai_tokenize_string(text, &tlist);
-    if (err != NULL) {
-        DaiSyntaxError_setFilename(err, filename);
-        DaiSyntaxError_pprint(err, text);
-        abort();
-    }
-    err = dai_parse(&tlist, &program);
-    if (err != NULL) {
-        DaiSyntaxError_setFilename(err, filename);
-        DaiSyntaxError_pprint(err, text);
-        abort();
-    }
-    DaiObjFunction* function = DaiObjFunction_New(&dai->vm, "<main>", filepath);
-    err                      = dai_compile(&program, function, &dai->vm);
-    if (err != NULL) {
-        DaiCompileError_pprint(err, text);
-        abort();
-    }
-    DaiObjError* runtime_err = DaiVM_run(&dai->vm, function);
-    if (runtime_err != NULL) {
-        DaiVM_printError(&dai->vm, runtime_err);
-        abort();
-    }
-    free(filepath);
-    free(text);
-    DaiTokenList_reset(&tlist);
-    DaiAstProgram_reset(&program);
 }
 
 int64_t
@@ -203,42 +161,42 @@ dai_get_function(Dai* dai, const char* name) {
 
 // #region Call function in dai script.
 void
-dai_call_push_function(Dai* dai, dai_func_t func) {
+daicall_push_function(Dai* dai, dai_func_t func) {
     dai->function = (DaiObj*)func;
     DaiVM_push1(&dai->vm, OBJ_VAL((DaiObjFunction*)func));
 }
 
 // push argument to function call
 void
-dai_call_push_arg_int(Dai* dai, int64_t value) {
+daicall_pusharg_int(Dai* dai, int64_t value) {
     DaiVM_push1(&dai->vm, INTEGER_VAL(value));
     dai->argc++;
 }
 void
-dai_call_push_arg_float(Dai* dai, double value) {
+daicall_pusharg_float(Dai* dai, double value) {
     DaiVM_push1(&dai->vm, FLOAT_VAL(value));
     dai->argc++;
 }
 void
-dai_call_push_arg_string(Dai* dai, const char* value) {
+daicall_pusharg_string(Dai* dai, const char* value) {
     DaiValue v = OBJ_VAL(dai_copy_string(&dai->vm, value, strlen(value)));
     DaiVM_push1(&dai->vm, v);
     dai->argc++;
 }
 void
-dai_call_push_arg_function(Dai* dai, dai_func_t value) {
+daicall_pusharg_function(Dai* dai, dai_func_t value) {
     DaiValue v = OBJ_VAL((DaiObjFunction*)value);
     DaiVM_push1(&dai->vm, v);
     dai->argc++;
 }
 void
-dai_call_push_arg_nil(Dai* dai) {
+daicall_pusharg_nil(Dai* dai) {
     DaiVM_push1(&dai->vm, NIL_VAL);
     dai->argc++;
 }
 
 void
-dai_call_execute(Dai* dai) {
+daicall_execute(Dai* dai) {
     if (dai->function == NULL) {
         fprintf(stderr, "dai_call_execute: function not set.\n");
         abort();
@@ -254,7 +212,7 @@ dai_call_execute(Dai* dai) {
 }
 
 int64_t
-dai_call_return_int(Dai* dai) {
+daicall_getrv_int(Dai* dai) {
     if (!IS_INTEGER(dai->ret)) {
         fprintf(stderr, "dai_call_return_int: expected int, but got %s.\n", dai_value_ts(dai->ret));
         abort();
@@ -263,7 +221,7 @@ dai_call_return_int(Dai* dai) {
 }
 
 double
-dai_call_return_float(Dai* dai) {
+daicall_getrv_float(Dai* dai) {
     if (!IS_FLOAT(dai->ret)) {
         fprintf(
             stderr, "dai_call_return_float: expected float, but got %s.\n", dai_value_ts(dai->ret));
@@ -273,7 +231,7 @@ dai_call_return_float(Dai* dai) {
 }
 
 const char*
-dai_call_return_string(Dai* dai) {
+daicall_getrv_string(Dai* dai) {
     if (!IS_STRING(dai->ret)) {
         fprintf(stderr,
                 "dai_call_return_string: expected string, but got %s.\n",
@@ -284,7 +242,7 @@ dai_call_return_string(Dai* dai) {
 }
 
 dai_func_t
-dai_call_return_function(Dai* dai) {
+daicall_getrv_function(Dai* dai) {
     if (!IS_FUNCTION(dai->ret) && !IS_CLOSURE(dai->ret)) {
         fprintf(stderr,
                 "dai_call_return_function: expected function, but got %s.\n",
@@ -333,7 +291,7 @@ dai_register_function(Dai* dai, const char* name, dai_c_func_t func, int arity) 
 
 // pop argument from DaiVM
 int64_t
-dai_call_pop_arg_int(Dai* dai) {
+daicall_poparg_int(Dai* dai) {
     if (dai->pop_arg_index >= dai->argc) {
         fprintf(stderr, "dai_call_pop_arg_int: no more argument.\n");
         abort();
@@ -347,7 +305,7 @@ dai_call_pop_arg_int(Dai* dai) {
     return AS_INTEGER(dai->argv[dai->pop_arg_index++]);
 }
 double
-dai_call_pop_arg_float(Dai* dai) {
+daicall_poparg_float(Dai* dai) {
     if (dai->pop_arg_index >= dai->argc) {
         fprintf(stderr, "dai_call_pop_arg_float: no more argument.\n");
         abort();
@@ -362,7 +320,7 @@ dai_call_pop_arg_float(Dai* dai) {
 }
 
 const char*
-dai_call_pop_arg_string(Dai* dai) {
+daicall_poparg_string(Dai* dai) {
     if (dai->pop_arg_index >= dai->argc) {
         fprintf(stderr, "dai_call_pop_arg_string: no more argument.\n");
         abort();
@@ -377,7 +335,7 @@ dai_call_pop_arg_string(Dai* dai) {
 }
 
 void
-dai_call_push_return_int(Dai* dai, int64_t value) {
+daicall_setrv_int(Dai* dai, int64_t value) {
     if (!IS_UNDEFINED(dai->ret)) {
         fprintf(stderr, "dai_call_push_return_int: return value already set.\n");
         abort();
@@ -386,7 +344,7 @@ dai_call_push_return_int(Dai* dai, int64_t value) {
 }
 
 void
-dai_call_push_return_float(Dai* dai, double value) {
+daicall_setrv_float(Dai* dai, double value) {
     if (!IS_UNDEFINED(dai->ret)) {
         fprintf(stderr, "dai_call_push_return_int: return value already set.\n");
         abort();
@@ -395,7 +353,7 @@ dai_call_push_return_float(Dai* dai, double value) {
 }
 
 void
-dai_call_push_return_string(Dai* dai, const char* value) {
+daicall_setrv_string(Dai* dai, const char* value) {
     if (!IS_UNDEFINED(dai->ret)) {
         fprintf(stderr, "dai_call_push_return_int: return value already set.\n");
         abort();
@@ -404,7 +362,7 @@ dai_call_push_return_string(Dai* dai, const char* value) {
 }
 
 void
-dai_call_push_return_nil(Dai* dai) {
+daicall_setrv_nil(Dai* dai) {
     if (!IS_UNDEFINED(dai->ret)) {
         fprintf(stderr, "dai_call_push_return_int: return value already set.\n");
         abort();

@@ -71,35 +71,36 @@ typedef uintptr_t dai_func_t;
 dai_func_t
 dai_get_function(Dai* dai, const char* name);
 
+// push function to call
+void
+daicall_push_function(Dai* dai, dai_func_t func);
 // push argument to function call
 void
-dai_call_push_function(Dai* dai, dai_func_t func);
+daicall_pusharg_int(Dai* dai, int64_t value);
 void
-dai_call_push_arg_int(Dai* dai, int64_t value);
+daicall_pusharg_float(Dai* dai, double value);
 void
-dai_call_push_arg_float(Dai* dai, double value);
+daicall_pusharg_string(Dai* dai, const char* value);
 void
-dai_call_push_arg_string(Dai* dai, const char* value);
+daicall_pusharg_function(Dai* dai, dai_func_t value);
 void
-dai_call_push_arg_function(Dai* dai, dai_func_t value);
-void
-dai_call_push_arg_nil(Dai* dai);
+daicall_pusharg_nil(Dai* dai);
 
 /**
  * @brief execute function call. If failed, abort.
  */
 void
-dai_call_execute(Dai* dai);
+daicall_execute(Dai* dai);
 
 // get return value from function call
 int64_t
-dai_call_return_int(Dai* dai);
+daicall_getrv_int(Dai* dai);
 double
-dai_call_return_float(Dai* dai);
+daicall_getrv_float(Dai* dai);
 const char*
-dai_call_return_string(Dai* dai);
+daicall_getrv_string(Dai* dai);
 dai_func_t
-dai_call_return_function(Dai* dai);
+daicall_getrv_function(Dai* dai);
 
 // #endregion
 
@@ -122,19 +123,19 @@ void
 dai_register_function(Dai* dai, const char* name, dai_c_func_t func, int arity);
 
 int64_t
-dai_call_pop_arg_int(Dai* dai);
+daicall_poparg_int(Dai* dai);
 double
-dai_call_pop_arg_float(Dai* dai);
+daicall_poparg_float(Dai* dai);
 const char*
-dai_call_pop_arg_string(Dai* dai);
+daicall_poparg_string(Dai* dai);
 
 void
-dai_call_push_return_int(Dai* dai, int64_t value);
+daicall_setrv_int(Dai* dai, int64_t value);
 void
-dai_call_push_return_float(Dai* dai, double value);
+daicall_setrv_float(Dai* dai, double value);
 void
-dai_call_push_return_string(Dai* dai, const char* value);
+daicall_setrv_string(Dai* dai, const char* value);
 void
-dai_call_push_return_nil(Dai* dai);
+daicall_setrv_nil(Dai* dai);
 
 // #endregion

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import dataclasses
 import os
-import subprocess
-import sys
+import pathlib
 import platform
 import shutil
-import pathlib
+import signal
+import subprocess
+import sys
 
 @dataclasses.dataclass
 class Global:
@@ -165,8 +166,14 @@ def fmt():
 
 
 def runfile(*args):
+    # Ignore SIGINT in the Python process, so that the child process can handle it
     compile("dai")
-    subprocess.check_call(["./cmake-build-debug/dai", *args])
+    child = subprocess.Popen(["./cmake-build-debug/dai", *args], start_new_session=True)
+    try:
+        child.wait()
+    except KeyboardInterrupt:
+        os.killpg(child.pid, signal.SIGINT)
+        child.wait()
 
 
 def dis(*args):

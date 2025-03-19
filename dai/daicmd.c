@@ -14,6 +14,7 @@
 #include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_vm.h"
+#include "dairun.h"
 
 __attribute__((unused)) static void
 sljust(char* dst, char* s, int n) {
@@ -277,64 +278,11 @@ daicmd_runfile(int argc, const char** argv) {
         return 1;
     }
     const char* filename = argv[1];
-    char* filepath       = realpath(filename, NULL);
-    char* text           = dai_string_from_file(filename);
-    if (text == NULL) {
-        free(filepath);
-        perror("Error: cannot read file");
-        return 1;
-    }
-
-    bool has_error = false;
-    {
-        DaiError* err = NULL;
-        DaiTokenList tlist;
-        DaiTokenList_init(&tlist);
-        DaiAstProgram program;
-        DaiAstProgram_init(&program);
-        DaiVM vm;
-        DaiVM_init(&vm);
-
-        err = dai_tokenize_string(text, &tlist);
-        if (err != NULL) {
-            DaiSyntaxError_setFilename(err, filename);
-            DaiSyntaxError_pprint(err, text);
-            goto end;
-        }
-        err = dai_parse(&tlist, &program);
-        if (err != NULL) {
-            DaiSyntaxError_setFilename(err, filename);
-            DaiSyntaxError_pprint(err, text);
-            goto end;
-        }
-        DaiObjFunction* function = DaiObjFunction_New(&vm, "<main>", filepath);
-        err                      = dai_compile(&program, function, &vm);
-        if (err != NULL) {
-            DaiCompileError_pprint(err, text);
-            goto end;
-        }
-        DaiObjError* runtime_err = DaiVM_run(&vm, function);
-        if (runtime_err != NULL) {
-            DaiVM_printError(&vm, runtime_err);
-            DaiVM_resetStack(&vm);
-            goto end;
-        }
-
-        assert(DaiVM_isEmptyStack(&vm));
-        // dai_print_value(DaiVM_lastPopedStackElem(&vm));
-
-    end:
-        dai_free(filepath);
-        dai_free(text);
-        if (err != NULL) {
-            DaiError_free(err);
-            has_error = true;
-        }
-        DaiTokenList_reset(&tlist);
-        DaiAstProgram_reset(&program);
-        DaiVM_reset(&vm);
-    }
-    return 1 ? has_error : 0;
+    DaiVM vm;
+    DaiVM_init(&vm);
+    int ret = Dairun_File(&vm, filename);
+    DaiVM_reset(&vm);
+    return ret;
 }
 
 int
