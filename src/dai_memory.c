@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "dai_chunk.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_value.h"
@@ -129,6 +130,14 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
         case DaiObjType_builtinFn: {
             break;
         }
+        case DaiObjType_module: {
+            DaiObjModule* module = (DaiObjModule*)object;
+            DaiChunk_reset(&module->chunk);
+            DaiSymbolTable_free(module->globalSymbolTable);
+            free(module->globals);
+            VM_FREE(vm, DaiObjModule, object);
+            break;
+        }
     }
 }
 
@@ -201,6 +210,17 @@ blackenObject(DaiVM* vm, DaiObj* object) {
     printf("\n");
 #endif
     switch (object->type) {
+        case DaiObjType_module: {
+            DaiObjModule* module = (DaiObjModule*)object;
+            markObject(vm, (DaiObj*)module->name);
+            markObject(vm, (DaiObj*)module->filename);
+            markArray(vm, &module->chunk.constants);
+            int count = DaiSymbolTable_count(module->globalSymbolTable);
+            for (int i = 0; i < count; i++) {
+                markValue(vm, module->globals[i]);
+            }
+            break;
+        }
         case DaiObjType_mapIterator: {
             DaiObjMapIterator* iterator = (DaiObjMapIterator*)object;
             markObject(vm, (DaiObj*)iterator->map);
@@ -296,15 +316,10 @@ markRoots(DaiVM* vm) {
             markObject(vm, (DaiObj*)vm->frames[i].function);
         }
     }
-    // 标记全局变量
-    {
-        int count = DaiSymbolTable_count(vm->globalSymbolTable);
-        for (int i = 0; i < count; i++) {
-            markValue(vm, vm->globals[i]);
-        }
-    }
     // 标记临时引用
     markValue(vm, vm->temp_ref);
+    // 标记模块表
+    markObject(vm, (DaiObj*)vm->modules);
 }
 
 static void

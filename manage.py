@@ -168,12 +168,13 @@ def fmt():
 def runfile(*args):
     # Ignore SIGINT in the Python process, so that the child process can handle it
     compile("dai")
-    child = subprocess.Popen(["./cmake-build-debug/dai", *args], start_new_session=True)
-    try:
-        child.wait()
-    except KeyboardInterrupt:
-        os.killpg(child.pid, signal.SIGINT)
-        child.wait()
+    child = subprocess.Popen(["./cmake-build-debug/dai", *args])
+    while True:
+        try:
+            child.wait()
+            break
+        except KeyboardInterrupt:
+            print("Ctrl+C")
 
 
 def dis(*args):

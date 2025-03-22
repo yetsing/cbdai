@@ -209,6 +209,11 @@ DaiSymbolTable_free(DaiSymbolTable* table) {
     FREE(DaiSymbolTable, table);
 }
 
+void
+DaiSymbolTable_setOuter(DaiSymbolTable* table, DaiSymbolTable* outer) {
+    table->outer = outer;
+}
+
 DaiSymbol
 DaiSymbolTable_predefine(DaiSymbolTable* table, const char* name) {
     char* cname      = strdup(name);

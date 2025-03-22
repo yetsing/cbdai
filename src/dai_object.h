@@ -1,14 +1,15 @@
-#ifndef D772959F_7E3C_4B7E_B19F_7880710F99C0
-#define D772959F_7E3C_4B7E_B19F_7880710F99C0
+#ifndef SRC_DAI_OBJECT_H_
+#define SRC_DAI_OBJECT_H_
+
+#include <stdbool.h>
 
 #include "hashmap.h"
 
 #include "dai_chunk.h"
+#include "dai_symboltable.h"
 #include "dai_table.h"
 #include "dai_value.h"
-#include <stdbool.h>
 
-typedef struct Dai Dai;
 typedef struct _DaiVM DaiVM;
 typedef struct _DaiObjClass DaiObjClass;
 
@@ -62,9 +63,10 @@ typedef enum {
     DaiObjType_rangeIterator,
     DaiObjType_error,
     DaiObjType_cFunction,   // c api registered function
+    DaiObjType_module,
 } DaiObjType;
 
-typedef void (*CFunction)(Dai* dai);
+typedef void (*CFunction)(void* dai);
 typedef DaiValue (*BuiltinFn)(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv);
 typedef DaiValue (*GetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name);
 typedef DaiValue (*SetPropertyFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
@@ -107,15 +109,30 @@ struct DaiObj {
 
 typedef struct {
     DaiObj obj;
+    DaiChunk chunk;
+    DaiObjString *name, *filename;
+
+    // 全局变量和全局符号表
+    DaiSymbolTable* globalSymbolTable;
+    DaiValue* globals;
+} DaiObjModule;
+DaiObjModule*
+DaiObjModule_New(DaiVM* vm, const char* name, const char* filename);
+void
+DaiObjModule_afterCompile(DaiObjModule* module);
+
+typedef struct {
+    DaiObj obj;
     int arity;   // 参数数量
     DaiChunk chunk;
     DaiObjString* name;
     DaiObjClass* superclass;   // 用于实现 super
     DaiValue* defaults;        // 函数参数的默认值
     int default_count;
+    DaiObjModule* module;
 } DaiObjFunction;
 DaiObjFunction*
-DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename);
+DaiObjFunction_New(DaiVM* vm, DaiObjModule* module, const char* name, const char* filename);
 const char*
 DaiObjFunction_name(DaiObjFunction* function);
 
@@ -259,6 +276,10 @@ DaiObjMap_Free(DaiVM* vm, DaiObjMap* map);
  */
 bool
 DaiObjMap_iter(DaiObjMap* map, size_t* i, DaiValue* key, DaiValue* value);
+void
+DaiObjMap_cset(DaiObjMap* map, DaiValue key, DaiValue value);
+bool
+DaiObjMap_cget(DaiObjMap* map, DaiValue key, DaiValue* value);
 
 typedef struct {
     DaiObj obj;
@@ -270,14 +291,14 @@ DaiObjMapIterator_New(DaiVM* vm, DaiObjMap* map);
 
 typedef struct {
     DaiObj obj;
-    Dai* dai;
+    void* dai;
     BuiltinFn wrapper;
     char* name;
     CFunction func;
     int arity;
 } DaiObjCFunction;
 DaiObjCFunction*
-DaiObjCFunction_New(DaiVM* vm, Dai* dai, BuiltinFn wrapper, CFunction func, const char* name,
+DaiObjCFunction_New(DaiVM* vm, void* dai, BuiltinFn wrapper, CFunction func, const char* name,
                     int arity);
 
 const char*
@@ -290,4 +311,4 @@ dai_is_obj_type(DaiValue value, DaiObjType type) {
 
 // 内置函数
 extern DaiObjBuiltinFunction builtin_funcs[256];
-#endif /* D772959F_7E3C_4B7E_B19F_7880710F99C0 */
+#endif /* SRC_DAI_OBJECT_H_ */

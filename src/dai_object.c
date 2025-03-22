@@ -9,14 +9,16 @@
 #include <string.h>
 #include <time.h>
 
+#include "hashmap.h"
+#include "utf8.h"
+
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_stringbuffer.h"
+#include "dai_symboltable.h"
 #include "dai_table.h"
 #include "dai_value.h"
 #include "dai_vm.h"
-#include "hashmap.h"
-#include "utf8.h"
 
 #define ALLOCATE_OBJ(vm, type, objectType) (type*)allocate_object(vm, sizeof(type), objectType)
 
@@ -119,6 +121,49 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
     return object;
 }
 
+// #region module
+
+// note: name 和 filename 要在堆上分配，同时转移所有权
+DaiObjModule*
+DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
+    assert(name != NULL && filename != NULL);
+    DaiObjModule* module = ALLOCATE_OBJ(vm, DaiObjModule, DaiObjType_module);
+    module->name         = dai_take_string_intern(vm, (char*)name, strlen(name));
+    module->filename     = dai_take_string_intern(vm, (char*)filename, strlen(filename));
+    DaiChunk_init(&module->chunk, filename);
+    module->globalSymbolTable = DaiSymbolTable_New();
+    module->globals           = calloc(GLOBAL_MAX, sizeof(DaiValue));
+    if (module->globals == NULL) {
+        dai_error("malloc globals(%zu bytes) error\n", GLOBAL_MAX * sizeof(DaiValue));
+        abort();
+    }
+    DaiSymbolTable_setOuter(module->globalSymbolTable, vm->builtinSymbolTable);
+
+    // // 设置两个内置的全局变量 __name__ 和 __file__
+    // DaiSymbolTable_define(module->globalSymbolTable, "__name__", true);
+    // DaiSymbolTable_define(module->globalSymbolTable, "__file__", true);
+    // module->globals[0] = OBJ_VAL(module->name);
+    // module->globals[1] = OBJ_VAL(module->filename);
+    return module;
+}
+
+void
+DaiObjModule_afterCompile(DaiObjModule* module) {
+    // 按实际的全局变量数量重新分配内存
+    int count = DaiSymbolTable_count(module->globalSymbolTable);
+    if (count == 0) {
+        free(module->globals);
+        module->globals = NULL;
+        return;
+    }
+    module->globals = realloc(module->globals, sizeof(DaiValue) * count);
+    if (module->globals == NULL) {
+        dai_error("realloc globals(%zu bytes) error\n", count * sizeof(DaiValue));
+        abort();
+    }
+}
+// #endregion
+
 // #region function
 
 static char*
@@ -143,7 +188,7 @@ static struct DaiOperation function_operation = {
 };
 
 DaiObjFunction*
-DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename) {
+DaiObjFunction_New(DaiVM* vm, DaiObjModule* module, const char* name, const char* filename) {
     DaiObjFunction* function = ALLOCATE_OBJ(vm, DaiObjFunction, DaiObjType_function);
     function->obj.operation  = &function_operation;
     function->arity          = 0;
@@ -152,6 +197,7 @@ DaiObjFunction_New(DaiVM* vm, const char* name, const char* filename) {
     function->superclass    = NULL;
     function->defaults      = NULL;
     function->default_count = 0;
+    function->module        = module;
     return function;
 }
 
@@ -2063,7 +2109,7 @@ DaiObjMapEntry_compare(const void* a, const void* b, void* udata) {
 uint64_t
 DaiObjMapEntry_hash(const void* item, uint64_t seed0, uint64_t seed1) {
     const DaiObjMapEntry* entry = (const DaiObjMapEntry*)item;
-    // 因为容器不能作为键，所以 dai_value_hash 不会返回错误
+    // 调用者负责保证 key 是可哈希的，所以这里没有错误处理
     return dai_value_hash(entry->key, seed0, seed1);
 }
 
@@ -2093,6 +2139,12 @@ DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjMap** map_ret
     return NULL;
 }
 
+void
+DaiObjMap_Free(DaiVM* vm, DaiObjMap* map) {
+    hashmap_free(map->map);
+    VM_FREE(vm, DaiObjMap, map);
+}
+
 bool
 DaiObjMap_iter(DaiObjMap* map, size_t* i, DaiValue* key, DaiValue* value) {
     void* item;
@@ -2106,9 +2158,23 @@ DaiObjMap_iter(DaiObjMap* map, size_t* i, DaiValue* key, DaiValue* value) {
 }
 
 void
-DaiObjMap_Free(DaiVM* vm, DaiObjMap* map) {
-    hashmap_free(map->map);
-    VM_FREE(vm, DaiObjMap, map);
+DaiObjMap_cset(DaiObjMap* map, DaiValue key, DaiValue value) {
+    DaiObjMapEntry entry = {key, value};
+    const void* res      = hashmap_set(map->map, &entry);
+    if (res == NULL && hashmap_oom(map->map)) {
+        dai_error("DaiObjMap_cset: Out of memory\n");
+        exit(1);
+    }
+}
+
+bool
+DaiObjMap_cget(DaiObjMap* map, DaiValue key, DaiValue* value) {
+    const DaiObjMapEntry* entry = hashmap_get(map->map, &(DaiObjMapEntry){key});
+    if (entry != NULL) {
+        *value = entry->value;
+        return true;
+    }
+    return false;
 }
 // #endregion
 
@@ -2216,7 +2282,7 @@ static struct DaiOperation c_function_operation = {
 };
 
 DaiObjCFunction*
-DaiObjCFunction_New(DaiVM* vm, Dai* dai, BuiltinFn wrapper, CFunction func, const char* name,
+DaiObjCFunction_New(DaiVM* vm, void* dai, BuiltinFn wrapper, CFunction func, const char* name,
                     int arity) {
     DaiObjCFunction* c_func = ALLOCATE_OBJ(vm, DaiObjCFunction, DaiObjType_cFunction);
     c_func->obj.operation   = &c_function_operation;
@@ -2254,7 +2320,8 @@ dai_object_ts(DaiValue value) {
         case DaiObjType_mapIterator: return "map_iterator";
         case DaiObjType_rangeIterator: return "range_iterator";
         case DaiObjType_error: return "error";
-        case DaiObjType_cFunction: return "native-function";
+        case DaiObjType_cFunction: return "c-function";
+        case DaiObjType_module: return "module";
     }
     return "unknown";
 }

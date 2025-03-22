@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "dai_chunk.h"
 #include "dai_malloc.h"
@@ -27,7 +28,7 @@ DaiVM_pop(DaiVM* vm);
 static void
 DaiVM_popN(DaiVM* vm, int n);
 static DaiObjError*
-DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount);
+DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiValue receiver);
 
 DaiValue dai_true  = {.type = DaiValueType_bool, .as.boolean = true};
 DaiValue dai_false = {.type = DaiValueType_bool, .as.boolean = false};
@@ -36,6 +37,7 @@ void
 DaiVM_resetStack(DaiVM* vm) {
     vm->stack_top  = vm->stack;
     vm->frameCount = 0;
+    vm->stack_max  = vm->stack + STACK_MAX;
 }
 
 void
@@ -58,13 +60,7 @@ DaiVM_init(DaiVM* vm) {
 
     vm->state = VMState_pending;
     DaiTable_init(&vm->strings);
-    vm->globalSymbolTable = DaiSymbolTable_New();
-    vm->globals           = malloc(GLOBAL_MAX * sizeof(DaiValue));
-    if (vm->globals == NULL) {
-        dai_error("malloc globals error\n");
-        abort();
-    }
-    memset(vm->globals, 0, GLOBAL_MAX * sizeof(DaiValue));
+    vm->builtinSymbolTable = DaiSymbolTable_New();
 
     // 初始化内置函数
     {
@@ -72,21 +68,25 @@ DaiVM_init(DaiVM* vm) {
             if (builtin_funcs[i].name == NULL) {
                 break;
             }
-            DaiSymbolTable_defineBuiltin(vm->globalSymbolTable, i, builtin_funcs[i].name);
+            DaiSymbolTable_defineBuiltin(vm->builtinSymbolTable, i, builtin_funcs[i].name);
             DaiSymbol symbol;
             bool found =
-                DaiSymbolTable_resolve(vm->globalSymbolTable, builtin_funcs[i].name, &symbol);
+                DaiSymbolTable_resolve(vm->builtinSymbolTable, builtin_funcs[i].name, &symbol);
             assert(found);
             vm->builtin_funcs[i] = OBJ_VAL(&builtin_funcs[i]);
         }
     }
+
+    DaiObjError* err = DaiObjMap_New(vm, NULL, 0, &vm->modules);
+    if (err != NULL) {
+        dai_error("create modules map error: %s\n", err->message);
+        abort();
+    }
 }
 void
 DaiVM_reset(DaiVM* vm) {
-    free(vm->globals);
-    vm->globals = NULL;
-    DaiSymbolTable_free(vm->globalSymbolTable);
-    vm->globalSymbolTable = NULL;
+    DaiSymbolTable_free(vm->builtinSymbolTable);
+    vm->builtinSymbolTable = NULL;
     DaiTable_reset(&vm->strings);
     dai_free_objects(vm);
 }
@@ -135,26 +135,27 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     CallFrame* frame = &vm->frames[vm->frameCount++];
     frame->function  = function;
     frame->closure   = NULL;
+    frame->chunk     = &function->chunk;
     frame->ip        = function->chunk.code;
     // 前面有一个空位用来放 self ，实际是占了被调用函数本身的位置，会在后续操作中更新成 self
     // (例如 DaiVM_callValue DaiObjType_boundMethod 分支)。
     // 因为帧上面有函数的指针，所以占了也没关系
-    frame->slots = vm->stack_top - function->arity - 1;
+    frame->slots   = vm->stack_top - function->arity - 1;
+    frame->globals = function->module->globals;
     return NULL;
 }
 
 static DaiObjError*
-DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
+DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiValue receiver) {
     if (IS_OBJ(callee)) {
         switch (OBJ_TYPE(callee)) {
             case DaiObjType_boundMethod: {
                 DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(callee);
-                DaiObjError* err = DaiVM_callValue(vm, OBJ_VAL(bound_method->method), argCount);
+                DaiObjError* err                = DaiVM_callValue(
+                    vm, OBJ_VAL(bound_method->method), argCount, bound_method->receiver);
                 if (err != NULL) {
                     return err;
                 }
-                CallFrame* frame = CURRENT_FRAME;
-                frame->slots[0]  = bound_method->receiver;
                 return NULL;
             }
             case DaiObjType_class: {
@@ -172,7 +173,12 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount) {
                 return NULL;
             }
             case DaiObjType_function: {
-                return DaiVM_call(vm, (DaiObjFunction*)AS_OBJ(callee), argCount);
+                DaiObjError* err = DaiVM_call(vm, (DaiObjFunction*)AS_OBJ(callee), argCount);
+                if (!IS_UNDEFINED(receiver)) {
+                    CallFrame* frame = CURRENT_FRAME;
+                    frame->slots[0]  = receiver;
+                }
+                return err;
             }
             case DaiObjType_builtinFn: {
                 const BuiltinFn func = AS_BUILTINFN(callee)->function;
@@ -238,9 +244,11 @@ DaiVM_executeIntBinary(DaiVM* vm, const DaiBinaryOpType opType, const DaiValue a
 // exitOnReturn 为 true 时，遇到 return 时返回 NULL，否则返回错误
 static DaiObjError*
 DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
-    CallFrame* frame = &vm->frames[vm->frameCount - 1];
-    DaiChunk* chunk  = &frame->function->chunk;
+    CallFrame* frame  = &vm->frames[vm->frameCount - 1];
+    DaiChunk* chunk   = frame->chunk;
+    DaiValue* globals = frame->globals;
 
+    // 数字运算
 #define ARITHMETIC_OPERATION(op)                                                         \
     do {                                                                                 \
         DaiValue b = DaiVM_pop(vm);                                                      \
@@ -269,21 +277,26 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
     frame->ip += 2
 
 #ifdef DEBUG_TRACE_EXECUTION
-    const char* name = NULL;
+    const char* curr_funcname = NULL;
 #endif
     //        while (frame->ip < chunk->code + chunk->count) {
     while (true) {
 #ifdef DEBUG_TRACE_EXECUTION
-        const char* funcname = DaiObjFunction_name(frame->function);
-        if (name != funcname) {
-            name = funcname;
-            dai_log("========== %s =========\n", name);
+        const char* funcname;
+        if (frame->function) {
+            funcname = DaiObjFunction_name(frame->function);
+        } else {
+            funcname = chunk->filename;
+        }
+        if (curr_funcname != funcname) {
+            curr_funcname = funcname;
+            dai_log("========== %s =========\n", curr_funcname);
         }
         dai_log("          ");
         for (DaiValue* slot = vm->stack; slot < vm->stack_top; slot++) {
-            dai_log("[ ");
+            dai_log("[ \"");
             dai_print_value(*slot);
-            dai_log(" ]");
+            dai_log("\" ]");
         }
         if (vm->stack_top == vm->stack) {
             dai_log("<EMPTY>");
@@ -650,14 +663,14 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
 
             case DaiOpSetGlobal:
             case DaiOpDefineGlobal: {
-                uint16_t globalIndex     = READ_UINT16();
-                DaiValue val             = DaiVM_pop(vm);
-                vm->globals[globalIndex] = val;
+                uint16_t globalIndex = READ_UINT16();
+                DaiValue val         = DaiVM_pop(vm);
+                globals[globalIndex] = val;
                 break;
             }
             case DaiOpGetGlobal: {
                 uint16_t globalIndex = READ_UINT16();
-                DaiValue val         = vm->globals[globalIndex];
+                DaiValue val         = globals[globalIndex];
                 DaiVM_push(vm, val);
                 break;
             }
@@ -665,12 +678,13 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
             case DaiOpCall: {
                 int argCount     = READ_BYTE();
                 DaiValue callee  = DaiVM_peek(vm, argCount);
-                DaiObjError* err = DaiVM_callValue(vm, callee, argCount);
+                DaiObjError* err = DaiVM_callValue(vm, callee, argCount, UNDEFINED_VAL);
                 if (err != NULL) {
                     return err;
                 }
-                frame = CURRENT_FRAME;
-                chunk = &frame->function->chunk;
+                frame   = CURRENT_FRAME;
+                chunk   = frame->chunk;
+                globals = frame->globals;
                 break;
             }
             case DaiOpReturnValue: {
@@ -678,8 +692,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 vm->frameCount--;
                 vm->stack_top = frame->slots;
                 DaiVM_push(vm, result);
-                frame = &vm->frames[vm->frameCount - 1];
-                chunk = &frame->function->chunk;
+                frame   = CURRENT_FRAME;
+                chunk   = frame->chunk;
+                globals = frame->globals;
                 if (exitOnReturn) {
                     return NULL;
                 }
@@ -690,8 +705,9 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 vm->frameCount--;
                 vm->stack_top = frame->slots;
                 DaiVM_push(vm, result);
-                frame = &vm->frames[vm->frameCount - 1];
-                chunk = &frame->function->chunk;
+                frame   = CURRENT_FRAME;
+                chunk   = frame->chunk;
+                globals = frame->globals;
                 if (exitOnReturn) {
                     return NULL;
                 }
@@ -922,16 +938,13 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
-                    DaiObjError* err = DaiVM_callValue(vm, res, argCount);
+                    DaiObjError* err = DaiVM_callValue(vm, res, argCount, receiver);
                     if (err != NULL) {
                         return err;
                     }
-                    // 如果是内置函数，那么不需要更新 frame 和 chunk
-                    if (!IS_BUILTINFN(res)) {
-                        frame           = CURRENT_FRAME;
-                        frame->slots[0] = receiver;
-                        chunk           = &frame->function->chunk;
-                    }
+                    frame   = CURRENT_FRAME;
+                    chunk   = frame->chunk;
+                    globals = frame->globals;
                 } else {
                     return DaiObjError_Newf(vm,
                                             "'%s' object has not property '%s'",
@@ -951,13 +964,13 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
-                    DaiObjError* err = DaiVM_callValue(vm, res, argCount);
+                    DaiObjError* err = DaiVM_callValue(vm, res, argCount, receiver);
                     if (err != NULL) {
                         return err;
                     }
-                    frame           = CURRENT_FRAME;
-                    frame->slots[0] = receiver;
-                    chunk           = &frame->function->chunk;
+                    frame   = CURRENT_FRAME;
+                    chunk   = frame->chunk;
+                    globals = frame->globals;
                 } else {
                     return DaiObjError_Newf(vm,
                                             "'%s' object has not property '%s'",
@@ -976,13 +989,13 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 if (IS_ERROR(method)) {
                     return AS_ERROR(method);
                 }
-                DaiObjError* err = DaiVM_callValue(vm, method, argCount);
+                DaiObjError* err = DaiVM_callValue(vm, method, argCount, receiver);
                 if (err != NULL) {
                     return err;
                 }
-                frame           = CURRENT_FRAME;
-                frame->slots[0] = receiver;
-                chunk           = &frame->function->chunk;
+                frame   = CURRENT_FRAME;
+                chunk   = frame->chunk;
+                globals = frame->globals;
                 break;
             }
 
@@ -1004,18 +1017,31 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
 #undef READ_BYTE
 }
 
-DaiObjError*
-DaiVM_run(DaiVM* vm, DaiObjFunction* function) {
-    vm->state = VMState_running;
-    // 把函数压入栈，然后调用他
-    DaiVM_push(vm, OBJ_VAL(function));
-    DaiObjError* err = DaiVM_call(vm, function, 0);
-    if (err != NULL) {
-        return err;
+static DaiObjError*
+DaiVM_runModule(DaiVM* vm, DaiObjModule* module) {
+    DaiObjMap_cset(vm->modules, OBJ_VAL(module->filename), OBJ_VAL(module));
+    if (vm->frameCount == FRAMES_MAX) {
+        return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
     }
-    // 弹出脚本函数，这样初始运行时整个栈都是空的
-    DaiVM_pop(vm);
+    // new frame
+    // 运行完成之后，脚本的 frame 不用弹出，这样 vm 始终有一个 frame
+    // 原因是为了兼容 cbdai/dai.c:dai_execute 执行函数时，
+    // 让他有一个父 frame ，在 return 的时候可以返回到父 frame
+    CallFrame* frame = &vm->frames[vm->frameCount++];
+    frame->function  = NULL;
+    frame->closure   = NULL;
+    frame->ip        = module->chunk.code;
+    frame->chunk     = &module->chunk;
+    frame->slots     = vm->stack_top;
+    frame->globals   = module->globals;
     return DaiVM_dorun(vm, false);
+}
+
+DaiObjError*
+DaiVM_main(DaiVM* vm, DaiObjModule* module) {
+    vm->mainModule = module;
+    vm->state      = VMState_running;
+    return DaiVM_runModule(vm, module);
 }
 
 void
@@ -1033,7 +1059,7 @@ DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
     }
     va_end(args);
     DaiObjError* err = NULL;
-    err              = DaiVM_callValue(vm, callee, argCount);
+    err              = DaiVM_callValue(vm, callee, argCount, UNDEFINED_VAL);
     if (err != NULL) {
         return OBJ_VAL(err);
     }
@@ -1046,24 +1072,7 @@ DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
 DaiValue
 DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
     DaiObjError* err = NULL;
-    err              = DaiVM_callValue(vm, callee, argCount);
-    if (err != NULL) {
-        return OBJ_VAL(err);
-    }
-    err = DaiVM_dorun(vm, true);
-    if (err != NULL) {
-        return OBJ_VAL(err);
-    }
-    return DaiVM_pop(vm);
-}
-DaiValue
-DaiVM_runCall3(DaiVM* vm, DaiValue callee, DaiValueArray* args) {
-    DaiVM_push(vm, callee);
-    for (int i = 0; i < args->count; i++) {
-        DaiVM_push(vm, args->values[i]);
-    }
-    DaiObjError* err = NULL;
-    err              = DaiVM_callValue(vm, callee, args->count);
+    err              = DaiVM_callValue(vm, callee, argCount, UNDEFINED_VAL);
     if (err != NULL) {
         return OBJ_VAL(err);
     }
@@ -1079,7 +1088,7 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
     dai_log("Traceback:\n");
     for (int i = 0; i < vm->frameCount; ++i) {
         CallFrame* frame         = &vm->frames[i];
-        DaiChunk* chunk          = &frame->function->chunk;
+        DaiChunk* chunk          = frame->chunk;
         int lineno               = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
         DaiObjFunction* function = frame->function;
         dai_log("  File \"%s\", line %d, in %s\n",
@@ -1105,7 +1114,7 @@ DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input) {
     dai_log("Traceback:\n");
     for (int i = 0; i < vm->frameCount; ++i) {
         CallFrame* frame         = &vm->frames[i];
-        DaiChunk* chunk          = &frame->function->chunk;
+        DaiChunk* chunk          = frame->chunk;
         int lineno               = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
         DaiObjFunction* function = frame->function;
         dai_log("  File \"%s\", line %d, in %s\n",
@@ -1130,6 +1139,7 @@ static void
 DaiVM_push(DaiVM* vm, DaiValue value) {
     *vm->stack_top = value;
     vm->stack_top++;
+    assert(vm->stack_top <= vm->stack_max);
 }
 static DaiValue
 DaiVM_pop(DaiVM* vm) {
@@ -1148,26 +1158,6 @@ DaiVM_stackTop(const DaiVM* vm) {
 void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value) {
     vm->temp_ref = value;
-}
-
-bool
-DaiVM_getGlobal(DaiVM* vm, const char* name, DaiValue* value) {
-    DaiSymbol symbol;
-    if (DaiSymbolTable_resolve(vm->globalSymbolTable, name, &symbol)) {
-        *value = vm->globals[symbol.index];
-        return true;
-    }
-    return false;
-}
-
-bool
-DaiVM_setGlobal(DaiVM* vm, const char* name, DaiValue value) {
-    DaiSymbol symbol;
-    if (DaiSymbolTable_resolve(vm->globalSymbolTable, name, &symbol)) {
-        vm->globals[symbol.index] = value;
-        return true;
-    }
-    return false;
 }
 
 // #region 用于测试的函数

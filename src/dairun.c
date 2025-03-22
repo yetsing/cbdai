@@ -2,8 +2,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "dai_compile.h"
+#include "dai_object.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
@@ -11,7 +13,7 @@
 
 
 int
-Dairun_String(DaiVM* vm, const char* text, const char* filename) {
+Dairun_String(DaiVM* vm, const char* text, const char* filename, DaiObjModule* module) {
     assert(text != NULL && filename != NULL);
 
     bool has_error = false;
@@ -34,13 +36,12 @@ Dairun_String(DaiVM* vm, const char* text, const char* filename) {
             DaiSyntaxError_pprint(err, text);
             goto end;
         }
-        DaiObjFunction* function = DaiObjFunction_New(vm, "<main>", filename);
-        err                      = dai_compile(&program, function, vm);
+        err = dai_compile(&program, module, vm);
         if (err != NULL) {
             DaiCompileError_pprint(err, text);
             goto end;
         }
-        DaiObjError* runtime_err = DaiVM_run(vm, function);
+        DaiObjError* runtime_err = DaiVM_main(vm, module);
         if (runtime_err != NULL) {
             DaiVM_printError(vm, runtime_err);
             DaiVM_resetStack(vm);
@@ -58,11 +59,14 @@ Dairun_String(DaiVM* vm, const char* text, const char* filename) {
         DaiTokenList_reset(&tlist);
         DaiAstProgram_reset(&program);
     }
-    return 1 ? has_error : 0;
+    if (!has_error) {
+        return 0;
+    }
+    return 1;
 }
 
 int
-Dairun_File(DaiVM* vm, const char* filename) {
+Dairun_File(DaiVM* vm, const char* filename, DaiObjModule* module) {
     char* filepath = realpath(filename, NULL);
     char* text     = dai_string_from_file(filepath);
     if (text == NULL) {
@@ -70,8 +74,8 @@ Dairun_File(DaiVM* vm, const char* filename) {
         perror("open file error");
         return 1;
     }
-    int rv = Dairun_String(vm, text, filepath);
+    int ret = Dairun_String(vm, text, filepath, module);
     free(text);
     free(filepath);
-    return rv;
+    return ret;
 }

@@ -13,7 +13,7 @@ void
 dai_assert_value_equal(DaiValue actual, DaiValue expected);
 
 static void
-compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
+compile_helper(const char* input, DaiObjModule* module, DaiVM* vm) {
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
     DaiError* err       = dai_tokenize_string(input, tlist);
@@ -36,7 +36,7 @@ compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
         // free(s);
     }
     DaiTokenList_free(tlist);
-    err = dai_compile(&program, function, vm);
+    err = dai_compile(&program, module, vm);
     if (err) {
         DaiCompileError_pprint(err, input);
     }
@@ -44,7 +44,7 @@ compile_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
 }
 
 static DaiCompileError*
-compile_error_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
+compile_error_helper(const char* input, DaiObjModule* module, DaiVM* vm) {
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
     DaiError* err       = dai_tokenize_string(input, tlist);
@@ -62,7 +62,7 @@ compile_error_helper(const char* input, DaiObjFunction* function, DaiVM* vm) {
     }
     munit_assert_null(err);
     DaiTokenList_free(tlist);
-    err = dai_compile(&program, function, vm);
+    err = dai_compile(&program, module, vm);
     return err;
 }
 
@@ -85,6 +85,14 @@ flat_constants(DaiValueArray* target, const DaiValueArray* source) {
     }
 }
 
+static DaiObjModule*
+create_test_module(DaiVM* vm) {
+    const char* name     = strdup("<test>");
+    const char* filename = strdup("<test-file>");
+    DaiObjModule* module = DaiObjModule_New(vm, name, filename);
+    return module;
+}
+
 static void
 run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
     for (size_t i = 0; i < count; i++) {
@@ -94,9 +102,9 @@ run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
 #endif
         DaiVM vm;
         DaiVM_init(&vm);
-        DaiObjFunction* function = DaiObjFunction_New(&vm, "<test>", "<test>");
-        compile_helper(tests[i].input, function, &vm);
-        DaiChunk chunk = function->chunk;
+        DaiObjModule* module = create_test_module(&vm);
+        compile_helper(tests[i].input, module, &vm);
+        DaiChunk chunk = module->chunk;
         if (chunk.count != tests[i].expected_count) {
             DaiChunk_disassemble(&chunk, "test actual");
         }
@@ -1347,7 +1355,8 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
                __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjFunction* func1     = DaiObjFunction_New(&vm, "<test1>", "<test>");
+    DaiObjModule* module      = create_test_module(&vm);
+    DaiObjFunction* func1     = DaiObjFunction_New(&vm, module, "<test1>", "<test>");
     uint8_t expected_codes1[] = {
         DaiOpConstant,
         0,
@@ -1363,7 +1372,7 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
         DaiChunk_write(&func1->chunk, expected_codes1[i], 1);
     }
 
-    DaiObjFunction* func2 = DaiObjFunction_New(&vm, "<test2>", "<test>");
+    DaiObjFunction* func2 = DaiObjFunction_New(&vm, module, "<test2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpConstant,
@@ -1381,7 +1390,7 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
         }
     }
 
-    DaiObjFunction* func3 = DaiObjFunction_New(&vm, "<test2>", "<test>");
+    DaiObjFunction* func3 = DaiObjFunction_New(&vm, module, "<test2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpReturn,
@@ -1390,7 +1399,7 @@ test_functions(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func3->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func4 = DaiObjFunction_New(&vm, "foo", "<test>");
+    DaiObjFunction* func4 = DaiObjFunction_New(&vm, module, "foo", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpReturn,
@@ -1522,7 +1531,8 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
                     __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>", "<test>");
+    DaiObjModule* module  = create_test_module(&vm);
+    DaiObjFunction* func1 = DaiObjFunction_New(&vm, module, "<test1>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpConstant,
@@ -1535,7 +1545,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func1->chunk, expected_codes1[i], 1);
         }
     }
-    DaiObjFunction* func2 = DaiObjFunction_New(&vm, "<test1>", "<test>");
+    DaiObjFunction* func2 = DaiObjFunction_New(&vm, module, "<test1>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpReturn,
@@ -1544,7 +1554,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func2->chunk, expected_codes1[i], 1);
         }
     }
-    DaiObjFunction* func3 = DaiObjFunction_New(&vm, "<test1>", "<test>");
+    DaiObjFunction* func3 = DaiObjFunction_New(&vm, module, "<test1>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpReturn,
@@ -1553,7 +1563,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func3->chunk, expected_codes1[i], 1);
         }
     }
-    DaiObjFunction* func4 = DaiObjFunction_New(&vm, "<test1>", "<test>");
+    DaiObjFunction* func4 = DaiObjFunction_New(&vm, module, "<test1>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpGetLocal,
@@ -1565,7 +1575,7 @@ test_function_calls(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func4->chunk, expected_codes1[i], 1);
         }
     }
-    DaiObjFunction* func5 = DaiObjFunction_New(&vm, "<test1>", "<test>");
+    DaiObjFunction* func5 = DaiObjFunction_New(&vm, module, "<test1>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpGetLocal,
@@ -1717,7 +1727,8 @@ test_var_statement(__attribute__((unused)) const MunitParameter params[],
                    __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjFunction* func1 = DaiObjFunction_New(&vm, "<test1>", "<test>");
+    DaiObjModule* module  = create_test_module(&vm);
+    DaiObjFunction* func1 = DaiObjFunction_New(&vm, module, "<test1>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpGetGlobal,
@@ -1730,7 +1741,7 @@ test_var_statement(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func1->chunk, expected_codes1[i], 1);
         }
     }
-    DaiObjFunction* func2 = DaiObjFunction_New(&vm, "<test2>", "<test>");
+    DaiObjFunction* func2 = DaiObjFunction_New(&vm, module, "<test2>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpConstant,
@@ -1747,7 +1758,7 @@ test_var_statement(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func2->chunk, expected_codes1[i], 1);
         }
     }
-    DaiObjFunction* func3 = DaiObjFunction_New(&vm, "<test3>", "<test>");
+    DaiObjFunction* func3 = DaiObjFunction_New(&vm, module, "<test3>", "<test>");
     {
         uint8_t expected_codes1[] = {
             DaiOpConstant,
@@ -1879,8 +1890,9 @@ test_builtins(__attribute__((unused)) const MunitParameter params[],
               __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
+    DaiObjModule* module = create_test_module(&vm);
     DaiObjString s = (DaiObjString){{.type = DaiObjType_string}, .chars = "monkey", .length = 6};
-    DaiObjFunction* func = DaiObjFunction_New(&vm, "<test2>", "<test>");
+    DaiObjFunction* func = DaiObjFunction_New(&vm, module, "<test2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpGetBuiltin,
@@ -1943,7 +1955,8 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
               __attribute__((unused)) void* user_data) {
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjFunction* func1_1 = DaiObjFunction_New(&vm, "<test1_1>", "<test>");
+    DaiObjModule* module    = create_test_module(&vm);
+    DaiObjFunction* func1_1 = DaiObjFunction_New(&vm, module, "<test1_1>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpGetFree,
@@ -1958,7 +1971,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func1_1->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func1_2 = DaiObjFunction_New(&vm, "<test1_2>", "<test>");
+    DaiObjFunction* func1_2 = DaiObjFunction_New(&vm, module, "<test1_2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpGetLocal,
@@ -1974,7 +1987,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func1_2->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func2_1 = DaiObjFunction_New(&vm, "<test2>", "<test>");
+    DaiObjFunction* func2_1 = DaiObjFunction_New(&vm, module, "<test2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpGetFree,
@@ -1992,7 +2005,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func2_1->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func2_2 = DaiObjFunction_New(&vm, "<test2>", "<test>");
+    DaiObjFunction* func2_2 = DaiObjFunction_New(&vm, module, "<test2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpGetFree,
@@ -2010,7 +2023,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func2_2->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func2_3 = DaiObjFunction_New(&vm, "<test2>", "<test>");
+    DaiObjFunction* func2_3 = DaiObjFunction_New(&vm, module, "<test2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpGetLocal,
@@ -2026,7 +2039,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func2_3->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func3_1 = DaiObjFunction_New(&vm, "<test3_1>", "<test>");
+    DaiObjFunction* func3_1 = DaiObjFunction_New(&vm, module, "<test3_1>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpConstant,
@@ -2053,7 +2066,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func3_1->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func3_2 = DaiObjFunction_New(&vm, "<test3_2>", "<test>");
+    DaiObjFunction* func3_2 = DaiObjFunction_New(&vm, module, "<test3_2>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpConstant,
@@ -2076,7 +2089,7 @@ test_closures(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func3_2->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func3_3 = DaiObjFunction_New(&vm, "<test3_3>", "<test>");
+    DaiObjFunction* func3_3 = DaiObjFunction_New(&vm, module, "<test3_3>", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpConstant,
@@ -2190,7 +2203,8 @@ test_class(__attribute__((unused)) const MunitParameter params[],
     DaiObjString s4 = (DaiObjString){{.type = DaiObjType_string}, .chars = "s4", .length = 2};
     DaiObjString s5 = (DaiObjString){{.type = DaiObjType_string}, .chars = "classVar", .length = 8};
     DaiObjString s6 = (DaiObjString){{.type = DaiObjType_string}, .chars = "func2", .length = 5};
-    DaiObjFunction* func = DaiObjFunction_New(&vm, "s4", "<test>");
+    DaiObjModule* module = create_test_module(&vm);
+    DaiObjFunction* func = DaiObjFunction_New(&vm, module, "s4", "<test>");
     {
         uint8_t expected_codes2[] = {
             DaiOpReturn,
@@ -2199,7 +2213,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             DaiChunk_write(&func->chunk, expected_codes2[i], 1);
         }
     }
-    DaiObjFunction* func2 = DaiObjFunction_New(&vm, "func2", "<test>");
+    DaiObjFunction* func2 = DaiObjFunction_New(&vm, module, "func2", "<test>");
     {
         /* 常量
             classVar
@@ -2264,7 +2278,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
     }
     DaiObjString s6_2 =
         (DaiObjString){{.type = DaiObjType_string}, .chars = "func2_2", .length = 7};
-    DaiObjFunction* func2_2 = DaiObjFunction_New(&vm, "func2_2", "<test>");
+    DaiObjFunction* func2_2 = DaiObjFunction_New(&vm, module, "func2_2", "<test>");
     {
         /* 常量
             classVar
@@ -2725,34 +2739,34 @@ test_compile_error(__attribute__((unused)) const MunitParameter params[],
     } tests[] = {
         {
             "var a = 1;\nvar a = 2;",
-            "CompileError: symbol 'a' already defined in <test>:2:5",
+            "CompileError: symbol 'a' already defined in <test-file>:2:5",
         },
         {
             "a;",
-            "CompileError: undefined variable: 'a' in <test>:1:1",
+            "CompileError: undefined variable: 'a' in <test-file>:1:1",
         },
         {
             "a = 1;",
-            "CompileError: undefined variable: 'a' in <test>:1:1",
+            "CompileError: undefined variable: 'a' in <test-file>:1:1",
         },
         {
             "a; var a = 1;",
-            "CompileError: undefined variable: 'a' in <test>:1:1",
+            "CompileError: undefined variable: 'a' in <test-file>:1:1",
         },
         {
             "class Foo {var a; fn a() {};};",
-            "CompileError: property 'a' already defined in <test>:1:19",
+            "CompileError: property 'a' already defined in <test-file>:1:19",
         },
         {
             "con a = 1; a = 2;",
-            "CompileError: cannot assign to const variable 'a' in <test>:1:12",
+            "CompileError: cannot assign to const variable 'a' in <test-file>:1:12",
         },
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiVM vm;
         DaiVM_init(&vm);
-        DaiObjFunction* func = DaiObjFunction_New(&vm, "<test>", "<test>");
-        DaiCompileError* err = compile_error_helper(tests[i].input, func, &vm);
+        DaiObjModule* module = create_test_module(&vm);
+        DaiCompileError* err = compile_error_helper(tests[i].input, module, &vm);
         munit_assert_not_null(err);
         char* msg = DaiCompileError_string(err);
         munit_assert_string_equal(msg, tests[i].expected_error_msg);

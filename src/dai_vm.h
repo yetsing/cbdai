@@ -27,7 +27,9 @@ typedef struct {
     DaiObjFunction* function;
     DaiObjClosure* closure;
     uint8_t* ip;
-    DaiValue* slots;   // 局部变量存放位置
+    DaiChunk* chunk;
+    DaiValue* slots;     // 局部变量存放位置
+    DaiValue* globals;   // 全局变量
 } CallFrame;
 
 extern DaiValue dai_true;
@@ -41,6 +43,7 @@ typedef struct _DaiVM {
     DaiChunk* chunk;
     uint8_t* ip;   // 指向下一条指令
     DaiValue stack[STACK_MAX];
+    DaiValue* stack_max;
     DaiValue* stack_top;     // 指向栈顶的下一个位置
     DaiTable strings;        // 字符串驻留
     size_t bytesAllocated;   // 虚拟机管理的内存字节数
@@ -51,9 +54,8 @@ typedef struct _DaiVM {
     int grayCapacity;
     DaiObj** grayStack;
 
-    // 全局变量和全局符号表
-    DaiSymbolTable* globalSymbolTable;
-    DaiValue* globals;
+    // 内置符号表
+    DaiSymbolTable* builtinSymbolTable;
 
     VMState state;
 
@@ -64,6 +66,10 @@ typedef struct _DaiVM {
     // 一些内置函数会创建一些对象，他既不在栈上，也没有被其他对象引用
     // 为了防止被 GC 回收，这里引用一下
     DaiValue temp_ref;
+
+    // 记录导入的模块
+    DaiObjMap* modules;
+    DaiObjModule* mainModule;
 } DaiVM;
 
 void
@@ -73,7 +79,8 @@ DaiVM_reset(DaiVM* vm);
 void
 DaiVM_resetStack(DaiVM* vm);
 DaiObjError*
-DaiVM_run(DaiVM* vm, DaiObjFunction* function);
+DaiVM_main(DaiVM* vm, DaiObjModule* module);
+
 void
 DaiVM_push1(DaiVM* vm, DaiValue value);
 // 传入参数
@@ -94,11 +101,6 @@ DaiVM_stackTop(const DaiVM* vm);
 
 void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value);
-
-bool
-DaiVM_getGlobal(DaiVM* vm, const char* name, DaiValue* value);
-bool
-DaiVM_setGlobal(DaiVM* vm, const char* name, DaiValue value);
 
 // #region 用于测试的函数
 DaiValue

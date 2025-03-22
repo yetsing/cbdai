@@ -10,6 +10,7 @@
 #include "dai_compile.h"
 #include "dai_debug.h"
 #include "dai_malloc.h"
+#include "dai_object.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
@@ -112,13 +113,13 @@ daicmd_repl() {
             DaiSyntaxError_pprint(err, input);
             goto end;
         }
-        DaiObjFunction* function = DaiObjFunction_New(&vm, "<main>", "<stdin>");
-        err                      = dai_compile(&program, function, &vm);
+        DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filename));
+        err                  = dai_compile(&program, module, &vm);
         if (err != NULL) {
             DaiCompileError_pprint(err, input);
             goto end;
         }
-        DaiObjError* runtime_err = DaiVM_run(&vm, function);
+        DaiObjError* runtime_err = DaiVM_main(&vm, module);
         if (runtime_err != NULL) {
             DaiVM_printError2(&vm, runtime_err, input);
             DaiVM_resetStack(&vm);
@@ -236,14 +237,14 @@ daicmd_dis(int argc, const char** argv) {
             DaiSyntaxError_pprint(err, text);
             goto end;
         }
-        DaiObjFunction* function = DaiObjFunction_New(&vm, "<main>", filepath);
-        err                      = dai_compile(&program, function, &vm);
+        DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filepath));
+        err                  = dai_compile(&program, module, &vm);
         if (err != NULL) {
             DaiCompileError_pprint(err, text);
             goto end;
         }
-        DaiChunk_disassemble(&function->chunk, function->name->chars);
-        DaiValueArray constants = function->chunk.constants;
+        DaiChunk_disassemble(&module->chunk, module->name->chars);
+        DaiValueArray constants = module->chunk.constants;
         for (int i = 0; i < constants.count; i++) {
             DaiObjFunction* func = NULL;
             if (IS_CLOSURE(constants.values[i])) {
@@ -280,7 +281,8 @@ daicmd_runfile(int argc, const char** argv) {
     const char* filename = argv[1];
     DaiVM vm;
     DaiVM_init(&vm);
-    int ret = Dairun_File(&vm, filename);
+    DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filename));
+    int ret              = Dairun_File(&vm, filename, module);
     DaiVM_reset(&vm);
     return ret;
 }

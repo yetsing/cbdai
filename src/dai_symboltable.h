@@ -33,6 +33,8 @@ DaiSymbolTable*
 DaiSymbolTable_NewFunction(DaiSymbolTable* outer);
 void
 DaiSymbolTable_free(DaiSymbolTable* table);
+void
+DaiSymbolTable_setOuter(DaiSymbolTable* table, DaiSymbolTable* outer);
 DaiSymbol
 DaiSymbolTable_predefine(DaiSymbolTable* table, const char* name);
 DaiSymbol

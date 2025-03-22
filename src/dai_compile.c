@@ -128,9 +128,10 @@ typedef struct {
     DaiSymbolTable* symbolTable;
     // vm 不归 DaiCompiler 所有，仅作为编译器的一部分
     DaiVM* vm;
-    // function 不归 DaiCompiler 所有，仅作为编译器的一部分
-    // 将整个脚本作为一个函数
-    DaiObjFunction* function;
+    // module 不归 DaiCompiler 所有，仅作为编译器的一部分
+    DaiObjModule* module;
+    // chunk 不归 DaiCompiler 所有，仅作为编译器的一部分
+    DaiChunk* chunk;
 
     // 函数类型，判断是在解析脚本还是函数
     // 一部分语句（比如 return）只能在函数中使用，不能在脚本中使用
@@ -146,8 +147,8 @@ typedef struct {
     // 匿名函数数量，用来给匿名函数命名区分
     int anonymous_count;
 
-    IntArray scope_stack;      // 记录作用域
-    IntArray break_array;      // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
+    IntArray scope_stack;   // 记录作用域
+    IntArray break_array;   // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
     IntArray continue_array;   // 记录 continue 跳转指令的位置，用于后续更新跳转偏移量
 
 } DaiCompiler;
@@ -155,7 +156,7 @@ typedef struct {
 #ifdef DISASSEMBLE_VARIABLE_NAME
 void
 DaiCompiler_addName(const DaiCompiler* compiler, const char* name, int back) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = &(compiler->chunk);
     DaiChunk_addName(chunk, name, back);
 }
 #    define ADD_GLOBAL_NAME(compiler, name) DaiCompiler_addName((compiler), (name), 3)
@@ -242,10 +243,11 @@ DaiCompiler_loadSymbol(const DaiCompiler* compiler, const DaiSymbol* symbol, int
 }
 
 static void
-DaiCompiler_init(DaiCompiler* compiler, DaiObjFunction* function, DaiSymbolTable* symbolTable,
-                 FunctionType type, DaiVM* vm) {
-    compiler->filename          = function->chunk.filename;
-    compiler->function          = function;
+DaiCompiler_init(DaiCompiler* compiler, DaiObjModule* module, DaiChunk* chunk,
+                 DaiSymbolTable* symbolTable, FunctionType type, DaiVM* vm) {
+    compiler->filename          = chunk->filename;
+    compiler->module            = module;
+    compiler->chunk             = chunk;
     compiler->type              = type;
     compiler->vm                = vm;
     compiler->symbolTable       = symbolTable;
@@ -328,12 +330,18 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     }
 
     // 创建函数对象
-    DaiObjFunction* function = DaiObjFunction_New(compiler->vm, name, compiler->filename);
+    DaiObjFunction* function =
+        DaiObjFunction_New(compiler->vm, compiler->module, name, compiler->filename);
     // 创建函数符号表
     DaiSymbolTable* functable = DaiSymbolTable_NewFunction(compiler->symbolTable);
     // 创建子编译器
     DaiCompiler subcompiler;
-    DaiCompiler_init(&subcompiler, function, functable, FunctionType_function, compiler->vm);
+    DaiCompiler_init(&subcompiler,
+                     compiler->module,
+                     &function->chunk,
+                     functable,
+                     FunctionType_function,
+                     compiler->vm);
     IntArray_push(&subcompiler.scope_stack, ScopeType_function);
     subcompiler.is_function_block = true;
     subcompiler.anonymous_count   = compiler->anonymous_count;
@@ -445,7 +453,7 @@ DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
                 compiler->filename, line, column, "symbol '%s' already defined", name);
         }
         symbol = DaiSymbolTable_predefine(compiler->symbolTable, name);
-        if (symbol.index >= UINT16_MAX) {
+        if (symbol.index > UINT16_MAX) {
             return DaiCompileError_Newf(
                 compiler->filename, line, column, "too many global symbols(MAX=%d)", UINT16_MAX);
         }
@@ -657,7 +665,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     }
                     DaiObjString* name = dai_copy_string_intern(
                         compiler->vm, expr->name->value, strlen(expr->name->value));
-                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                     DaiCompiler_emit2(compiler, DaiOpSetProperty, index, stmt->start_line);
                     break;
                 }
@@ -665,7 +673,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)stmt->left;
                     DaiObjString* name         = dai_copy_string_intern(
                         compiler->vm, expr->name->value, strlen(expr->name->value));
-                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                     DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
                     break;
                 }
@@ -828,7 +836,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                             stmt->name->value);
             }
             DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
-            int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpDefineField, index, stmt->name->start_line);
             break;
         }
@@ -849,7 +857,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 return err;
             }
             DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
-            int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpDefineMethod, index, stmt->start_line);
             IntArray_pop(&compiler->scope_stack);
             break;
@@ -870,7 +878,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                             stmt->name->value);
             }
             DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
-            int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpDefineClassField, index, stmt->start_line);
             break;
         }
@@ -883,7 +891,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             }
             DaiObjString* name =
                 dai_copy_string_intern(compiler->vm, stmt->name, strlen(stmt->name));
-            int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpDefineClassMethod, index, stmt->start_line);
             IntArray_pop(&compiler->scope_stack);
             break;
@@ -892,7 +900,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             IntArray_push(&compiler->scope_stack, ScopeType_while);
             IntArray_enter(&compiler->break_array);
             IntArray_enter(&compiler->continue_array);
-            int while_start            = compiler->function->chunk.count;
+            int while_start            = compiler->chunk->count;
             DaiAstWhileStatement* stmt = (DaiAstWhileStatement*)node;
             int loop_offset            = 0;
             if (DaiSymbolTable_isLocal(compiler->symbolTable)) {
@@ -982,7 +990,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             } else {
                 DaiObjString* name = dai_copy_string_intern(
                     compiler->vm, expr->name->value, strlen(expr->name->value));
-                int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                 DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
             }
             break;
@@ -998,7 +1006,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             }
             DaiObjString* name =
                 dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
-            int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpGetSuperProperty, index, expr->start_line);
             break;
         }
@@ -1010,7 +1018,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             }
             DaiObjString* name =
                 dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
-            int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
             DaiCompiler_emit2(compiler, DaiOpGetProperty, index, expr->start_line);
             break;
         }
@@ -1148,7 +1156,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     }
                     DaiObjString* name = dai_copy_string_intern(
                         compiler->vm, dot->name->value, strlen(dot->name->value));
-                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                     DaiCompiler_emit3(
                         compiler, DaiOpCallMethod, index, expr->arguments_count, expr->start_line);
                     return NULL;
@@ -1165,7 +1173,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     DaiAstSelfExpression* selfexpr = (DaiAstSelfExpression*)expr->function;
                     DaiObjString* name             = dai_copy_string_intern(
                         compiler->vm, selfexpr->name->value, strlen(selfexpr->name->value));
-                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                     DaiCompiler_emit3(compiler,
                                       DaiOpCallSelfMethod,
                                       index,
@@ -1185,7 +1193,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     DaiAstSelfExpression* superexpr = (DaiAstSelfExpression*)expr->function;
                     DaiObjString* name              = dai_copy_string_intern(
                         compiler->vm, superexpr->name->value, strlen(superexpr->name->value));
-                    int index = DaiChunk_addConstant(&compiler->function->chunk, OBJ_VAL(name));
+                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                     DaiCompiler_emit3(compiler,
                                       DaiOpCallSuperMethod,
                                       index,
@@ -1324,7 +1332,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 return err;
             }
             DaiCompiler_emit(compiler, DaiOpIterInit, stmt->start_line);
-            int for_start = compiler->function->chunk.count;
+            int for_start = compiler->chunk->count;
             // 定义迭代器和迭代循环变量
             DaiSymbolTable* outer            = compiler->symbolTable;
             DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
@@ -1397,34 +1405,33 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
 
 static int
 DaiCompiler_addConstant(const DaiCompiler* compiler, DaiValue value) {
-    DaiChunk* chunk = &(compiler->function->chunk);
-    return DaiChunk_addConstant(chunk, value);
+    return DaiChunk_addConstant(compiler->chunk, value);
 }
 
 static int
 DaiCompiler_emit(const DaiCompiler* compiler, DaiOpCode op, int line) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = compiler->chunk;
     DaiChunk_write(chunk, (uint8_t)op, line);
     return chunk->count - 1;
 }
 
 static int
 DaiCompiler_emit1(const DaiCompiler* compiler, DaiOpCode op, uint8_t operand, int line) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = compiler->chunk;
     DaiChunk_write(chunk, (uint8_t)op, line);
     DaiChunk_write(chunk, operand, line);
     return chunk->count - 2;
 }
 static int
 DaiCompiler_emit2(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand, int line) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = compiler->chunk;
     DaiChunk_writeu16(chunk, op, operand, line);
     return chunk->count - 3;
 }
 static int
 DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, uint8_t operand2,
                   int line) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = compiler->chunk;
     DaiChunk_writeu16(chunk, op, operand1, line);
     DaiChunk_write(chunk, operand2, line);
     return chunk->count - 4;
@@ -1432,7 +1439,7 @@ DaiCompiler_emit3(const DaiCompiler* compiler, DaiOpCode op, uint16_t operand1, 
 
 static int
 DaiCompiler_emitIterNext(const DaiCompiler* compiler, uint8_t operand1, int line) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = compiler->chunk;
     DaiChunk_write(chunk, DaiOpIterNext, line);
     DaiChunk_write(chunk, operand1, line);
     DaiChunk_write2(chunk, 65535, line);
@@ -1441,7 +1448,7 @@ DaiCompiler_emitIterNext(const DaiCompiler* compiler, uint8_t operand1, int line
 
 static void
 DaiCompiler_patchJump(const DaiCompiler* compiler, int offset) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = compiler->chunk;
     // 减去3是因为 jump 指令占用3个字节
     int jump = chunk->count - offset - 3;
 
@@ -1456,7 +1463,7 @@ DaiCompiler_patchJump(const DaiCompiler* compiler, int offset) {
 
 static void
 DaiCompiler_patchJumpBack(const DaiCompiler* compiler, int offset, int dst) {
-    DaiChunk* chunk = &(compiler->function->chunk);
+    DaiChunk* chunk = compiler->chunk;
     // 减去3是因为 jump 指令占用3个字节
     int jump = offset - dst + 3;
 
@@ -1472,10 +1479,11 @@ DaiCompiler_patchJumpBack(const DaiCompiler* compiler, int offset, int dst) {
 // #endregion
 
 DaiCompileError*
-dai_compile(DaiAstProgram* program, DaiObjFunction* function, DaiVM* vm) {
+dai_compile(DaiAstProgram* program, DaiObjModule* module, DaiVM* vm) {
     vm->state = VMState_compiling;
     DaiCompiler compiler;
-    DaiCompiler_init(&compiler, function, vm->globalSymbolTable, FunctionType_script, vm);
+    DaiCompiler_init(
+        &compiler, module, &module->chunk, module->globalSymbolTable, FunctionType_script, vm);
     IntArray_push(&compiler.scope_stack, ScopeType_script);
     DaiCompileError* err = NULL;
     err                  = DaiCompiler_extractSymbol(&compiler, (DaiAstBase*)program);
@@ -1485,6 +1493,7 @@ dai_compile(DaiAstProgram* program, DaiObjFunction* function, DaiVM* vm) {
         return err;
     }
     err = DaiCompiler_compile(&compiler, (DaiAstBase*)program);
+    DaiObjModule_afterCompile(module);
     DaiCompiler_emit(&compiler, DaiOpEnd, 0);
     // free comiler
     DaiCompiler_reset(&compiler);
