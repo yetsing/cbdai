@@ -4,7 +4,6 @@ import os
 import pathlib
 import platform
 import shutil
-import signal
 import subprocess
 import sys
 
@@ -166,15 +165,17 @@ def fmt():
 
 
 def runfile(*args):
-    # Ignore SIGINT in the Python process, so that the child process can handle it
     compile("dai")
     child = subprocess.Popen(["./cmake-build-debug/dai", *args])
+    exitcode = 0
     while True:
         try:
-            child.wait()
+            exitcode = child.wait()
             break
         except KeyboardInterrupt:
             print("Ctrl+C")
+    if exitcode != 0:
+        sys.exit(exitcode)
 
 
 def dis(*args):

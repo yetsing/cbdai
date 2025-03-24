@@ -6,7 +6,6 @@
 #include <string.h>
 
 #include "dai_object.h"
-#include "dai_symboltable.h"
 #include "dai_value.h"
 #include "dai_vm.h"
 #include "dairun.h"
@@ -68,30 +67,13 @@ dai_load_file(Dai* dai, const char* filename) {
     }
 }
 
-void
-dai_get_global(Dai* dai, const char* name, DaiValue* value) {
-    DaiSymbol symbol;
-    if (!DaiSymbolTable_resolve(dai->module->globalSymbolTable, name, &symbol)) {
-        fprintf(stderr, "dai_get_global: variable '%s' not found.\n", name);
-        abort();
-    }
-    *value = dai->module->globals[symbol.index];
-}
-
-bool
-dai_set_global(Dai* dai, const char* name, DaiValue value) {
-    DaiSymbol symbol;
-    if (!DaiSymbolTable_resolve(dai->module->globalSymbolTable, name, &symbol)) {
-        return false;
-    }
-    dai->module->globals[symbol.index] = value;
-    return true;
-}
-
 int64_t
 dai_get_int(Dai* dai, const char* name) {
     DaiValue value;
-    dai_get_global(dai, name, &value);
+    if (!DaiObjModule_getGlobal(dai->module, name, &value)) {
+        fprintf(stderr, "dai_get_int: variable '%s' not found.\n", name);
+        abort();
+    }
     if (!IS_INTEGER(value)) {
         fprintf(stderr,
                 "dai_get_int: variable '%s' expected int, but got %s.\n",
@@ -104,7 +86,7 @@ dai_get_int(Dai* dai, const char* name) {
 
 void
 dai_set_int(Dai* dai, const char* name, int64_t value) {
-    if (!dai_set_global(dai, name, INTEGER_VAL(value))) {
+    if (!DaiObjModule_setGlobal(dai->module, name, INTEGER_VAL(value))) {
         fprintf(stderr, "dai_set_int: variable '%s' not found.\n", name);
         abort();
     }
@@ -113,7 +95,10 @@ dai_set_int(Dai* dai, const char* name, int64_t value) {
 double
 dai_get_float(Dai* dai, const char* name) {
     DaiValue value;
-    dai_get_global(dai, name, &value);
+    if (!DaiObjModule_getGlobal(dai->module, name, &value)) {
+        fprintf(stderr, "dai_get_float: variable '%s' not found.\n", name);
+        abort();
+    }
     if (!IS_FLOAT(value)) {
         fprintf(stderr,
                 "dai_get_float: variable '%s' expected float, but got %s.\n",
@@ -126,8 +111,7 @@ dai_get_float(Dai* dai, const char* name) {
 
 void
 dai_set_float(Dai* dai, const char* name, double value) {
-
-    if (!dai_set_global(dai, name, FLOAT_VAL(value))) {
+    if (!DaiObjModule_setGlobal(dai->module, name, FLOAT_VAL(value))) {
         fprintf(stderr, "dai_set_float: variable '%s' not found.\n", name);
         abort();
     }
@@ -136,7 +120,10 @@ dai_set_float(Dai* dai, const char* name, double value) {
 const char*
 dai_get_string(Dai* dai, const char* name) {
     DaiValue value;
-    dai_get_global(dai, name, &value);
+    if (!DaiObjModule_getGlobal(dai->module, name, &value)) {
+        fprintf(stderr, "dai_get_string: variable '%s' not found.\n", name);
+        abort();
+    }
     if (!IS_STRING(value)) {
         fprintf(stderr,
                 "dai_get_string: variable '%s' expected string, but got %s.\n",
@@ -150,7 +137,7 @@ dai_get_string(Dai* dai, const char* name) {
 void
 dai_set_string(Dai* dai, const char* name, const char* value) {
     DaiValue v = OBJ_VAL(dai_copy_string(&dai->vm, value, strlen(value)));
-    if (!dai_set_global(dai, name, v)) {
+    if (!DaiObjModule_setGlobal(dai->module, name, v)) {
         fprintf(stderr, "dai_set_string: variable '%s' not found.\n", name);
         abort();
     }
@@ -159,7 +146,10 @@ dai_set_string(Dai* dai, const char* name, const char* value) {
 dai_func_t
 dai_get_function(Dai* dai, const char* name) {
     DaiValue value;
-    dai_get_global(dai, name, &value);
+    if (!DaiObjModule_getGlobal(dai->module, name, &value)) {
+        fprintf(stderr, "dai_get_function: variable '%s' not found.\n", name);
+        abort();
+    }
     if (!IS_FUNCTION(value) && !IS_CLOSURE(value)) {
         fprintf(stderr,
                 "dai_get_function: variable '%s' expected function, but got %s.\n",
@@ -297,8 +287,7 @@ void
 dai_register_function(Dai* dai, const char* name, dai_c_func_t func, int arity) {
     DaiObjCFunction* c_fn =
         DaiObjCFunction_New(&dai->vm, dai, dai_cfunction_wrapper, (CFunction)func, name, arity);
-    DaiSymbol symbol = DaiSymbolTable_define(dai->module->globalSymbolTable, name, true);
-    dai->module->globals[symbol.index] = OBJ_VAL(c_fn);
+    DaiObjModule_addGlobal(dai->module, name, OBJ_VAL(c_fn));
 }
 
 // pop argument from DaiVM

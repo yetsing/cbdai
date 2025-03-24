@@ -1091,6 +1091,10 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
         DaiChunk* chunk          = frame->chunk;
         int lineno               = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
         DaiObjFunction* function = frame->function;
+        if (function == NULL) {
+            // 运行 module 的帧没有 function
+            break;
+        }
         dai_log("  File \"%s\", line %d, in %s\n",
                 chunk->filename,
                 lineno,

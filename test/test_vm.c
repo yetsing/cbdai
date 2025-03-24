@@ -63,6 +63,7 @@ interpret(DaiVM* vm, const char* input) {
     if (err) {
         DaiCompileError_pprint(err, input);
     }
+    DaiAstProgram_reset(&program);
     munit_assert_null(err);
     // 运行
     return DaiVM_main(vm, module);
@@ -95,6 +96,7 @@ interpret2(DaiVM* vm, const char* input) {
     if (err) {
         DaiCompileError_pprint(err, input);
     }
+    DaiAstProgram_reset(&program);
     munit_assert_null(err);
     // 运行
     DaiObjError* runtime_err = DaiVM_main(vm, module);

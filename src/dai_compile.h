@@ -7,10 +7,6 @@
 #include "dai_object.h"
 #include "dai_vm.h"
 
-// NOTE: 函数内会释放 program 的内存
-// DaiCompileError*
-// dai_compile(DaiAstProgram* program, DaiObjFunction* funcion, DaiVM* vm);
-
 DaiCompileError*
 dai_compile(DaiAstProgram* program, DaiObjModule* module, DaiVM* vm);
 

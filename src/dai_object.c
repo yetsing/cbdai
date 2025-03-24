@@ -132,35 +132,80 @@ DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
     module->filename     = dai_take_string_intern(vm, (char*)filename, strlen(filename));
     DaiChunk_init(&module->chunk, filename);
     module->globalSymbolTable = DaiSymbolTable_New();
-    module->globals           = calloc(GLOBAL_MAX, sizeof(DaiValue));
-    if (module->globals == NULL) {
-        dai_error("malloc globals(%zu bytes) error\n", GLOBAL_MAX * sizeof(DaiValue));
-        abort();
-    }
+    module->globals           = malloc(sizeof(DaiValue) * BUILTIN_GLOBALS_COUNT);
+    module->globalInitCount   = BUILTIN_GLOBALS_COUNT;
+    module->globalCapacity    = BUILTIN_GLOBALS_COUNT;
     DaiSymbolTable_setOuter(module->globalSymbolTable, vm->builtinSymbolTable);
 
-    // // 设置两个内置的全局变量 __name__ 和 __file__
-    // DaiSymbolTable_define(module->globalSymbolTable, "__name__", true);
-    // DaiSymbolTable_define(module->globalSymbolTable, "__file__", true);
-    // module->globals[0] = OBJ_VAL(module->name);
-    // module->globals[1] = OBJ_VAL(module->filename);
+    // 设置两个内置的全局变量 __name__ 和 __file__
+    DaiSymbol symbol;
+    symbol = DaiSymbolTable_define(module->globalSymbolTable, "__name__", true);
+    assert(symbol.index == 0);
+    symbol = DaiSymbolTable_define(module->globalSymbolTable, "__file__", true);
+    assert(symbol.index == 1);
+    module->globals[0] = OBJ_VAL(module->name);
+    module->globals[1] = OBJ_VAL(module->filename);
     return module;
 }
 
 void
 DaiObjModule_afterCompile(DaiObjModule* module) {
+    module->compiled = true;
     // 按实际的全局变量数量重新分配内存
     int count = DaiSymbolTable_count(module->globalSymbolTable);
-    if (count == 0) {
-        free(module->globals);
-        module->globals = NULL;
-        return;
-    }
+    assert(count >= BUILTIN_GLOBALS_COUNT);
     module->globals = realloc(module->globals, sizeof(DaiValue) * count);
     if (module->globals == NULL) {
         dai_error("realloc globals(%zu bytes) error\n", count * sizeof(DaiValue));
         abort();
     }
+    for (int i = module->globalInitCount; i < count; i++) {
+        module->globals[i] = UNDEFINED_VAL;
+    }
+}
+
+bool
+DaiObjModule_getGlobal(DaiObjModule* module, const char* name, DaiValue* value) {
+    assert(module->compiled);
+    DaiSymbol symbol;
+
+    if (!DaiSymbolTable_resolve(module->globalSymbolTable, name, &symbol)) {
+        return false;
+    }
+    *value = module->globals[symbol.index];
+    return true;
+}
+
+bool
+DaiObjModule_setGlobal(DaiObjModule* module, const char* name, DaiValue value) {
+    assert(module->compiled);
+    DaiSymbol symbol;
+    if (!DaiSymbolTable_resolve(module->globalSymbolTable, name, &symbol)) {
+        return false;
+    }
+    module->globals[symbol.index] = value;
+    return true;
+}
+
+bool
+DaiObjModule_addGlobal(DaiObjModule* module, const char* name, DaiValue value) {
+    assert(!module->compiled);
+    DaiSymbol symbol;
+    if (DaiSymbolTable_resolve(module->globalSymbolTable, name, &symbol)) {
+        return false;
+    }
+    symbol = DaiSymbolTable_define(module->globalSymbolTable, name, true);
+    if (symbol.index + 1 > module->globalCapacity) {
+        module->globalCapacity = GROW_CAPACITY(module->globalCapacity);
+        module->globals = realloc(module->globals, sizeof(DaiValue) * module->globalCapacity);
+        for (int i = module->globalInitCount; i < module->globalCapacity; i++) {
+            module->globals[i] = UNDEFINED_VAL;
+        }
+    }
+    assert(symbol.index == module->globalInitCount);
+    module->globals[symbol.index] = value;
+    module->globalInitCount++;
+    return true;
 }
 // #endregion
 

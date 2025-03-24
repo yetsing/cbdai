@@ -13,6 +13,7 @@
 typedef struct _DaiVM DaiVM;
 typedef struct _DaiObjClass DaiObjClass;
 
+#define BUILTIN_GLOBALS_COUNT 2
 #define BUILTIN_FUNCTION_COUNT 256
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
@@ -111,15 +112,24 @@ typedef struct {
     DaiObj obj;
     DaiChunk chunk;
     DaiObjString *name, *filename;
+    bool compiled;
 
     // 全局变量和全局符号表
     DaiSymbolTable* globalSymbolTable;
     DaiValue* globals;
+    int globalInitCount;   // 已经初始化的全局变量数量
+    int globalCapacity;
 } DaiObjModule;
 DaiObjModule*
 DaiObjModule_New(DaiVM* vm, const char* name, const char* filename);
 void
 DaiObjModule_afterCompile(DaiObjModule* module);
+bool
+DaiObjModule_getGlobal(DaiObjModule* module, const char* name, DaiValue* value);
+bool
+DaiObjModule_setGlobal(DaiObjModule* module, const char* name, DaiValue value);
+bool
+DaiObjModule_addGlobal(DaiObjModule* module, const char* name, DaiValue value);
 
 typedef struct {
     DaiObj obj;

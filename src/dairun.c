@@ -28,23 +28,27 @@ Dairun_String(DaiVM* vm, const char* text, const char* filename, DaiObjModule* m
         if (err != NULL) {
             DaiSyntaxError_setFilename(err, filename);
             DaiSyntaxError_pprint(err, text);
+            has_error = true;
             goto end;
         }
         err = dai_parse(&tlist, &program);
         if (err != NULL) {
             DaiSyntaxError_setFilename(err, filename);
             DaiSyntaxError_pprint(err, text);
+            has_error = true;
             goto end;
         }
         err = dai_compile(&program, module, vm);
         if (err != NULL) {
             DaiCompileError_pprint(err, text);
+            has_error = true;
             goto end;
         }
         DaiObjError* runtime_err = DaiVM_main(vm, module);
         if (runtime_err != NULL) {
             DaiVM_printError(vm, runtime_err);
             DaiVM_resetStack(vm);
+            has_error = true;
             goto end;
         }
 
@@ -54,7 +58,6 @@ Dairun_String(DaiVM* vm, const char* text, const char* filename, DaiObjModule* m
     end:
         if (err != NULL) {
             DaiError_free(err);
-            has_error = true;
         }
         DaiTokenList_reset(&tlist);
         DaiAstProgram_reset(&program);

@@ -1489,7 +1489,6 @@ dai_compile(DaiAstProgram* program, DaiObjModule* module, DaiVM* vm) {
     err                  = DaiCompiler_extractSymbol(&compiler, (DaiAstBase*)program);
     if (err != NULL) {
         DaiCompiler_reset(&compiler);
-        DaiAstProgram_reset(program);
         return err;
     }
     err = DaiCompiler_compile(&compiler, (DaiAstBase*)program);
@@ -1497,7 +1496,5 @@ dai_compile(DaiAstProgram* program, DaiObjModule* module, DaiVM* vm) {
     DaiCompiler_emit(&compiler, DaiOpEnd, 0);
     // free comiler
     DaiCompiler_reset(&compiler);
-    // free ast
-    DaiAstProgram_reset(program);
     return err;
 }
