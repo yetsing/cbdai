@@ -10,7 +10,6 @@
 #include "dai_table.h"
 #include "dai_value.h"
 
-#define GLOBAL_MAX 65536
 #define FRAMES_MAX 64
 // 保证大于 65536 即可，对应 DaiOpArray 操作数
 #define STACK_MAX (GLOBAL_MAX + UINT8_COUNT)

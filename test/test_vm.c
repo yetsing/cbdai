@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -37,8 +38,7 @@ create_test_module(DaiVM* vm) {
 }
 
 static DaiObjError*
-interpret(DaiVM* vm, const char* input) {
-    const char* filename = "<test>";
+interpret(DaiVM* vm, const char* input, const char* filename) {
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
     DaiError* err       = dai_tokenize_string(input, tlist);
@@ -58,7 +58,7 @@ interpret(DaiVM* vm, const char* input) {
     }
     munit_assert_null(err);
     // 编译
-    DaiObjModule* module = create_test_module(vm);
+    DaiObjModule* module = DaiObjModule_New(vm, strdup("<test>"), strdup(filename));
     err                  = dai_compile(&program, module, vm);
     if (err) {
         DaiCompileError_pprint(err, input);
@@ -70,8 +70,7 @@ interpret(DaiVM* vm, const char* input) {
 }
 
 static void
-interpret2(DaiVM* vm, const char* input) {
-    const char* filename = "<test>";
+interpret2(DaiVM* vm, const char* input, const char* filename) {
     // 词法分析
     DaiTokenList* tlist = DaiTokenList_New();
     DaiError* err       = dai_tokenize_string(input, tlist);
@@ -91,7 +90,7 @@ interpret2(DaiVM* vm, const char* input) {
     }
     munit_assert_null(err);
     // 编译
-    DaiObjModule* module = create_test_module(vm);
+    DaiObjModule* module = DaiObjModule_New(vm, strdup("<test>"), strdup(filename));
     err                  = dai_compile(&program, module, vm);
     if (err) {
         DaiCompileError_pprint(err, input);
@@ -125,11 +124,11 @@ run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
         DaiVM vm;
         DaiVM_init(&vm);
         if (IS_ERROR(tests[i].expected)) {
-            DaiObjError* got_err = interpret(&vm, tests[i].input);
+            DaiObjError* got_err = interpret(&vm, tests[i].input, "<test-file>");
             munit_assert_not_null(got_err);
             dai_assert_value_equal(OBJ_VAL(got_err), tests[i].expected);
         } else {
-            interpret2(&vm, tests[i].input);
+            interpret2(&vm, tests[i].input, "<test-file>");
             DaiValue actual = DaiVM_lastPopedStackElem(&vm);
             dai_assert_value_equal(actual, tests[i].expected);
             if (!DaiVM_isEmptyStack(&vm)) {
@@ -171,6 +170,9 @@ run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
 
 static void
 run_vm_test_file_with_number(const char* filename) {
+#ifdef DAI_TEST_VERBOSE
+    printf("run file: %s\n", filename);
+#endif
     char* input = dai_string_from_file(filename);
     if (input == NULL) {
         printf("could not open file: %s\n", filename);
@@ -199,7 +201,11 @@ run_vm_test_file_with_number(const char* filename) {
 
     DaiVM vm;
     DaiVM_init(&vm);
-    interpret(&vm, input);
+    DaiObjError* err = interpret(&vm, input, filename);
+    if (err) {
+        DaiVM_printError(&vm, err);
+        munit_assert_null(err);
+    }
     const DaiValue actual = DaiVM_lastPopedStackElem(&vm);
     dai_assert_value_equal(actual, expected);
     if (!DaiVM_isEmptyStack(&vm)) {
@@ -246,6 +252,29 @@ run_vm_test_files(const char* test_files[], const size_t count) {
         strcat(resolved_path, test_files[i]);
         run_vm_test_file_with_number(resolved_path);
     }
+}
+
+static void
+run_vm_test_directory(const char* directory) {
+    DIR* dir = opendir(directory);
+    if (dir == NULL) {
+        printf("could not open directory: %s\n", directory);
+        perror("opendir");
+    }
+    munit_assert_not_null(dir);
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_REG) {
+            char* filename = entry->d_name;
+            if (strstr(filename, ".dai") != NULL) {
+                char path[PATH_MAX];
+                strcpy(path, directory);
+                strcat(path, filename);
+                run_vm_test_file_with_number(path);
+            }
+        }
+    }
+    closedir(dir);
 }
 
 static MunitResult
@@ -2757,6 +2786,16 @@ test_calling_functions_with_defalut(__attribute__((unused)) const MunitParameter
     return MUNIT_OK;
 }
 
+static MunitResult
+test_vm_testcases(__attribute__((unused)) const MunitParameter params[],
+                  __attribute__((unused)) void* user_data) {
+    char testcases_directory[PATH_MAX];
+    get_file_directory(testcases_directory);
+    strcat(testcases_directory, "vm_testcases/");
+    run_vm_test_directory(testcases_directory);
+    return MUNIT_OK;
+}
+
 MunitTest vm_tests[] = {
     {(char*)"/test_number_arithmetic",
      test_number_arithmetic,
@@ -2839,5 +2878,6 @@ MunitTest vm_tests[] = {
      NULL,
      MUNIT_TEST_OPTION_NONE,
      NULL},
+    {"/test_vm_testcases", test_vm_testcases, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
     {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
 };

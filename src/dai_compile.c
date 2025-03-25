@@ -453,9 +453,9 @@ DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
                 compiler->filename, line, column, "symbol '%s' already defined", name);
         }
         symbol = DaiSymbolTable_predefine(compiler->symbolTable, name);
-        if (symbol.index > UINT16_MAX) {
+        if (symbol.index >= GLOBAL_MAX) {
             return DaiCompileError_Newf(
-                compiler->filename, line, column, "too many global symbols(MAX=%d)", UINT16_MAX);
+                compiler->filename, line, column, "too many global symbols");
         }
     }
     return NULL;
@@ -578,12 +578,12 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     break;
                 }
                 case DaiSymbolType_local: {
-                    if (symbol.index >= UINT8_MAX) {
+                    if (symbol.index >= LOCAL_MAX) {
+                        printf("symbol.index = %d\n", symbol.index);
                         return DaiCompileError_Newf(compiler->filename,
                                                     stmt->name->start_line,
                                                     stmt->name->start_column,
-                                                    "too many local symbols(MAX=%d)",
-                                                    UINT8_MAX);
+                                                    "error1 too many local symbols");
                     }
                     DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
                     ADD_LOCAL_NAME(compiler, symbol.name);
@@ -739,12 +739,11 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     break;
                 }
                 case DaiSymbolType_local: {
-                    if (symbol.index >= UINT8_MAX) {
+                    if (symbol.index >= LOCAL_MAX) {
                         return DaiCompileError_Newf(compiler->filename,
                                                     stmt->start_line,
                                                     stmt->start_column,
-                                                    "too many local symbols(MAX=%d)",
-                                                    UINT8_MAX);
+                                                    "error2 too many local symbols");
                     }
                     DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
                     ADD_LOCAL_NAME(compiler, symbol.name);
@@ -786,12 +785,11 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     break;
                 }
                 case DaiSymbolType_local: {
-                    if (symbol.index >= UINT8_MAX) {
+                    if (symbol.index >= LOCAL_MAX) {
                         return DaiCompileError_Newf(compiler->filename,
                                                     stmt->start_line,
                                                     stmt->start_column,
-                                                    "too many local symbols(MAX=%d)",
-                                                    UINT8_MAX);
+                                                    "error3 too many local symbols");
                     }
                     DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
                     ADD_LOCAL_NAME(compiler, symbol.name);
@@ -1134,7 +1132,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_CallExpression: {
             DaiAstCallExpression* expr = (DaiAstCallExpression*)node;
-            if (expr->arguments_count > UINT8_MAX) {
+            if (expr->arguments_count >= LOCAL_MAX) {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->start_line,
                                             expr->start_column,

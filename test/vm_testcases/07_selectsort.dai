@@ -1,0 +1,34 @@
+#285
+fn selectsort(arr) {
+    var i = 0;
+    var j = 0;
+    var min = 0;
+    while (i < arr.length() - 1) {
+        min = i;
+        j = i + 1;
+        while (j < arr.length()) {
+            if (arr[min] > arr[j]) {
+                min = j;
+            }
+            j = j + 1;
+        }
+        if (min != i) {
+            var tmp = arr[min];
+            arr[min] = arr[i];
+            arr[i] = tmp;
+        }
+        i = i + 1;
+    }
+}
+
+fn main() {
+    var a = [4, 3, 9, 2, 0, 1, 6, 5, 7, 8];
+    selectsort(a);
+    var sum = 0;
+    for (var i, e in a) {
+        sum += i * e;
+    }
+    return sum;
+}
+
+main();

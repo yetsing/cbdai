@@ -8,6 +8,9 @@
 #include "dai_value.h"
 #include <stdint.h>
 
+#define GLOBAL_MAX 65536   // uint16
+#define LOCAL_MAX 256      // uint8
+
 // 二元操作类型，比如加减乘除
 typedef enum {
     // BinaryOpAdd,

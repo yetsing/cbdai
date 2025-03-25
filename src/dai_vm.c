@@ -115,7 +115,7 @@ concatenate_string(DaiVM* vm, DaiValue v1, DaiValue v2) {
 
 static DaiObjError*
 DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
-    if (argCount < function->arity - function->default_count || argCount > function->arity) {
+    if ((argCount < function->arity - function->default_count) || (argCount > function->arity)) {
         return DaiObjError_Newf(vm,
                                 "%s() expected %d arguments but got %d",
                                 function->name->chars,
@@ -151,12 +151,8 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
         switch (OBJ_TYPE(callee)) {
             case DaiObjType_boundMethod: {
                 DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(callee);
-                DaiObjError* err                = DaiVM_callValue(
+                return DaiVM_callValue(
                     vm, OBJ_VAL(bound_method->method), argCount, bound_method->receiver);
-                if (err != NULL) {
-                    return err;
-                }
-                return NULL;
             }
             case DaiObjType_class: {
                 DaiValue* new_stack_top = vm->stack_top - argCount - 1;
@@ -1093,7 +1089,7 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
         DaiObjFunction* function = frame->function;
         if (function == NULL) {
             // 运行 module 的帧没有 function
-            break;
+            continue;
         }
         dai_log("  File \"%s\", line %d, in %s\n",
                 chunk->filename,
