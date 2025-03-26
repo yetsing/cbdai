@@ -136,6 +136,7 @@ DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
     module->globalInitCount   = BUILTIN_GLOBALS_COUNT;
     module->globalCapacity    = BUILTIN_GLOBALS_COUNT;
     DaiSymbolTable_setOuter(module->globalSymbolTable, vm->builtinSymbolTable);
+    module->max_local_count = 0;
 
     // 设置两个内置的全局变量 __name__ 和 __file__
     DaiSymbol symbol;
@@ -239,10 +240,11 @@ DaiObjFunction_New(DaiVM* vm, DaiObjModule* module, const char* name, const char
     function->arity          = 0;
     function->name           = dai_copy_string_intern(vm, name, strlen(name));
     DaiChunk_init(&function->chunk, filename);
-    function->superclass    = NULL;
-    function->defaults      = NULL;
-    function->default_count = 0;
-    function->module        = module;
+    function->superclass      = NULL;
+    function->defaults        = NULL;
+    function->default_count   = 0;
+    function->module          = module;
+    function->max_local_count = 0;
     return function;
 }
 

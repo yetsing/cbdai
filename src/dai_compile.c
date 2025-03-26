@@ -13,6 +13,10 @@
 #include "dai_object.h"
 #include "dai_symboltable.h"
 
+#ifndef MAX
+#    define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
+
 // #region IntArray 记录 break continue 层级和位置，辅助编译跳转指令
 typedef struct {
     int level;
@@ -147,9 +151,12 @@ typedef struct {
     // 匿名函数数量，用来给匿名函数命名区分
     int anonymous_count;
 
-    IntArray scope_stack;   // 记录作用域
+    IntArray
+        scope_stack;   // 记录作用域，用来判断一些语句的合法性，比如 break continue 必须在循环中
     IntArray break_array;   // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
     IntArray continue_array;   // 记录 continue 跳转指令的位置，用于后续更新跳转偏移量
+
+    int max_local_count;   // 记录最大的局部变量数量，用于分配栈空间
 
 } DaiCompiler;
 
@@ -257,6 +264,7 @@ DaiCompiler_init(DaiCompiler* compiler, DaiObjModule* module, DaiChunk* chunk,
     IntArray_init(&compiler->scope_stack);
     IntArray_init(&compiler->break_array);
     IntArray_init(&compiler->continue_array);
+    compiler->max_local_count = 0;
 }
 
 static void
@@ -357,6 +365,8 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
         DaiAstIdentifier* param = parameters[i];
         DaiSymbolTable_define(functable, param->value, false);
     }
+    subcompiler.max_local_count =
+        MAX(subcompiler.max_local_count, parameters_count + 1);   // +1 是 self
     // 编译函数体
     DaiCompileError* err = DaiCompiler_compile(&subcompiler, (DaiAstBase*)body);
     if (err != NULL) {
@@ -401,6 +411,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
         }
         DaiCompiler_emit1(compiler, DaiOpSetFunctionDefault, DaiArray_length(defaults), start_line);
     }
+    function->max_local_count = subcompiler.max_local_count;
     return NULL;
 }
 
@@ -487,10 +498,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     DaiSymbolTable_free(blockSymbolTable);
                     return err;
                 }
-            }
-            if (!compiler->is_function_block && DaiSymbolTable_count(blockSymbolTable) > 0) {
-                DaiCompiler_emit1(
-                    compiler, DaiOpPopN, DaiSymbolTable_count(blockSymbolTable), stmt->end_line);
             }
             compiler->is_function_block = false;
             DaiSymbolTable_free(blockSymbolTable);
@@ -585,6 +592,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                                     stmt->name->start_column,
                                                     "error1 too many local symbols");
                     }
+                    compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
                     DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
                     ADD_LOCAL_NAME(compiler, symbol.name);
                     break;
@@ -745,6 +753,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                                     stmt->start_column,
                                                     "error2 too many local symbols");
                     }
+                    compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
                     DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
                     ADD_LOCAL_NAME(compiler, symbol.name);
                     break;
@@ -791,6 +800,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                                                     stmt->start_column,
                                                     "error3 too many local symbols");
                     }
+                    compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
                     DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
                     ADD_LOCAL_NAME(compiler, symbol.name);
                     break;
@@ -900,11 +910,11 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             IntArray_enter(&compiler->continue_array);
             int while_start            = compiler->chunk->count;
             DaiAstWhileStatement* stmt = (DaiAstWhileStatement*)node;
-            int loop_offset            = 0;
-            if (DaiSymbolTable_isLocal(compiler->symbolTable)) {
-                loop_offset = DaiSymbolTable_countOuter(compiler->symbolTable);
-            }
-            DaiCompiler_emit1(compiler, DaiOpSetStackTop, loop_offset, stmt->start_line);
+            // int loop_offset            = 0;
+            // if (DaiSymbolTable_isLocal(compiler->symbolTable)) {
+            //     loop_offset = DaiSymbolTable_countOuter(compiler->symbolTable);
+            // }
+            // DaiCompiler_emit1(compiler, DaiOpSetStackTop, loop_offset, stmt->start_line);
             DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
             if (err != NULL) {
                 return err;
@@ -1329,24 +1339,22 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             if (err != NULL) {
                 return err;
             }
-            DaiCompiler_emit(compiler, DaiOpIterInit, stmt->start_line);
-            int for_start = compiler->chunk->count;
             // 定义迭代器和迭代循环变量
             DaiSymbolTable* outer            = compiler->symbolTable;
             DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
             compiler->symbolTable            = blockSymbolTable;
             DaiSymbol itertor_symbol         = DaiSymbolTable_define(
                 blockSymbolTable, "//iterator", true);   // 一个特殊的变量名表示迭代器
-            DaiCompiler_emit1(compiler,
-                              DaiOpSetStackTop,
-                              DaiSymbolTable_countOuter(compiler->symbolTable),
-                              stmt->start_line);
             if (stmt->i == NULL) {
                 DaiSymbolTable_define(blockSymbolTable, "//i", true);   // 占个位置保持一致
             } else {
                 DaiSymbolTable_define(blockSymbolTable, stmt->i->value, false);
             }
             DaiSymbolTable_define(blockSymbolTable, stmt->e->value, false);
+            compiler->max_local_count = MAX(compiler->max_local_count, itertor_symbol.index + 3);
+            // 编译 for-in 循环
+            DaiCompiler_emit1(compiler, DaiOpIterInit, itertor_symbol.index, stmt->start_line);
+            int for_start = compiler->chunk->count;
             int jump_if_end_offset =
                 DaiCompiler_emitIterNext(compiler, itertor_symbol.index, stmt->start_line);
             err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
@@ -1383,8 +1391,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     DaiCompiler_patchJumpBack(compiler, jump, for_start);
                 }
             }
-            // pop iterator i e
-            DaiCompiler_emit1(compiler, DaiOpPopN, 3, stmt->end_line);
             DaiSymbolTable_free(blockSymbolTable);
             compiler->symbolTable = outer;
             IntArray_leave(&compiler->break_array);
@@ -1491,6 +1497,7 @@ dai_compile(DaiAstProgram* program, DaiObjModule* module, DaiVM* vm) {
     }
     err = DaiCompiler_compile(&compiler, (DaiAstBase*)program);
     DaiObjModule_afterCompile(module);
+    module->max_local_count = compiler.max_local_count;
     DaiCompiler_emit(&compiler, DaiOpEnd, 0);
     // free comiler
     DaiCompiler_reset(&compiler);

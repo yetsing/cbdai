@@ -29,14 +29,6 @@ get_file_directory(char* path) {
     }
 }
 
-static DaiObjModule*
-create_test_module(DaiVM* vm) {
-    const char* name     = strdup("<test>");
-    const char* filename = strdup("<test-file>");
-    DaiObjModule* module = DaiObjModule_New(vm, name, filename);
-    return module;
-}
-
 static DaiObjError*
 interpret(DaiVM* vm, const char* input, const char* filename) {
     // 词法分析

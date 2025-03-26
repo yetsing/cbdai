@@ -54,12 +54,11 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpJump]        = {.name = "DaiOpJump", .operand_bytes = 2},
     [DaiOpJumpBack]    = {.name = "DaiOpJumpBack", .operand_bytes = 2},
 
-    [DaiOpIterInit] = {.name = "DaiOpIterInit", .operand_bytes = 0},
-    // 操作数：迭代器的索引，循环末尾的偏移量
+    // 操作数：uint8 迭代器的索引
+    [DaiOpIterInit] = {.name = "DaiOpIterInit", .operand_bytes = 1},
+    // 操作数：uint8 迭代器的索引， uint16 循环末尾的偏移量
     [DaiOpIterNext] = {.name = "DaiOpIterNext", .operand_bytes = 3},
 
-    // 操作数：与当前帧的栈顶的偏移量
-    [DaiOpSetStackTop] = {.name = "DaiOpSetStackTop", .operand_bytes = 1},
 
     [DaiOpPop] = {.name = "DaiOpPop", .operand_bytes = 0},
     // 操作数：弹出的个数
@@ -69,7 +68,7 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpGetGlobal]    = {.name = "DaiOpGetGlobal", .operand_bytes = 2},
     [DaiOpSetGlobal]    = {.name = "DaiOpSetGlobal", .operand_bytes = 2},
 
-    [DaiOpCall]        = {.name = "DaiOpCall", .operand_bytes = 1},   // 操作数是函数调用参数个数
+    [DaiOpCall] = {.name = "DaiOpCall", .operand_bytes = 1},   // 操作数是函数调用参数个数
     [DaiOpReturnValue] = {.name = "DaiOpReturnValue", .operand_bytes = 0},
     [DaiOpReturn]      = {.name = "DaiOpReturn", .operand_bytes = 0},
 

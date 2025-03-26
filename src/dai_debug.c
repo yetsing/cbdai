@@ -197,10 +197,8 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpJump: return jump_instruction("OP_JUMP", chunk, offset);
         case DaiOpJumpBack: return jump_back_instruction("OP_JUMP_BACK", chunk, offset);
 
-        case DaiOpIterInit: return simple_instruction("OP_ITER", offset);
+        case DaiOpIterInit: return simple_instruction1("OP_ITER", chunk, offset);
         case DaiOpIterNext: return iter_next_instruction("OP_ITER_NEXT", chunk, offset);
-
-        case DaiOpSetStackTop: return simple_instruction1("OP_SET_STACK_TOP", chunk, offset);
 
         case DaiOpPop: return simple_instruction("OP_POP", offset);
         case DaiOpPopN: return simple_instruction1("OP_POP_N", chunk, offset);

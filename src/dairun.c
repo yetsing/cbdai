@@ -52,9 +52,6 @@ Dairun_String(DaiVM* vm, const char* text, const char* filename, DaiObjModule* m
             goto end;
         }
 
-        assert(DaiVM_isEmptyStack(vm));
-        // dai_print_value(DaiVM_lastPopedStackElem(&vm));
-
     end:
         if (err != NULL) {
             DaiError_free(err);

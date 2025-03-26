@@ -119,6 +119,8 @@ typedef struct {
     DaiValue* globals;
     int globalInitCount;   // 已经初始化的全局变量数量
     int globalCapacity;
+
+    int max_local_count;
 } DaiObjModule;
 DaiObjModule*
 DaiObjModule_New(DaiVM* vm, const char* name, const char* filename);
@@ -140,6 +142,7 @@ typedef struct {
     DaiValue* defaults;        // 函数参数的默认值
     int default_count;
     DaiObjModule* module;
+    int max_local_count;
 } DaiObjFunction;
 DaiObjFunction*
 DaiObjFunction_New(DaiVM* vm, DaiObjModule* module, const char* name, const char* filename);

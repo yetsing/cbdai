@@ -12,7 +12,7 @@
 
 #define FRAMES_MAX 65
 // 保证大于 65536 即可，对应 DaiOpArray 操作数
-#define STACK_MAX (GLOBAL_MAX + UINT8_COUNT)
+#define STACK_MAX ((LOCAL_MAX + 32) * FRAMES_MAX)
 
 typedef enum {
     VMState_pending,
@@ -27,8 +27,9 @@ typedef struct {
     DaiObjClosure* closure;
     uint8_t* ip;
     DaiChunk* chunk;
-    DaiValue* slots;     // 局部变量存放位置
-    DaiValue* globals;   // 全局变量
+    DaiValue* slots;       // 局部变量存放位置
+    DaiValue* globals;     // 全局变量
+    int max_local_count;   // 局部变量最大数量
 } CallFrame;
 
 extern DaiValue dai_true;

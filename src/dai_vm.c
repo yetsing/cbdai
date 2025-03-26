@@ -66,13 +66,14 @@ DaiVM_init(DaiVM* vm) {
     // 确保始终有一个 frame
     // 原因是为了兼容 cbdai/dai.c:dai_execute 执行函数时，
     // 让他有一个父 frame ，在 return 的时候可以返回到父 frame
-    CallFrame* frame = &vm->frames[vm->frameCount++];
-    frame->function  = NULL;
-    frame->closure   = NULL;
-    frame->chunk     = NULL;
-    frame->ip        = NULL;
-    frame->slots     = vm->stack_top;
-    frame->globals   = NULL;
+    CallFrame* frame       = &vm->frames[vm->frameCount++];
+    frame->function        = NULL;
+    frame->closure         = NULL;
+    frame->chunk           = NULL;
+    frame->ip              = NULL;
+    frame->slots           = vm->stack_top;
+    frame->globals         = NULL;
+    frame->max_local_count = 0;
 
     // 初始化内置函数
     {
@@ -152,8 +153,10 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     // 前面有一个空位用来放 self ，实际是占了被调用函数本身的位置，会在后续操作中更新成 self
     // (例如 DaiVM_callValue DaiObjType_boundMethod 分支)。
     // 因为帧上面有函数的指针，所以占了也没关系
-    frame->slots   = vm->stack_top - function->arity - 1;
-    frame->globals = function->module->globals;
+    frame->slots           = vm->stack_top - function->arity - 1;
+    frame->globals         = function->module->globals;
+    frame->max_local_count = function->max_local_count;
+    vm->stack_top          = frame->slots + frame->max_local_count;   // 预分配局部变量空间
     return NULL;
 }
 
@@ -303,6 +306,11 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
         }
         dai_log("          ");
         for (DaiValue* slot = vm->stack; slot < vm->stack_top; slot++) {
+            if (slot != vm->stack && frame->slots == slot) {
+                dai_log("  ");
+            } else if (slot == frame->slots + frame->max_local_count) {
+                dai_log(" - ");
+            }
             dai_log("[ \"");
             dai_print_value(*slot);
             dai_log("\" ]");
@@ -625,33 +633,28 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             }
 
             case DaiOpIterInit: {
-                DaiValue val = DaiVM_peek(vm, 0);
+                uint8_t iterator_slot = READ_BYTE();
+                DaiValue val          = DaiVM_peek(vm, 0);   // 先不要 pop ，以免被 GC 回收
                 if (dai_value_is_iterable(val)) {
-                    DaiValue iterator = AS_OBJ(val)->operation->iter_init_func(vm, val);
-                    // 将栈顶的 val 替换成 iterator
-                    vm->stack_top[-1] = iterator;
+                    DaiValue iterator           = AS_OBJ(val)->operation->iter_init_func(vm, val);
+                    frame->slots[iterator_slot] = iterator;
+                    DaiVM_pop(vm);
                 } else {
                     return DaiObjError_Newf(vm, "'%s' object is not iterable", dai_value_ts(val));
                 }
                 break;
             }
             case DaiOpIterNext: {
-                uint8_t iterator_index = READ_BYTE();
-                uint16_t end_offset    = READ_UINT16();
-                DaiValue iterator      = frame->slots[iterator_index];
+                uint8_t iterator_slot = READ_BYTE();
+                uint16_t end_offset   = READ_UINT16();
+                DaiValue iterator     = frame->slots[iterator_slot];
                 DaiValue i, e;
                 DaiValue next = AS_OBJ(iterator)->operation->iter_next_func(vm, iterator, &i, &e);
-                DaiVM_push(vm, i);
-                DaiVM_push(vm, e);
+                frame->slots[iterator_slot + 1] = i;
+                frame->slots[iterator_slot + 2] = e;
                 if (IS_UNDEFINED(next)) {
                     frame->ip += end_offset;
                 }
-                break;
-            }
-
-            case DaiOpSetStackTop: {
-                uint8_t n     = READ_BYTE();
-                vm->stack_top = frame->slots + n;
                 break;
             }
 
@@ -730,12 +733,8 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             }
             case DaiOpSetLocal: {
                 // var 语句和赋值语句都会用到这个指令
-                uint8_t slot = READ_BYTE();
-                if (frame->slots + slot < vm->stack_top - 1) {
-                    // 如果是赋值语句，那么需要先弹出栈顶的值
-                    frame->slots[slot] = DaiVM_pop(vm);
-                }
-                // 如果是 var 语句，那么什么都不用做，值已经在对应的 slot 里面了
+                uint8_t slot       = READ_BYTE();
+                frame->slots[slot] = DaiVM_pop(vm);
                 break;
             }
 
@@ -1010,8 +1009,11 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
 
             case DaiOpEnd: {
                 // 退出 module 调用帧
+                // 假装设置模块的返回值（方便测试）
+                DaiValue result = *(vm->stack_top);
                 vm->frameCount--;
-                vm->stack_top = frame->slots;
+                vm->stack_top    = frame->slots;
+                *(vm->stack_top) = result;
                 return NULL;
             }
 
@@ -1037,13 +1039,15 @@ DaiVM_runModule(DaiVM* vm, DaiObjModule* module) {
     if (vm->frameCount == FRAMES_MAX) {
         return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
     }
-    CallFrame* frame = &vm->frames[vm->frameCount++];
-    frame->function  = NULL;
-    frame->closure   = NULL;
-    frame->ip        = module->chunk.code;
-    frame->chunk     = &module->chunk;
-    frame->slots     = vm->stack_top;
-    frame->globals   = module->globals;
+    CallFrame* frame       = &vm->frames[vm->frameCount++];
+    frame->function        = NULL;
+    frame->closure         = NULL;
+    frame->ip              = module->chunk.code;
+    frame->chunk           = &module->chunk;
+    frame->slots           = vm->stack_top;
+    frame->globals         = module->globals;
+    frame->max_local_count = module->max_local_count;
+    vm->stack_top          = frame->slots + frame->max_local_count;   // 预分配局部变量空间
     return DaiVM_runCurrentFrame(vm);
 }
 

@@ -76,9 +76,6 @@ typedef enum __attribute__((__packed__)) {
     DaiOpIterInit,
     DaiOpIterNext,
 
-    // 重置栈顶，操作数是与当前帧的栈顶的偏移量（局部变量数量）
-    DaiOpSetStackTop,
-
     DaiOpPop,
     DaiOpPopN,
 
