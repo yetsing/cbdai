@@ -62,6 +62,18 @@ DaiVM_init(DaiVM* vm) {
     DaiTable_init(&vm->strings);
     vm->builtinSymbolTable = DaiSymbolTable_New();
 
+    // dummy frame
+    // 确保始终有一个 frame
+    // 原因是为了兼容 cbdai/dai.c:dai_execute 执行函数时，
+    // 让他有一个父 frame ，在 return 的时候可以返回到父 frame
+    CallFrame* frame = &vm->frames[vm->frameCount++];
+    frame->function  = NULL;
+    frame->closure   = NULL;
+    frame->chunk     = NULL;
+    frame->ip        = NULL;
+    frame->slots     = vm->stack_top;
+    frame->globals   = NULL;
+
     // 初始化内置函数
     {
         for (int i = 0; i < 256; i++) {
@@ -237,12 +249,13 @@ DaiVM_executeIntBinary(DaiVM* vm, const DaiBinaryOpType opType, const DaiValue a
     }
 }
 
-// exitOnReturn 为 true 时，遇到 return 时返回 NULL，否则返回错误
+// 运行当前帧，直至当前帧退出
 static DaiObjError*
-DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
-    CallFrame* frame  = &vm->frames[vm->frameCount - 1];
-    DaiChunk* chunk   = frame->chunk;
-    DaiValue* globals = frame->globals;
+DaiVM_runCurrentFrame(DaiVM* vm) {
+    int current_frame_index = vm->frameCount - 1;
+    CallFrame* frame        = &vm->frames[vm->frameCount - 1];
+    DaiChunk* chunk         = frame->chunk;
+    DaiValue* globals       = frame->globals;
 
     // 数字运算
 #define ARITHMETIC_OPERATION(op)                                                         \
@@ -691,7 +704,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 frame   = CURRENT_FRAME;
                 chunk   = frame->chunk;
                 globals = frame->globals;
-                if (exitOnReturn) {
+                if (vm->frameCount == current_frame_index) {
                     return NULL;
                 }
                 break;
@@ -704,7 +717,7 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 frame   = CURRENT_FRAME;
                 chunk   = frame->chunk;
                 globals = frame->globals;
-                if (exitOnReturn) {
+                if (vm->frameCount == current_frame_index) {
                     return NULL;
                 }
                 break;
@@ -995,7 +1008,12 @@ DaiVM_dorun(DaiVM* vm, bool exitOnReturn) {
                 break;
             }
 
-            case DaiOpEnd: return NULL;
+            case DaiOpEnd: {
+                // 退出 module 调用帧
+                vm->frameCount--;
+                vm->stack_top = frame->slots;
+                return NULL;
+            }
 
             default: {
                 return DaiObjError_Newf(vm,
@@ -1019,10 +1037,6 @@ DaiVM_runModule(DaiVM* vm, DaiObjModule* module) {
     if (vm->frameCount == FRAMES_MAX) {
         return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
     }
-    // new frame
-    // 运行完成之后，脚本的 frame 不用弹出，这样 vm 始终有一个 frame
-    // 原因是为了兼容 cbdai/dai.c:dai_execute 执行函数时，
-    // 让他有一个父 frame ，在 return 的时候可以返回到父 frame
     CallFrame* frame = &vm->frames[vm->frameCount++];
     frame->function  = NULL;
     frame->closure   = NULL;
@@ -1030,7 +1044,7 @@ DaiVM_runModule(DaiVM* vm, DaiObjModule* module) {
     frame->chunk     = &module->chunk;
     frame->slots     = vm->stack_top;
     frame->globals   = module->globals;
-    return DaiVM_dorun(vm, false);
+    return DaiVM_runCurrentFrame(vm);
 }
 
 DaiObjError*
@@ -1059,7 +1073,7 @@ DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
     if (err != NULL) {
         return OBJ_VAL(err);
     }
-    err = DaiVM_dorun(vm, true);
+    err = DaiVM_runCurrentFrame(vm);
     if (err != NULL) {
         return OBJ_VAL(err);
     }
@@ -1072,7 +1086,7 @@ DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
     if (err != NULL) {
         return OBJ_VAL(err);
     }
-    err = DaiVM_dorun(vm, true);
+    err = DaiVM_runCurrentFrame(vm);
     if (err != NULL) {
         return OBJ_VAL(err);
     }
