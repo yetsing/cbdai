@@ -385,6 +385,9 @@ test_boolean_expressions(__attribute__((unused)) const MunitParameter params[],
         {"0 or true;", dai_true},
         {"0 or 2;", INTEGER_VAL(2)},
         {"0 or 2.0;", FLOAT_VAL(2.0)},
+        // 测试 and or 短路运算
+        {"var m = 1; false and m();", dai_false},
+        {"var m = 1; m or m();", INTEGER_VAL(1)},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

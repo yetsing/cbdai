@@ -61,8 +61,9 @@ typedef enum __attribute__((__packed__)) {
     DaiOpGreaterEqualThan,
 
     DaiOpNot,   // not
-    DaiOpAnd,   // and
-    DaiOpOr,    // or
+    // 使用跳转实现 and 和 or 的短路
+    DaiOpAndJump,   // and
+    DaiOpOrJump,    // or
 
     DaiOpMinus,        // example: -1
     DaiOpBang,         // example: !true

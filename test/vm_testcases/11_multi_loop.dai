@@ -1,7 +1,6 @@
 #1020
 var sum = 0;
 for (var i in range(10)) {
-    print(sum);
     for (var j in range(10)) {
         sum += i + j;
     }

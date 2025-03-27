@@ -43,8 +43,10 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpGreaterEqualThan] = {.name = "DaiOpGreaterEqualThan", .operand_bytes = 0},
 
     [DaiOpNot] = {.name = "DaiOpNot", .operand_bytes = 0},
-    [DaiOpAnd] = {.name = "DaiOpAnd", .operand_bytes = 0},
-    [DaiOpOr]  = {.name = "DaiOpOr", .operand_bytes = 0},
+    // 操作数：uint16 跳转偏移量
+    [DaiOpAndJump] = {.name = "DaiOpAnd", .operand_bytes = 2},
+    // 操作数：uint16 跳转偏移量
+    [DaiOpOrJump] = {.name = "DaiOpOr", .operand_bytes = 2},
 
     [DaiOpMinus]      = {.name = "DaiOpMinus", .operand_bytes = 0},
     [DaiOpBang]       = {.name = "DaiOpBang", .operand_bytes = 0},

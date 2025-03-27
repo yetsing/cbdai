@@ -9,6 +9,7 @@
 #include "dai_ast/dai_asttype.h"
 #include "dai_chunk.h"
 #include "dai_compile.h"
+#include "dai_error.h"
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_symboltable.h"
@@ -469,6 +470,27 @@ DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
                 compiler->filename, line, column, "too many global symbols");
         }
     }
+    return NULL;
+}
+
+// 编译 and or 短路运算表达式
+static DaiCompileError*
+DaiCompiler_compileAndOrExpr(DaiCompiler* compiler, DaiAstInfixExpression* expr) {
+    DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+    if (err != NULL) {
+        return err;
+    }
+    // 先发出虚假偏移量的跳转指令
+    DaiOpCode op = DaiOpAndJump;
+    if (strcmp(expr->operator, "or") == 0) {
+        op = DaiOpOrJump;
+    }
+    int jump_offset = DaiCompiler_emit2(compiler, op, 9999, expr->start_line);
+    err             = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+    if (err != NULL) {
+        return err;
+    }
+    DaiCompiler_patchJump(compiler, jump_offset);
     return NULL;
 }
 
@@ -1041,6 +1063,10 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
         }
         case DaiAstType_InfixExpression: {
             DaiAstInfixExpression* expr = (DaiAstInfixExpression*)node;
+            if (strcmp(expr->operator, "and") == 0 || strcmp(expr->operator, "or") == 0) {
+                return DaiCompiler_compileAndOrExpr(compiler, expr);
+            }
+
             if (strcmp(expr->operator, "<") == 0) {
                 // 交换左右两边
                 DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
@@ -1094,10 +1120,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 DaiCompiler_emit(compiler, DaiOpNotEqual, expr->start_line);
             } else if (strcmp(expr->operator, "%") == 0) {
                 DaiCompiler_emit(compiler, DaiOpMod, expr->start_line);
-            } else if (strcmp(expr->operator, "and") == 0) {
-                DaiCompiler_emit(compiler, DaiOpAnd, expr->start_line);
-            } else if (strcmp(expr->operator, "or") == 0) {
-                DaiCompiler_emit(compiler, DaiOpOr, expr->start_line);
             } else if (strcmp(expr->operator, "<<") == 0) {
                 DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpLeftShift, expr->start_line);
             } else if (strcmp(expr->operator, ">>") == 0) {

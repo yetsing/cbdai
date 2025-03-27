@@ -564,23 +564,20 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiVM_push(vm, res);
                 break;
             }
-            case DaiOpAnd: {
-                DaiValue b = DaiVM_pop(vm);
-                DaiValue a = DaiVM_pop(vm);
+            case DaiOpAndJump: {
+                int offset = READ_UINT16();
+                DaiValue a = DaiVM_peek(vm, 0);
                 if (!dai_value_is_truthy(a)) {
-                    DaiVM_push(vm, a);
-                } else {
-                    DaiVM_push(vm, b);
+                    frame->ip += offset;
                 }
                 break;
             }
-            case DaiOpOr: {
-                DaiValue b = DaiVM_pop(vm);
-                DaiValue a = DaiVM_pop(vm);
+            case DaiOpOrJump: {
+                int offset = READ_UINT16();
+                DaiValue a = DaiVM_peek(vm, 0);
                 if (dai_value_is_truthy(a)) {
-                    DaiVM_push(vm, a);
+                    frame->ip += offset;
                 } else {
-                    DaiVM_push(vm, b);
                 }
                 break;
             }
@@ -1100,19 +1097,16 @@ DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
 void
 DaiVM_printError(DaiVM* vm, DaiObjError* err) {
     dai_log("Traceback:\n");
-    for (int i = 0; i < vm->frameCount; ++i) {
-        CallFrame* frame         = &vm->frames[i];
-        DaiChunk* chunk          = frame->chunk;
-        int lineno               = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
-        DaiObjFunction* function = frame->function;
-        if (function == NULL) {
+    for (int i = 1; i < vm->frameCount; ++i) {
+        CallFrame* frame = &vm->frames[i];
+        DaiChunk* chunk  = frame->chunk;
+        int lineno       = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
+        const char* name = "<module>";
+        if (frame->function) {
             // 运行 module 的帧没有 function
-            continue;
+            name = DaiObjFunction_name(frame->function);
         }
-        dai_log("  File \"%s\", line %d, in %s\n",
-                chunk->filename,
-                lineno,
-                DaiObjFunction_name(function));
+        dai_log("  File \"%s\", line %d, in %s\n", chunk->filename, lineno, name);
         char* line = dai_line_from_file(chunk->filename, lineno);
         if (line != NULL) {
             // remove prefix space
@@ -1130,15 +1124,16 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
 void
 DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input) {
     dai_log("Traceback:\n");
-    for (int i = 0; i < vm->frameCount; ++i) {
-        CallFrame* frame         = &vm->frames[i];
-        DaiChunk* chunk          = frame->chunk;
-        int lineno               = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
-        DaiObjFunction* function = frame->function;
-        dai_log("  File \"%s\", line %d, in %s\n",
-                chunk->filename,
-                lineno,
-                DaiObjFunction_name(function));
+    for (int i = 1; i < vm->frameCount; ++i) {
+        CallFrame* frame = &vm->frames[i];
+        DaiChunk* chunk  = frame->chunk;
+        int lineno       = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
+        const char* name = "<module>";
+        if (frame->function) {
+            // 运行 module 的帧没有 function
+            name = DaiObjFunction_name(frame->function);
+        }
+        dai_log("  File \"%s\", line %d, in %s\n", chunk->filename, lineno, name);
         char* line = dai_get_line(input, lineno);
         if (line != NULL) {
             // remove prefix space
