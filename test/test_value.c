@@ -84,6 +84,8 @@ dai_assert_value_equal(DaiValue actual, DaiValue expected) {
         printf(" expected=(%s)", dai_value_ts(expected));
         dai_print_value(expected);
         printf("\n");
+        fflush(stdout);
+        fflush(stderr);
         munit_assert_true(false);
     }
 }

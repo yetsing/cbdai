@@ -9,6 +9,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "cwalk.h"
+#include "dai_utils.h"
 #include "hashmap.h"
 #include "utf8.h"
 
@@ -123,19 +125,51 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
 
 // #region module
 
-// note: name 和 filename 要在堆上分配，同时转移所有权
+DaiValue
+DaiObjModule_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    DaiObjModule* module = AS_MODULE(receiver);
+    DaiValue value;
+    if (DaiObjModule_getGlobal(module, name->chars, &value)) {
+        return value;
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
+}
+
+static struct DaiOperation module_operation = {
+    .get_property_func  = DaiObjModule_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = dai_default_string_func,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+};
+
+// note: name 和 filename 要在堆上分配，同时转移所有权给 module
 DaiObjModule*
 DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
     assert(name != NULL && filename != NULL);
-    DaiObjModule* module = ALLOCATE_OBJ(vm, DaiObjModule, DaiObjType_module);
-    module->name         = dai_take_string_intern(vm, (char*)name, strlen(name));
-    module->filename     = dai_take_string_intern(vm, (char*)filename, strlen(filename));
-    DaiChunk_init(&module->chunk, filename);
+    DaiObjModule* module  = ALLOCATE_OBJ(vm, DaiObjModule, DaiObjType_module);
+    module->obj.operation = &module_operation;
+    module->name          = dai_take_string_intern(vm, (char*)name, strlen(name));
+    module->filename      = dai_take_string_intern(vm, (char*)filename, strlen(filename));
+    // filename 在调用 dai_take_string_intern 可能会被释放，所以这里从结果的 module->filename 中取
+    DaiChunk_init(&module->chunk, module->filename->chars);
     module->globalSymbolTable = DaiSymbolTable_New();
-    module->globals           = malloc(sizeof(DaiValue) * BUILTIN_GLOBALS_COUNT);
-    module->globalInitCount   = BUILTIN_GLOBALS_COUNT;
-    module->globalCapacity    = BUILTIN_GLOBALS_COUNT;
+    module->globals           = malloc(sizeof(DaiValue) * GLOBAL_MAX);
+    if (module->globals == NULL) {
+        dai_error("malloc globals(%zu bytes) error\n", GLOBAL_MAX * sizeof(DaiValue));
+        abort();
+    }
+    for (int i = 0; i < GLOBAL_MAX; i++) {
+        module->globals[i] = UNDEFINED_VAL;
+    }
     DaiSymbolTable_setOuter(module->globalSymbolTable, vm->builtinSymbolTable);
+    module->compiled        = false;
     module->max_local_count = 0;
 
     // 设置两个内置的全局变量 __name__ 和 __file__
@@ -159,9 +193,6 @@ DaiObjModule_afterCompile(DaiObjModule* module) {
     if (module->globals == NULL) {
         dai_error("realloc globals(%zu bytes) error\n", count * sizeof(DaiValue));
         abort();
-    }
-    for (int i = module->globalInitCount; i < count; i++) {
-        module->globals[i] = UNDEFINED_VAL;
     }
 }
 
@@ -190,22 +221,13 @@ DaiObjModule_setGlobal(DaiObjModule* module, const char* name, DaiValue value) {
 
 bool
 DaiObjModule_addGlobal(DaiObjModule* module, const char* name, DaiValue value) {
-    assert(!module->compiled);
+    assert(!(module->compiled));
     DaiSymbol symbol;
     if (DaiSymbolTable_resolve(module->globalSymbolTable, name, &symbol)) {
         return false;
     }
-    symbol = DaiSymbolTable_define(module->globalSymbolTable, name, true);
-    if (symbol.index + 1 > module->globalCapacity) {
-        module->globalCapacity = GROW_CAPACITY(module->globalCapacity);
-        module->globals = realloc(module->globals, sizeof(DaiValue) * module->globalCapacity);
-        for (int i = module->globalInitCount; i < module->globalCapacity; i++) {
-            module->globals[i] = UNDEFINED_VAL;
-        }
-    }
-    assert(symbol.index == module->globalInitCount);
+    symbol                        = DaiSymbolTable_define(module->globalSymbolTable, name, true);
     module->globals[symbol.index] = value;
-    module->globalInitCount++;
     return true;
 }
 // #endregion
@@ -2627,6 +2649,49 @@ builtin_abs(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue 
     }
 }
 
+static DaiValue
+builtin_import(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+#define SUFFIX_LEN 4   // .dai 的长度
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "import() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "import() expected string argument, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    char abs_path[PATH_MAX];
+    const char* path             = AS_STRING(argv[0])->chars;
+    const char* current_filename = DaiVM_getCurrentFilename(vm);
+    size_t length;
+    cwk_path_get_dirname(current_filename, &length);
+    const char* current_dir = strndup(current_filename, length);
+    assert(current_dir != NULL);
+    cwk_path_get_absolute(current_dir, path, abs_path, sizeof(abs_path));
+    free((void*)current_dir);
+
+    DaiObjModule* module = DaiVM_getModule(vm, abs_path);
+    if (module != NULL) {
+        return OBJ_VAL(module);
+    }
+    const char* text = dai_string_from_file(abs_path);
+    if (text == NULL) {
+        DaiObjError* err = DaiObjError_Newf(vm, "import() failed to read file: %s", abs_path);
+        return OBJ_VAL(err);
+    }
+    const char* basename;
+    cwk_path_get_basename(abs_path, &basename, &length);
+    DaiVM_pauseGC(vm);
+    module = DaiObjModule_New(vm, strndup(basename, length - SUFFIX_LEN), strdup(abs_path));
+    DaiObjError* err = DaiVM_loadModule(vm, text, module);
+    free((void*)text);
+    if (err != NULL) {
+        return OBJ_VAL(err);
+    }
+    return OBJ_VAL(module);
+}
+
 DaiObjBuiltinFunction builtin_funcs[BUILTIN_FUNCTION_COUNT] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -2692,6 +2757,11 @@ DaiObjBuiltinFunction builtin_funcs[BUILTIN_FUNCTION_COUNT] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "abs",
         .function = builtin_abs,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "import",
+        .function = builtin_import,
     },
 
     {

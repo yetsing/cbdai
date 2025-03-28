@@ -32,6 +32,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_RANGE_ITERATOR(value) dai_is_obj_type(value, DaiObjType_rangeIterator)
 #define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
 #define IS_CFUNCTION(value) dai_is_obj_type(value, DaiObjType_nativeFn)
+#define IS_MODULE(value) dai_is_obj_type(value, DaiObjType_module)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
 #define AS_INSTANCE(value) ((DaiObjInstance*)AS_OBJ(value))
@@ -48,6 +49,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_RANGE_ITERATOR(value) ((DaiObjRangeIterator*)AS_OBJ(value))
 #define AS_ERROR(value) ((DaiObjError*)AS_OBJ(value))
 #define AS_CFUNCTION(value) ((DaiObjCFunction*)AS_OBJ(value))
+#define AS_MODULE(value) ((DaiObjModule*)AS_OBJ(value))
 
 typedef enum {
     DaiObjType_function,
@@ -117,8 +119,6 @@ typedef struct {
     // 全局变量和全局符号表
     DaiSymbolTable* globalSymbolTable;
     DaiValue* globals;
-    int globalInitCount;   // 已经初始化的全局变量数量
-    int globalCapacity;
 
     int max_local_count;
 } DaiObjModule;

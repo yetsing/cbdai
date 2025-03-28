@@ -21,9 +21,10 @@ DaiChunk_disassemble(DaiChunk* chunk, const char* name) {
 static int
 constant_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t constant = DaiChunk_readu16(chunk, offset + 1);
-    printf("%-16s %4d '", name, constant);
-    //    dai_print_value(chunk->constants.values[constant]);
-    printf("'\n");
+    printf("%-16s %4d", name, constant);
+    // printf(" '");
+    // dai_print_value(chunk->constants.values[constant]);
+    // printf("'\n");
     return offset + 3;
 }
 

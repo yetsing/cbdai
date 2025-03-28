@@ -119,7 +119,7 @@ daicmd_repl() {
             DaiCompileError_pprint(err, input);
             goto end;
         }
-        DaiObjError* runtime_err = DaiVM_main(&vm, module);
+        DaiObjError* runtime_err = DaiVM_runModule(&vm, module);
         if (runtime_err != NULL) {
             DaiVM_printError2(&vm, runtime_err, input);
             DaiVM_resetStack(&vm);
@@ -279,12 +279,17 @@ daicmd_runfile(int argc, const char** argv) {
         return 1;
     }
     const char* filename = argv[1];
+    char* filepath       = realpath(filename, NULL);
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filename));
-    int ret              = Dairun_File(&vm, filename, module);
+    DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filepath));
+    DaiObjError* err     = Dairun_File(&vm, filepath, module);
+    if (err != NULL) {
+        DaiVM_printError(&vm, err);
+    }
+    free(filepath);
     DaiVM_reset(&vm);
-    return ret;
+    return err == NULL ? 0 : 1;
 }
 
 int

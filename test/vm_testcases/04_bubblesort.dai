@@ -27,4 +27,6 @@ fn main() {
     return sum;
 }
 
-main();
+if (__name__ == '__main__') {
+    main();
+}

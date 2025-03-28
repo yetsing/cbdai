@@ -102,14 +102,15 @@ def show_ast(*args):
 
 
 def benchmark(*args):
-    compile("benchmark")
-    subprocess.check_call(["./cmake-build-debug/benchmark", *args])
+    compile("dai")
+    subprocess.check_call(["/usr/bin/time", "-v", "./cmake-build-debug/dai", *args])
 
 
 def benchmark_profile(*args):
-    compile("benchmark_profile")
-    subprocess.check_call(["./cmake-build-debug/benchmark_profile", *args])
-    subprocess.check_call(["gprof", "./cmake-build-debug/benchmark_profile", "gmon.out", ">benchmark.txt"])
+    # todo
+    compile("dai")
+    subprocess.check_call(["./cmake-build-debug/dai", *args])
+    subprocess.check_call(["gprof", "./cmake-build-debug/dai", "gmon.out", ">benchmark.txt"])
 
 
 def mem():

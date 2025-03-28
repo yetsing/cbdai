@@ -69,7 +69,6 @@ typedef struct _DaiVM {
 
     // 记录导入的模块
     DaiObjMap* modules;
-    DaiObjModule* mainModule;
 } DaiVM;
 
 void
@@ -79,8 +78,15 @@ DaiVM_reset(DaiVM* vm);
 void
 DaiVM_resetStack(DaiVM* vm);
 DaiObjError*
-DaiVM_main(DaiVM* vm, DaiObjModule* module);
+DaiVM_runModule(DaiVM* vm, DaiObjModule* module);
+// filename 为绝对路径
+DaiObjModule*
+DaiVM_getModule(DaiVM* vm, const char* filename);
+DaiObjError*
+DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module);
 
+void
+DaiVM_pauseGC(DaiVM* vm);
 void
 DaiVM_push1(DaiVM* vm, DaiValue value);
 // 传入参数
@@ -95,14 +101,13 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err);
 // input 用来传入源代码（不在文件中的，比如 repl 中输入的代码）
 void
 DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input);
-
-DaiValue
-DaiVM_stackTop(const DaiVM* vm);
-
 void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value);
+const char*
+DaiVM_getCurrentFilename(const DaiVM* vm);
 
 // #region 用于测试的函数
+
 DaiValue
 DaiVM_lastPopedStackElem(const DaiVM* vm);
 bool

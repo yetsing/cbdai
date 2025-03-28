@@ -7,10 +7,14 @@
 #include <time.h>
 
 #include "dai_chunk.h"
+#include "dai_compile.h"
+#include "dai_error.h"
 #include "dai_malloc.h"
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_parse.h"
 #include "dai_symboltable.h"
+#include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
@@ -1030,8 +1034,9 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
 #undef READ_BYTE
 }
 
-static DaiObjError*
+DaiObjError*
 DaiVM_runModule(DaiVM* vm, DaiObjModule* module) {
+    vm->state = VMState_running;
     DaiObjMap_cset(vm->modules, OBJ_VAL(module->filename), OBJ_VAL(module));
     if (vm->frameCount == FRAMES_MAX) {
         return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
@@ -1048,11 +1053,59 @@ DaiVM_runModule(DaiVM* vm, DaiObjModule* module) {
     return DaiVM_runCurrentFrame(vm);
 }
 
+DaiObjModule*
+DaiVM_getModule(DaiVM* vm, const char* filename) {
+    DaiObjString* name = dai_copy_string_intern(vm, filename, strlen(filename));
+    DaiValue value;
+    if (DaiObjMap_cget(vm->modules, OBJ_VAL(name), &value)) {
+        return AS_MODULE(value);
+    }
+    return NULL;
+}
+
 DaiObjError*
-DaiVM_main(DaiVM* vm, DaiObjModule* module) {
-    vm->mainModule = module;
-    vm->state      = VMState_running;
+DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module) {
+    vm->state = VMState_pending;
+    DaiTokenList tlist;
+    DaiTokenList_init(&tlist);
+    DaiAstProgram program;
+    DaiAstProgram_init(&program);
+
+    DaiError* err = NULL;
+    err           = dai_tokenize_string(text, &tlist);
+    if (err != NULL) {
+        DaiSyntaxError_setFilename(err, module->filename->chars);
+        DaiSyntaxError_pprint(err, text);
+        goto ERROR;
+    }
+    err = dai_parse(&tlist, &program);
+    if (err != NULL) {
+        DaiSyntaxError_setFilename(err, module->filename->chars);
+        DaiSyntaxError_pprint(err, text);
+        goto ERROR;
+    }
+    err = dai_compile(&program, module, vm);
+    if (err != NULL) {
+        DaiCompileError_pprint(err, text);
+        goto ERROR;
+    }
+    DaiTokenList_reset(&tlist);
+    DaiAstProgram_reset(&program);
+    DaiObjMap_cset(vm->modules, OBJ_VAL(module->filename), OBJ_VAL(module));
     return DaiVM_runModule(vm, module);
+
+ERROR:
+    if (err != NULL) {
+        DaiError_free(err);
+    }
+    DaiTokenList_reset(&tlist);
+    DaiAstProgram_reset(&program);
+    abort();
+}
+
+void
+DaiVM_pauseGC(DaiVM* vm) {
+    vm->state = VMState_pending;
 }
 
 void
@@ -1154,23 +1207,33 @@ DaiVM_push(DaiVM* vm, DaiValue value) {
     vm->stack_top++;
     assert(vm->stack_top <= vm->stack_max);
 }
+
 static DaiValue
 DaiVM_pop(DaiVM* vm) {
     vm->stack_top--;
     return *vm->stack_top;
 }
+
 static void
 DaiVM_popN(DaiVM* vm, int n) {
     vm->stack_top -= n;
-}
-DaiValue
-DaiVM_stackTop(const DaiVM* vm) {
-    return vm->stack_top[-1];
 }
 
 void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value) {
     vm->temp_ref = value;
+}
+
+void
+DaiVM_setStateToPending(DaiVM* vm) {
+    vm->state = VMState_pending;
+}
+
+const char*
+DaiVM_getCurrentFilename(const DaiVM* vm) {
+    const CallFrame* frame = CURRENT_FRAME;
+    assert(frame->chunk != NULL);
+    return frame->chunk->filename;
 }
 
 // #region 用于测试的函数

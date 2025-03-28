@@ -50,7 +50,7 @@ interpret(DaiVM* vm, const char* input, const char* filename) {
     }
     munit_assert_null(err);
     // 编译
-    DaiObjModule* module = DaiObjModule_New(vm, strdup("<test>"), strdup(filename));
+    DaiObjModule* module = DaiObjModule_New(vm, strdup("__main__"), strdup(filename));
     err                  = dai_compile(&program, module, vm);
     if (err) {
         DaiCompileError_pprint(err, input);
@@ -58,7 +58,7 @@ interpret(DaiVM* vm, const char* input, const char* filename) {
     DaiAstProgram_reset(&program);
     munit_assert_null(err);
     // 运行
-    return DaiVM_main(vm, module);
+    return DaiVM_runModule(vm, module);
 }
 
 static void
@@ -82,7 +82,7 @@ interpret2(DaiVM* vm, const char* input, const char* filename) {
     }
     munit_assert_null(err);
     // 编译
-    DaiObjModule* module = DaiObjModule_New(vm, strdup("<test>"), strdup(filename));
+    DaiObjModule* module = DaiObjModule_New(vm, strdup("__main__"), strdup(filename));
     err                  = dai_compile(&program, module, vm);
     if (err) {
         DaiCompileError_pprint(err, input);
@@ -90,7 +90,7 @@ interpret2(DaiVM* vm, const char* input, const char* filename) {
     DaiAstProgram_reset(&program);
     munit_assert_null(err);
     // 运行
-    DaiObjError* runtime_err = DaiVM_main(vm, module);
+    DaiObjError* runtime_err = DaiVM_runModule(vm, module);
     if (runtime_err) {
         DaiChunk_disassemble(&module->chunk, module->name->chars);
         DaiVM_printError2(vm, runtime_err, input);

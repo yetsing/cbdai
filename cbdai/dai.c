@@ -59,10 +59,10 @@ dai_load_file(Dai* dai, const char* filename) {
         fprintf(stderr, "dai_load_file can only be called once.\n");
         abort();
     }
-    dai->loaded = true;
-    int ret     = Dairun_File(&dai->vm, filename, dai->module);
-    if (ret != 0) {
-        fprintf(stderr, "dai_load_file failed.\n");
+    dai->loaded      = true;
+    DaiObjError* err = Dairun_File(&dai->vm, filename, dai->module);
+    if (err != NULL) {
+        DaiVM_printError(&dai->vm, err);
         abort();
     }
 }
