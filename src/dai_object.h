@@ -117,21 +117,31 @@ typedef struct {
     bool compiled;
 
     // 全局变量和全局符号表
-    DaiSymbolTable* globalSymbolTable;
+    struct hashmap* global_map;
+    // DaiSymbolTable* globalSymbolTable;
     DaiValue* globals;
+    int predefine_global_count;
 
     int max_local_count;
+
+    DaiVM* vm;
 } DaiObjModule;
 DaiObjModule*
 DaiObjModule_New(DaiVM* vm, const char* name, const char* filename);
 void
-DaiObjModule_afterCompile(DaiObjModule* module);
+DaiObjModule_Free(DaiVM* vm, DaiObjModule* module);
+void
+DaiObjModule_beforeCompile(DaiObjModule* module, DaiSymbolTable* symbol_table);
+void
+DaiObjModule_afterCompile(DaiObjModule* module, DaiSymbolTable* symbol_table);
 bool
 DaiObjModule_getGlobal(DaiObjModule* module, const char* name, DaiValue* value);
 bool
 DaiObjModule_setGlobal(DaiObjModule* module, const char* name, DaiValue value);
 bool
 DaiObjModule_addGlobal(DaiObjModule* module, const char* name, DaiValue value);
+bool
+DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiValue* key, DaiValue* value);
 
 typedef struct {
     DaiObj obj;
@@ -262,11 +272,6 @@ typedef struct {
 } DaiObjError;
 DaiObjError*
 DaiObjError_Newf(DaiVM* vm, const char* format, ...) __attribute__((format(printf, 2, 3)));
-
-typedef struct {
-    DaiValue key;
-    DaiValue value;
-} DaiObjMapEntry;
 
 typedef struct {
     DaiObj obj;

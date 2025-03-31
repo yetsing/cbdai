@@ -1508,20 +1508,25 @@ DaiCompileError*
 dai_compile(DaiAstProgram* program, DaiObjModule* module, DaiVM* vm) {
     vm->state = VMState_compiling;
     DaiCompiler compiler;
-    DaiCompiler_init(
-        &compiler, module, &module->chunk, module->globalSymbolTable, FunctionType_script, vm);
+    DaiSymbolTable* globalSymbolTable = DaiSymbolTable_New();
+
+    DaiObjModule_beforeCompile(module, globalSymbolTable);
+    DaiCompiler_init(&compiler, module, &module->chunk, globalSymbolTable, FunctionType_script, vm);
     IntArray_push(&compiler.scope_stack, ScopeType_script);
     DaiCompileError* err = NULL;
     err                  = DaiCompiler_extractSymbol(&compiler, (DaiAstBase*)program);
     if (err != NULL) {
         DaiCompiler_reset(&compiler);
-        return err;
+        goto END;
     }
     err = DaiCompiler_compile(&compiler, (DaiAstBase*)program);
-    DaiObjModule_afterCompile(module);
+    DaiObjModule_afterCompile(module, globalSymbolTable);
     module->max_local_count = compiler.max_local_count;
     DaiCompiler_emit(&compiler, DaiOpEnd, 0);
+
+END:
     // free comiler
+    DaiSymbolTable_free(globalSymbolTable);
     DaiCompiler_reset(&compiler);
     return err;
 }

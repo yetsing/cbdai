@@ -99,7 +99,13 @@ DaiVM_init(DaiVM* vm) {
         dai_error("create modules map error: %s\n", err->message);
         abort();
     }
+
+    if (dai_generate_seed(vm->seed) != 0) {
+        dai_error("generate seed error\n");
+        abort();
+    }
 }
+
 void
 DaiVM_reset(DaiVM* vm) {
     DaiSymbolTable_free(vm->builtinSymbolTable);
@@ -1234,6 +1240,12 @@ DaiVM_getCurrentFilename(const DaiVM* vm) {
     const CallFrame* frame = CURRENT_FRAME;
     assert(frame->chunk != NULL);
     return frame->chunk->filename;
+}
+
+void
+DaiVM_getSeed2(DaiVM* vm, uint64_t* seed0, uint64_t* seed1) {
+    *seed0 = *(uint64_t*)vm->seed;
+    *seed1 = *(uint64_t*)(vm->seed + 8);
 }
 
 // #region 用于测试的函数

@@ -132,10 +132,7 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
         }
         case DaiObjType_module: {
             DaiObjModule* module = (DaiObjModule*)object;
-            DaiChunk_reset(&module->chunk);
-            DaiSymbolTable_free(module->globalSymbolTable);
-            free(module->globals);
-            VM_FREE(vm, DaiObjModule, object);
+            DaiObjModule_Free(vm, module);
             break;
         }
     }
@@ -215,9 +212,15 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             markObject(vm, (DaiObj*)module->name);
             markObject(vm, (DaiObj*)module->filename);
             markArray(vm, &module->chunk.constants);
-            int count = DaiSymbolTable_count(module->globalSymbolTable);
-            for (int i = 0; i < count; i++) {
-                markValue(vm, module->globals[i]);
+            DaiValue key, value;
+            size_t i = 0;
+            while (DaiObjModule_iter(module, &i, &key, &value)) {
+                if (IS_OBJ(key)) {
+                    markObject(vm, AS_OBJ(key));
+                }
+                if (IS_OBJ(value)) {
+                    markObject(vm, AS_OBJ(value));
+                }
             }
             break;
         }

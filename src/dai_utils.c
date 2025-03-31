@@ -1,9 +1,19 @@
 /*
 工具函数
 */
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#ifdef _WIN32
+#    include <bcrypt.h>
+#    include <windows.h>
+#    pragma comment(lib, "bcrypt.lib")
+#else
+#    include <fcntl.h>
+#    include <unistd.h>
+#endif
 
 #include "dai_utils.h"
 
@@ -115,4 +125,28 @@ dai_line_from_file(const char* filename, int lineno) {
     char* line = dai_get_line(s, lineno);
     free(s);
     return line;
+}
+
+int
+dai_generate_seed(uint8_t seed[16]) {
+#ifdef _WIN32
+    // Use Windows Cryptography API for secure random numbers
+    if (BCryptGenRandom(NULL, seed, 16, BCRYPT_USE_SYSTEM_PREFERRED_RNG) != 0) {
+        return -1;   // Failed to generate random numbers
+    }
+#else
+    // Use /dev/urandom on Unix-like systems
+    int fd = open("/dev/urandom", O_RDONLY);
+    if (fd < 0) {
+        perror("Failed to open /dev/urandom");
+        return -1;   // Failed to open /dev/urandom
+    }
+    if (read(fd, seed, 16) != 16) {
+        perror("Failed to read random bytes");
+        close(fd);
+        return -1;   // Failed to read random bytes
+    }
+    close(fd);
+#endif
+    return 0;   // Success
 }

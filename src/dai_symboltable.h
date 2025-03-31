@@ -57,4 +57,12 @@ DaiSymbolTable_getFreeSymbols(DaiSymbolTable* table, int* free_symbol_count);
 bool
 DaiSymbolTable_isLocal(DaiSymbolTable* table);
 
+// first call DaiSymbolTable_iter(table) to start iterating
+// then call DaiSymbolTable_next(table) to get the next symbol
+// return false when all symbols are iterated
+void
+DaiSymbolTable_iter(DaiSymbolTable* table);
+bool
+DaiSymbolTable_next(DaiSymbolTable* table, DaiSymbol* symbol);
+
 #endif /* FADFA587_97BF_4F17_B81D_02BA645443DF */

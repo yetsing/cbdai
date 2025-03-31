@@ -1,6 +1,7 @@
 #ifndef C9146535_C1FA_42E3_B5A4_60209E40BC53
 #define C9146535_C1FA_42E3_B5A4_60209E40BC53
 
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "dai_chunk.h"
@@ -69,6 +70,8 @@ typedef struct _DaiVM {
 
     // 记录导入的模块
     DaiObjMap* modules;
+
+    uint8_t seed[16];   // 随机数种子
 } DaiVM;
 
 void
@@ -105,6 +108,9 @@ void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value);
 const char*
 DaiVM_getCurrentFilename(const DaiVM* vm);
+
+void
+DaiVM_getSeed2(DaiVM* vm, uint64_t* seed0, uint64_t* seed1);
 
 // #region 用于测试的函数
 

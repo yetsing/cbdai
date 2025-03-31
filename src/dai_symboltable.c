@@ -139,12 +139,12 @@ SymbolMapIterator_next(SymbolMapIterator* iterator) {
     if (iterator->offset >= iterator->capacity) {
         return (DaiSymbol){NULL, 0, 0};
     }
-    for (int i = iterator->offset + 1; i < iterator->capacity; i++) {
+    for (int i = iterator->offset; i < iterator->capacity; i++) {
         SymbolEntry* entry = &iterator->entries[i];
         if (entry->key == NULL) {
             continue;
         }
-        iterator->offset = i;
+        iterator->offset = i + 1;
         return entry->value;
     }
     return (DaiSymbol){NULL, 0, 0};
@@ -167,6 +167,8 @@ typedef struct _DaiSymbolTable {
 
     int num_free;   // 自由变量数
     DaiSymbol free_symbols[256];
+
+    SymbolMapIterator iterator;
 } DaiSymbolTable;
 
 DaiSymbolTable*
@@ -326,4 +328,19 @@ DaiSymbolTable_getFreeSymbols(DaiSymbolTable* table, int* free_symbol_count) {
 bool
 DaiSymbolTable_isLocal(DaiSymbolTable* table) {
     return table->depth > 0;
+}
+
+void
+DaiSymbolTable_iter(DaiSymbolTable* table) {
+    table->iterator = SymbolMap_newIterator(&table->store);
+}
+
+bool
+DaiSymbolTable_next(DaiSymbolTable* table, DaiSymbol* symbol) {
+    DaiSymbol n = SymbolMapIterator_next(&table->iterator);
+    if (n.name == NULL) {
+        return false;
+    }
+    *symbol = n;
+    return true;
 }
