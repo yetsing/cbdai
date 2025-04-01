@@ -46,7 +46,7 @@ DaiPropertyOffset_compare(const void* a, const void* b, void* udata) {
 static uint64_t
 DaiPropertyOffset_hash(const void* item, uint64_t seed0, uint64_t seed1) {
     const DaiPropertyOffset* offset = item;
-    return hashmap_sip(offset->property->chars, offset->property->length, seed0, seed1);
+    return offset->property->hash;
 }
 
 // #endregion
@@ -463,7 +463,7 @@ DaiObjClosure_name(DaiObjClosure* closure) {
 // #region 类与实例
 
 static bool
-DaiObjInstance_get_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue* method) {
+DaiObjInstance_get_method1(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue* method) {
     while (klass != NULL) {
         if (DaiTable_get(&klass->methods, name, method)) {
             return true;
@@ -479,11 +479,17 @@ static DaiValue
 DaiObjInstance_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     assert(IS_OBJ(receiver));
     DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiValue value;
-    if (DaiTable_get(&instance->fields, name, &value)) {
-        return value;
+    DaiPropertyOffset offset = {
+        .property = name,
+        .offset   = 0,
+    };
+    const void* res = hashmap_get_with_hash(instance->klass->fields, &offset, name->hash);
+    if (res) {
+        return instance->fields[((DaiPropertyOffset*)res)->offset];
     }
-    if (DaiObjInstance_get_method(vm, instance->klass, name, &value)) {
+
+    DaiValue value;
+    if (DaiObjInstance_get_method1(vm, instance->klass, name, &value)) {
         DaiObjBoundMethod* bound_method = DaiObjBoundMethod_New(vm, receiver, value);
         return OBJ_VAL(bound_method);
     }
@@ -497,12 +503,18 @@ static DaiValue
 DaiObjInstance_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     assert(IS_OBJ(receiver));
     DaiObjInstance* instance = AS_INSTANCE(receiver);
-    if (!DaiTable_set_if_exist(&instance->fields, name, value)) {
-        DaiObjError* err = DaiObjError_Newf(
-            vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
-        return OBJ_VAL(err);
+    DaiPropertyOffset offset = {
+        .property = name,
+        .offset   = 0,
+    };
+    const void* res = hashmap_get_with_hash(instance->klass->fields, &offset, name->hash);
+    if (res) {
+        instance->fields[((DaiPropertyOffset*)res)->offset] = value;
+        return NIL_VAL;
     }
-    return NIL_VAL;
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 }
 
 static bool
@@ -576,12 +588,36 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
     DaiTable_init(&klass->class_fields);
     DaiTable_init(&klass->class_methods);
     DaiTable_init(&klass->methods);
-    DaiTable_init(&klass->fields);
+    uint64_t seed0, seed1;
+    DaiVM_getSeed2(vm, &seed0, &seed1);
+    klass->fields = hashmap_new(sizeof(DaiPropertyOffset),
+                                8,
+                                seed0,
+                                seed1,
+                                DaiPropertyOffset_hash,
+                                DaiPropertyOffset_compare,
+                                NULL,
+                                vm);
+    if (klass->fields == NULL) {
+        dai_error("DaiObjClass_New: Out of memory\n");
+        abort();
+    }
     DaiValueArray_init(&klass->field_names);
+    DaiValueArray_init(&klass->field_values);
     klass->parent = NULL;
-    // klass->init   = OBJ_VAL(&builtin_init);
-    klass->init = NIL_VAL;
+    klass->init   = UNDEFINED_VAL;
     return klass;
+}
+
+void
+DaiObjClass_Free(DaiVM* vm, DaiObjClass* klass) {
+    DaiTable_reset(&klass->class_fields);
+    DaiTable_reset(&klass->class_methods);
+    hashmap_free(klass->fields);
+    DaiValueArray_reset(&klass->field_names);
+    DaiValueArray_reset(&klass->field_values);
+    DaiTable_reset(&klass->methods);
+    VM_FREE(vm, DaiObjClass, klass);
 }
 
 DaiValue
@@ -595,10 +631,9 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
             vm, "Too many arguments, max expected=%d got=%d", field_names->count, argc);
         return OBJ_VAL(err);
     }
-    if (IS_NIL(instance->klass->init)) {
+    if (IS_UNDEFINED(instance->klass->init)) {
         for (int i = 0; i < argc; i++) {
-            DaiObjString* name = AS_STRING(field_names->values[i]);
-            DaiTable_set(&instance->fields, name, argv[i]);
+            instance->fields[i] = argv[i];
         }
     } else {
         DaiValue res = DaiVM_runCall2(vm, instance->klass->init, argc);
@@ -609,8 +644,7 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     // check all fields are initialized
     for (int i = argc; i < field_names->count; i++) {
         DaiObjString* name = AS_STRING(field_names->values[i]);
-        DaiValue value     = UNDEFINED_VAL;
-        DaiTable_get(&instance->fields, name, &value);
+        DaiValue value     = instance->fields[i];
         if (IS_UNDEFINED(value)) {
             DaiObjError* err = DaiObjError_Newf(vm,
                                                 "'%s' object has uninitialized field '%s'",
@@ -620,6 +654,61 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
         }
     }
     return OBJ_VAL(instance);
+}
+
+void
+DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value) {
+    const void* res = hashmap_get_with_hash(
+        klass->fields, &(DaiPropertyOffset){.property = name, .offset = 0}, name->hash);
+    if (res == NULL) {
+        DaiValueArray_write(&klass->field_names, OBJ_VAL(name));
+        DaiValueArray_write(&klass->field_values, value);
+        res = hashmap_set_with_hash(
+            klass->fields,
+            &(DaiPropertyOffset){.property = name, .offset = klass->field_names.count - 1},
+            name->hash);
+        if (res == NULL && hashmap_oom(klass->fields)) {
+            dai_error("DaiObjClass_define_field: Out of memory\n");
+            abort();
+        }
+    } else {
+        DaiPropertyOffset* offset = (DaiPropertyOffset*)res;
+        assert(offset->offset < klass->field_names.count);
+        klass->field_values.values[offset->offset] = value;
+    }
+}
+
+void
+DaiObjClass_define_method(DaiObjClass* klass, DaiObjString* name, DaiValue value) {
+    // 设置方法的 super class
+    {
+        DaiObjFunction* function = NULL;
+        if (IS_CLOSURE(value)) {
+            function = AS_CLOSURE(value)->function;
+        } else {
+            function = AS_FUNCTION(value);
+        }
+        function->superclass = klass->parent;
+    }
+    DaiTable_set(&klass->methods, name, value);
+    if (strcmp(name->chars, "init") == 0) {
+        klass->init = value;
+    }
+}
+
+void
+DaiObjClass_inherit(DaiObjClass* klass, DaiObjClass* parent) {
+    klass->parent = parent;
+    klass->init   = parent->init;
+    void* item;
+    size_t i = 0;
+    while (hashmap_iter(parent->fields, &i, &item)) {
+        DaiPropertyOffset* offset = item;
+        DaiObjString* name        = offset->property;
+        DaiValue value            = parent->field_values.values[offset->offset];
+        DaiObjClass_define_field(klass, name, value);
+    }
+    DaiTable_copy(&parent->class_fields, &klass->class_fields);
 }
 
 static char*
@@ -649,9 +738,30 @@ DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass) {
     DaiObjInstance* instance = ALLOCATE_OBJ(vm, DaiObjInstance, DaiObjType_instance);
     instance->obj.operation  = &instance_operation;
     instance->klass          = klass;
-    DaiTable_init(&instance->fields);
-    DaiTable_copy(&instance->klass->fields, &instance->fields);
+    instance->field_count    = klass->field_names.count;
+    instance->fields         = DaiValueArray_raw_copy(&klass->field_values);
+    if (instance->fields == NULL && instance->field_count > 0) {
+        dai_error("DaiObjInstance_New: Out of memory\n");
+        abort();
+    }
     return instance;
+}
+void
+DaiObjInstance_Free(DaiVM* vm, DaiObjInstance* instance) {
+    free(instance->fields);
+    instance->fields = NULL;
+    VM_FREE(vm, DaiObjInstance, instance);
+}
+
+DaiValue
+DaiObjInstance_get_method(DaiVM* vm, DaiObjInstance* instance, DaiObjString* name) {
+    DaiValue method;
+    if (DaiObjInstance_get_method1(vm, instance->klass, name, &method)) {
+        return method;
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not method '%s'", dai_object_ts(OBJ_VAL(instance)), name->chars);
+    return OBJ_VAL(err);
 }
 
 static char*
@@ -697,7 +807,7 @@ DaiObjClass_get_super_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, 
             return DaiObjBoundMethod_New(vm, receiver, method);
         }
     } else {
-        if (DaiObjInstance_get_method(vm, klass, name, &method)) {
+        if (DaiObjInstance_get_method1(vm, klass, name, &method)) {
             return DaiObjBoundMethod_New(vm, receiver, method);
         }
     }
@@ -711,7 +821,7 @@ DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString
             return;
         }
     } else {
-        if (DaiObjInstance_get_method(vm, klass, name, method)) {
+        if (DaiObjInstance_get_method1(vm, klass, name, method)) {
             return;
         }
     }

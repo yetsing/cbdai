@@ -91,17 +91,11 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
         }
         case DaiObjType_instance: {
             DaiObjInstance* instance = (DaiObjInstance*)object;
-            DaiTable_reset(&instance->fields);
-            VM_FREE(vm, DaiObjInstance, object);
+            DaiObjInstance_Free(vm, instance);
             break;
         }
         case DaiObjType_class: {
-            DaiTable_reset(&((DaiObjClass*)object)->class_fields);
-            DaiTable_reset(&((DaiObjClass*)object)->class_methods);
-            DaiTable_reset(&((DaiObjClass*)object)->methods);
-            DaiTable_reset(&((DaiObjClass*)object)->fields);
-            DaiValueArray_reset(&((DaiObjClass*)object)->field_names);
-            VM_FREE(vm, DaiObjClass, object);
+            DaiObjClass_Free(vm, (DaiObjClass*)object);
             break;
         }
         case DaiObjType_closure: {
@@ -266,7 +260,9 @@ blackenObject(DaiVM* vm, DaiObj* object) {
         case DaiObjType_instance: {
             DaiObjInstance* instance = (DaiObjInstance*)object;
             markObject(vm, (DaiObj*)instance->klass);
-            markTable(vm, &instance->fields);
+            for (int i = 0; i < instance->field_count; i++) {
+                markValue(vm, instance->fields[i]);
+            }
             break;
         }
         case DaiObjType_class: {
@@ -275,7 +271,8 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             markTable(vm, &klass->class_fields);
             markTable(vm, &klass->class_methods);
             markTable(vm, &klass->methods);
-            markTable(vm, &klass->fields);
+            markArray(vm, &klass->field_names);
+            markArray(vm, &klass->field_values);
             markObject(vm, (DaiObj*)klass->parent);
             break;
         }

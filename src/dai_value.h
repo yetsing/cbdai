@@ -181,4 +181,7 @@ DaiValueArray_reset(DaiValueArray* array);
 void
 DaiValueArray_copy(DaiValueArray* src, DaiValueArray* dst);
 
+DaiValue*
+DaiValueArray_raw_copy(DaiValueArray* src);
+
 #endif /* B2545ED5_584D_4263_BD5B_7D98D76B99E3 */

@@ -174,6 +174,15 @@ DaiValueArray_copy(DaiValueArray* src, DaiValueArray* dst) {
     }
 }
 
+DaiValue*
+DaiValueArray_raw_copy(DaiValueArray* src) {
+    DaiValue* values = GROW_ARRAY(DaiValue, NULL, 0, src->capacity);
+    for (int i = 0; i < src->count; i++) {
+        values[i] = src->values[i];
+    }
+    return values;
+}
+
 // #endregion
 
 // #region DaiPtrArray

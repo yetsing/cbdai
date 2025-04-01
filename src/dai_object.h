@@ -173,28 +173,42 @@ DaiObjClosure_name(DaiObjClosure* closure);
 typedef struct _DaiObjClass {
     DaiObj obj;
     DaiObjString* name;
-    DaiTable class_fields;       // 类属性
-    DaiTable class_methods;      // 类方法
-    DaiTable methods;            // 实例方法
-    DaiTable fields;             // 实例属性
-    DaiValueArray field_names;   // 按定义顺序存储实例属性名
+    DaiTable class_fields;        // 类属性
+    DaiTable class_methods;       // 类方法
+    DaiTable methods;             // 实例方法
+    struct hashmap* fields;       // 实例属性，存储名字和索引
+    DaiValueArray field_names;    // 按定义顺序存储实例属性名
+    DaiValueArray field_values;   // 按定义顺序存储实例属性值
     DaiObjClass* parent;
     // 下面是一些特殊的实例方法
     DaiValue init;   // 自定义的实例初始化方法
 } DaiObjClass;
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name);
+void
+DaiObjClass_Free(DaiVM* vm, DaiObjClass* klass);
 DaiValue
 DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv);
+void
+DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value);
+void
+DaiObjClass_define_method(DaiObjClass* klass, DaiObjString* name, DaiValue value);
+void
+DaiObjClass_inherit(DaiObjClass* klass, DaiObjClass* parent);
 
 
 typedef struct {
     DaiObj obj;
     DaiObjClass* klass;
-    DaiTable fields;   // 实例属性
+    DaiValue* fields;   // 实例属性
+    int field_count;    // 实例属性数量
 } DaiObjInstance;
 DaiObjInstance*
 DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass);
+void
+DaiObjInstance_Free(DaiVM* vm, DaiObjInstance* instance);
+DaiValue
+DaiObjInstance_get_method(DaiVM* vm, DaiObjInstance* instance, DaiObjString* name);
 
 typedef struct {
     DaiObj obj;

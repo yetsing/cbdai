@@ -180,13 +180,12 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
                     vm, OBJ_VAL(bound_method->method), argCount, bound_method->receiver);
             }
             case DaiObjType_class: {
+                // 记录调用完成后的栈顶位置
+                // 因为 DaiObjClass_call 里面可能会改变 stack_top 位置，所以需要在调用前记录下来
                 DaiValue* new_stack_top = vm->stack_top - argCount - 1;
                 DaiValue result         = DaiObjClass_call(
                     (DaiObjClass*)AS_OBJ(callee), vm, argCount, vm->stack_top - argCount);
-                if (vm->stack_top != new_stack_top) {
-                    // 如果内部调用了自定义 init 函数，那么栈顶已经更新；否则需要手动更新
-                    vm->stack_top = new_stack_top;
-                }
+                vm->stack_top = new_stack_top;
                 if (IS_ERROR(result)) {
                     return AS_ERROR(result);
                 }
@@ -803,11 +802,9 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             case DaiOpDefineField: {
                 uint16_t name_index = READ_UINT16();
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
-                DaiObjClass* cls    = AS_CLASS(DaiVM_peek(vm, 1));
-                if (!DaiTable_has(&cls->fields, name)) {
-                    DaiValueArray_write(&cls->field_names, OBJ_VAL(name));
-                }
-                DaiTable_set(&cls->fields, name, DaiVM_pop(vm));
+                DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
+                DaiValue value      = DaiVM_pop(vm);
+                DaiObjClass_define_field(klass, name, value);
                 break;
             }
             case DaiOpDefineMethod: {
@@ -815,20 +812,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
                 DaiValue value      = DaiVM_pop(vm);
-                // 设置方法的 super class
-                {
-                    DaiObjFunction* function = NULL;
-                    if (IS_CLOSURE(value)) {
-                        function = AS_CLOSURE(value)->function;
-                    } else {
-                        function = AS_FUNCTION(value);
-                    }
-                    function->superclass = klass->parent;
-                }
-                DaiTable_set(&klass->methods, name, value);
-                if (strcmp(name->chars, "init") == 0) {
-                    klass->init = value;
-                }
+                DaiObjClass_define_method(klass, name, value);
                 break;
             }
             case DaiOpDefineClassField: {
@@ -920,11 +904,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             case DaiOpInherit: {
                 DaiObjClass* parent = AS_CLASS(DaiVM_pop(vm));
                 DaiObjClass* child  = AS_CLASS(DaiVM_peek(vm, 0));
-                child->parent       = parent;
-                child->init         = parent->init;
-                DaiTable_copy(&parent->fields, &child->fields);
-                DaiValueArray_copy(&parent->field_names, &child->field_names);
-                DaiTable_copy(&parent->class_fields, &child->class_fields);
+                DaiObjClass_inherit(child, parent);
                 break;
             }
             case DaiOpGetSuperProperty: {
