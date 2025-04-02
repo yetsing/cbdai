@@ -928,8 +928,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = DaiVM_peek(vm, argCount);
                 if (IS_OBJ(receiver)) {
-                    DaiValue res =
-                        AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
+                    DaiValue res = AS_OBJ(receiver)->operation->get_method_func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
@@ -954,8 +953,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = frame->slots[0];
                 if (IS_OBJ(receiver)) {
-                    DaiValue res =
-                        AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
+                    DaiValue res = AS_OBJ(receiver)->operation->get_method_func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }

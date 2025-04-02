@@ -90,6 +90,7 @@ typedef char* (*StringFn)(DaiValue value, DaiPtrArray* visited);
 typedef DaiValue (*IterInitFn)(DaiVM* vm, DaiValue receiver);
 // 返回 undefined 表示结束
 typedef DaiValue (*IterNextFn)(DaiVM* vm, DaiValue receiver, DaiValue* index, DaiValue* element);
+typedef DaiValue (*GetMethodFn)(DaiVM* vm, DaiValue receiver, DaiObjString* name);
 
 struct DaiOperation {
     GetPropertyFn get_property_func;
@@ -101,6 +102,9 @@ struct DaiOperation {
     HashFn hash_func;
     IterInitFn iter_init_func;
     IterNextFn iter_next_func;
+    // 给类和实例快速获取方法用的，搭配 DaiOpCallMethod DaiOpCallSelfMethod 字节码指令
+    // （get_property_func 会将方法包成 bound_method 再返回，有很大的性能开销）
+    GetMethodFn get_method_func;
 };
 
 struct DaiObj {
@@ -207,8 +211,6 @@ DaiObjInstance*
 DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass);
 void
 DaiObjInstance_Free(DaiVM* vm, DaiObjInstance* instance);
-DaiValue
-DaiObjInstance_get_method(DaiVM* vm, DaiObjInstance* instance, DaiObjString* name);
 
 typedef struct {
     DaiObj obj;

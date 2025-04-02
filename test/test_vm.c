@@ -2220,7 +2220,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "class F { var a = 1; }; var f = F(); f.a();",
-            OBJ_VAL(DaiObjError_Newf(&vm, "'int' object is not callable")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has not method 'a'")),
         },
         {
             "class F { var a = 1; fn get() { return super.a;}; }; var f = F(); f.get();",
@@ -2232,7 +2232,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "class F { var a = 1; fn get() { return self.b();}; }; var f = F(); f.get();",
-            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has not property 'b'")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has not method 'b'")),
         },
         {
             "class F { var a = 1; fn set() { self.b = 1;}; }; var f = F(); f.set();",

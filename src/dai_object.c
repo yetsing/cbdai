@@ -103,6 +103,13 @@ dai_iter_init_return_self(DaiVM* vm, DaiValue receiver) {
     return receiver;
 }
 
+static DaiValue
+dai_default_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not method '%s'", dai_value_ts(receiver), name->chars);
+    return OBJ_VAL(err);
+}
+
 static struct DaiOperation default_operation = {
     .get_property_func  = dai_default_get_property,
     .set_property_func  = dai_default_set_property,
@@ -113,6 +120,7 @@ static struct DaiOperation default_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
 };
 
 // #endregion
@@ -138,6 +146,7 @@ static struct DaiOperation builtin_function_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
 };
 
 // #endregion
@@ -196,6 +205,7 @@ static struct DaiOperation module_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = DaiObjModule_get_property,
 };
 
 // note: name 和 filename 要在堆上分配，同时转移所有权给 module
@@ -396,6 +406,7 @@ static struct DaiOperation function_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjFunction*
@@ -441,6 +452,7 @@ static struct DaiOperation closure_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjClosure*
@@ -518,7 +530,7 @@ DaiObjInstance_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, Da
 }
 
 static bool
-DaiObjClass_get_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue* method) {
+DaiObjClass_get_method1(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue* method) {
     while (klass != NULL) {
         if (DaiTable_get(&klass->class_methods, name, method)) {
             return true;
@@ -537,7 +549,7 @@ DaiObjClass_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     if (DaiTable_get(&klass->class_fields, name, &value)) {
         return value;
     }
-    if (DaiObjClass_get_method(vm, klass, name, &value)) {
+    if (DaiObjClass_get_method1(vm, klass, name, &value)) {
         DaiObjBoundMethod* bound_method = DaiObjBoundMethod_New(vm, receiver, value);
         return OBJ_VAL(bound_method);
     }
@@ -568,6 +580,19 @@ DaiObjClass_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited)
     return buf;
 }
 
+static DaiValue
+DaiObjClass_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    assert(IS_OBJ(receiver));
+    DaiObjClass* klass = AS_CLASS(receiver);
+    DaiValue value;
+    if (DaiObjClass_get_method1(vm, klass, name, &value)) {
+        return value;
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not method '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
+}
+
 static struct DaiOperation class_operation = {
     .get_property_func  = DaiObjClass_get_property,
     .set_property_func  = DaiObjClass_set_property,
@@ -578,6 +603,7 @@ static struct DaiOperation class_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = DaiObjClass_get_method,
 };
 
 DaiObjClass*
@@ -720,6 +746,18 @@ DaiObjInstance_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visit
     return buf;
 }
 
+static DaiValue
+DaiObjInstance_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    DaiValue method;
+    DaiObjInstance* instance = AS_INSTANCE(receiver);
+    if (DaiObjInstance_get_method1(vm, instance->klass, name, &method)) {
+        return method;
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not method '%s'", dai_object_ts(OBJ_VAL(instance)), name->chars);
+    return OBJ_VAL(err);
+}
+
 static struct DaiOperation instance_operation = {
     .get_property_func  = DaiObjInstance_get_property,
     .set_property_func  = DaiObjInstance_set_property,
@@ -730,6 +768,7 @@ static struct DaiOperation instance_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = DaiObjInstance_get_method,
 };
 
 
@@ -751,17 +790,6 @@ DaiObjInstance_Free(DaiVM* vm, DaiObjInstance* instance) {
     free(instance->fields);
     instance->fields = NULL;
     VM_FREE(vm, DaiObjInstance, instance);
-}
-
-DaiValue
-DaiObjInstance_get_method(DaiVM* vm, DaiObjInstance* instance, DaiObjString* name) {
-    DaiValue method;
-    if (DaiObjInstance_get_method1(vm, instance->klass, name, &method)) {
-        return method;
-    }
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object has not method '%s'", dai_object_ts(OBJ_VAL(instance)), name->chars);
-    return OBJ_VAL(err);
 }
 
 static char*
@@ -789,6 +817,7 @@ static struct DaiOperation bound_method_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjBoundMethod*
@@ -803,7 +832,7 @@ DaiObjBoundMethod*
 DaiObjClass_get_super_method(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue receiver) {
     DaiValue method;
     if (IS_CLASS(receiver)) {
-        if (DaiObjClass_get_method(vm, klass, name, &method)) {
+        if (DaiObjClass_get_method1(vm, klass, name, &method)) {
             return DaiObjBoundMethod_New(vm, receiver, method);
         }
     } else {
@@ -817,7 +846,7 @@ void
 DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString* name,
                   DaiValue* method) {
     if (IS_CLASS(receiver)) {
-        if (DaiObjClass_get_method(vm, klass, name, method)) {
+        if (DaiObjClass_get_method1(vm, klass, name, method)) {
             return;
         }
     } else {
@@ -1411,6 +1440,7 @@ static struct DaiOperation string_operation = {
     .hash_func          = DaiObjString_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = DaiObjString_get_property,
 };
 
 
@@ -2021,6 +2051,7 @@ static struct DaiOperation array_operation = {
     .hash_func          = NULL,
     .iter_init_func     = DaiObjArray_iter_init,
     .iter_next_func     = NULL,
+    .get_method_func    = DaiObjArray_get_property,
 };
 
 DaiObjArray*
@@ -2103,6 +2134,7 @@ static struct DaiOperation array_iterator_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = dai_iter_init_return_self,
     .iter_next_func     = DaiObjArrayIterator_iter_next,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjArrayIterator*
@@ -2142,6 +2174,7 @@ static struct DaiOperation range_iterator_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = dai_iter_init_return_self,
     .iter_next_func     = DaiObjRangeIterator_iter_next,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjRangeIterator*
@@ -2429,6 +2462,7 @@ static struct DaiOperation map_operation = {
     .hash_func          = NULL,
     .iter_init_func     = DaiObjMap_iter_init,
     .iter_next_func     = NULL,
+    .get_method_func    = DaiObjMap_get_property,
 };
 
 int
@@ -2541,6 +2575,7 @@ static struct DaiOperation map_iterator_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = dai_iter_init_return_self,
     .iter_next_func     = DaiObjMapIterator_iter_next,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjMapIterator*
@@ -2579,6 +2614,7 @@ static struct DaiOperation error_operation = {
     .hash_func          = DaiObjError_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjError*
@@ -2615,6 +2651,7 @@ static struct DaiOperation c_function_operation = {
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
 };
 
 DaiObjCFunction*
