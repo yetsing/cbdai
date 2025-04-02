@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "dai_builtin.h"
 #include "dai_chunk.h"
 #include "dai_debug.h"
-#include "dai_object.h"
 
 void
 DaiChunk_disassemble(DaiChunk* chunk, const char* name) {
@@ -112,7 +112,7 @@ local_instruction(const char* name, DaiChunk* chunk, int offset) {
 static int
 builtin_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint8_t index = DaiChunk_read(chunk, offset + 1);
-    printf("%-16s %4d %s\n", name, index, builtin_funcs[index].name);
+    printf("%-16s %4d %s\n", name, index, builtin_names[index]);
     return offset + 2;
 }
 

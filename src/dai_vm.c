@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "dai_builtin.h"
 #include "dai_chunk.h"
 #include "dai_compile.h"
 #include "dai_error.h"
@@ -79,21 +80,6 @@ DaiVM_init(DaiVM* vm) {
     frame->globals         = NULL;
     frame->max_local_count = 0;
 
-    // 初始化内置函数
-    {
-        for (int i = 0; i < 256; i++) {
-            if (builtin_funcs[i].name == NULL) {
-                break;
-            }
-            DaiSymbolTable_defineBuiltin(vm->builtinSymbolTable, i, builtin_funcs[i].name);
-            DaiSymbol symbol;
-            bool found =
-                DaiSymbolTable_resolve(vm->builtinSymbolTable, builtin_funcs[i].name, &symbol);
-            assert(found);
-            vm->builtin_funcs[i] = OBJ_VAL(&builtin_funcs[i]);
-        }
-    }
-
     DaiObjError* err = DaiObjMap_New(vm, NULL, 0, &vm->modules);
     if (err != NULL) {
         dai_error("create modules map error: %s\n", err->message);
@@ -103,6 +89,24 @@ DaiVM_init(DaiVM* vm) {
     if (dai_generate_seed(vm->seed) != 0) {
         dai_error("generate seed error\n");
         abort();
+    }
+
+    // 初始化内置函数
+    {
+        int count                         = 0;
+        DaiBuiltinObject* builtin_objects = init_builtin_objects(vm, &count);
+        for (int i = 0; i < count; i++) {
+            DaiBuiltinObject builtin_object = builtin_objects[i];
+            if (builtin_object.name == NULL) {
+                break;
+            }
+            DaiSymbolTable_defineBuiltin(vm->builtinSymbolTable, i, builtin_object.name);
+            DaiSymbol symbol;
+            bool found =
+                DaiSymbolTable_resolve(vm->builtinSymbolTable, builtin_object.name, &symbol);
+            assert(found);
+            vm->builtin_objects[i] = builtin_object.value;
+        }
     }
 }
 
@@ -114,6 +118,7 @@ DaiVM_reset(DaiVM* vm) {
     dai_free_objects(vm);
 }
 
+// #region DaiVM runtime
 static DaiValue
 DaiVM_peek(const DaiVM* vm, int distance) {
     return vm->stack_top[-1 - distance];
@@ -746,7 +751,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
 
             case DaiOpGetBuiltin: {
                 uint8_t index = READ_BYTE();
-                DaiVM_push(vm, vm->builtin_funcs[index]);
+                DaiVM_push(vm, vm->builtin_objects[index]);
                 break;
             }
 
@@ -1087,16 +1092,6 @@ ERROR:
     abort();
 }
 
-void
-DaiVM_pauseGC(DaiVM* vm) {
-    vm->state = VMState_pending;
-}
-
-void
-DaiVM_push1(DaiVM* vm, DaiValue value) {
-    DaiVM_push(vm, value);
-}
-
 DaiValue
 DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
     DaiVM_push(vm, callee);
@@ -1208,11 +1203,6 @@ DaiVM_setTempRef(DaiVM* vm, DaiValue value) {
     vm->temp_ref = value;
 }
 
-void
-DaiVM_setStateToPending(DaiVM* vm) {
-    vm->state = VMState_pending;
-}
-
 const char*
 DaiVM_getCurrentFilename(const DaiVM* vm) {
     const CallFrame* frame = CURRENT_FRAME;
@@ -1221,10 +1211,22 @@ DaiVM_getCurrentFilename(const DaiVM* vm) {
 }
 
 void
+DaiVM_pauseGC(DaiVM* vm) {
+    vm->state = VMState_pending;
+}
+
+void
+DaiVM_push1(DaiVM* vm, DaiValue value) {
+    DaiVM_push(vm, value);
+}
+
+void
 DaiVM_getSeed2(DaiVM* vm, uint64_t* seed0, uint64_t* seed1) {
     *seed0 = *(uint64_t*)vm->seed;
     *seed1 = *(uint64_t*)(vm->seed + 8);
 }
+
+// #endregion
 
 // #region 用于测试的函数
 DaiValue

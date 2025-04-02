@@ -14,7 +14,6 @@ typedef struct _DaiVM DaiVM;
 typedef struct _DaiObjClass DaiObjClass;
 
 #define BUILTIN_GLOBALS_COUNT 2
-#define BUILTIN_FUNCTION_COUNT 256
 
 #define OBJ_TYPE(value) (AS_OBJ(value)->type)
 
@@ -106,6 +105,8 @@ struct DaiOperation {
     // （get_property_func 会将方法包成 bound_method 再返回，有很大的性能开销）
     GetMethodFn get_method_func;
 };
+
+extern struct DaiOperation builtin_function_operation;
 
 struct DaiObj {
     DaiObjType type;
@@ -342,7 +343,4 @@ static inline bool
 dai_is_obj_type(DaiValue value, DaiObjType type) {
     return IS_OBJ(value) && AS_OBJ(value)->type == type;
 }
-
-// 内置函数
-extern DaiObjBuiltinFunction builtin_funcs[256];
 #endif /* SRC_DAI_OBJECT_H_ */

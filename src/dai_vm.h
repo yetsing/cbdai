@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#include "dai_builtin.h"
 #include "dai_chunk.h"
 #include "dai_common.h"
 #include "dai_object.h"
@@ -60,8 +61,8 @@ typedef struct _DaiVM {
 
     VMState state;
 
-    // 内置函数
-    DaiValue builtin_funcs[BUILTIN_FUNCTION_COUNT];
+    // 内置对象（模块/类/函数）
+    DaiValue builtin_objects[BUILTIN_OBJECT_MAX_COUNT];
 
     // 临时引用，防止被 GC 回收
     // 一些内置函数会创建一些对象，他既不在栈上，也没有被其他对象引用
@@ -87,11 +88,6 @@ DaiObjModule*
 DaiVM_getModule(DaiVM* vm, const char* filename);
 DaiObjError*
 DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module);
-
-void
-DaiVM_pauseGC(DaiVM* vm);
-void
-DaiVM_push1(DaiVM* vm, DaiValue value);
 // 传入参数
 DaiValue
 DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...);
@@ -108,7 +104,10 @@ void
 DaiVM_setTempRef(DaiVM* vm, DaiValue value);
 const char*
 DaiVM_getCurrentFilename(const DaiVM* vm);
-
+void
+DaiVM_pauseGC(DaiVM* vm);
+void
+DaiVM_push1(DaiVM* vm, DaiValue value);
 void
 DaiVM_getSeed2(DaiVM* vm, uint64_t* seed0, uint64_t* seed1);
 
