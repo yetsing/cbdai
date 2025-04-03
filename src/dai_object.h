@@ -140,11 +140,11 @@ DaiObjModule_beforeCompile(DaiObjModule* module, DaiSymbolTable* symbol_table);
 void
 DaiObjModule_afterCompile(DaiObjModule* module, DaiSymbolTable* symbol_table);
 bool
-DaiObjModule_getGlobal(DaiObjModule* module, const char* name, DaiValue* value);
+DaiObjModule_get_global(DaiObjModule* module, const char* name, DaiValue* value);
 bool
-DaiObjModule_setGlobal(DaiObjModule* module, const char* name, DaiValue value);
+DaiObjModule_set_global(DaiObjModule* module, const char* name, DaiValue value);
 bool
-DaiObjModule_addGlobal(DaiObjModule* module, const char* name, DaiValue value);
+DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value);
 bool
 DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiValue* key, DaiValue* value);
 

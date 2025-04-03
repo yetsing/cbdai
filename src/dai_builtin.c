@@ -1,5 +1,6 @@
 #include "dai_builtin.h"
 
+#include <errno.h>
 #include <limits.h>
 #include <math.h>
 #include <stdarg.h>
@@ -9,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "cwalk.h"
 
@@ -331,7 +333,8 @@ DaiObjModule*
 builtin_time_module(DaiVM* vm) {
     DaiObjModule* module = DaiObjModule_New(vm, strdup("time"), strdup("<builtin>"));
     for (int i = 0; builtin_time_funcs[i].name != NULL; i++) {
-        DaiObjModule_addGlobal(module, builtin_time_funcs[i].name, OBJ_VAL(&builtin_time_funcs[i]));
+        DaiObjModule_add_global(
+            module, builtin_time_funcs[i].name, OBJ_VAL(&builtin_time_funcs[i]));
     }
     return module;
 }
@@ -426,7 +429,94 @@ DaiObjModule*
 builtin_math_module(DaiVM* vm) {
     DaiObjModule* module = DaiObjModule_New(vm, strdup("math"), strdup("<builtin>"));
     for (int i = 0; builtin_math_funcs[i].name != NULL; i++) {
-        DaiObjModule_addGlobal(module, builtin_math_funcs[i].name, OBJ_VAL(&builtin_math_funcs[i]));
+        DaiObjModule_add_global(
+            module, builtin_math_funcs[i].name, OBJ_VAL(&builtin_math_funcs[i]));
+    }
+    return module;
+}
+
+// #endregion
+
+// #region 内置模块 os
+
+static DaiValue
+builtin_os_getcwd(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                  int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "os.getcwd() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        return OBJ_VAL(dai_copy_string_intern(vm, cwd, strlen(cwd)));
+    }
+    DaiObjError* err = DaiObjError_Newf(vm, "os.getcwd() failed: %s", strerror(errno));
+    return OBJ_VAL(err);
+}
+
+static DaiValue
+builtin_os_system(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                  int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "os.system() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "os.system() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    const char* cmd = AS_STRING(argv[0])->chars;
+    int ret         = system(cmd);
+    return INTEGER_VAL(ret);
+}
+
+static DaiValue
+builtin_os_chdir(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                 int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "os.chdir() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "os.chdir() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    const char* path = AS_STRING(argv[0])->chars;
+    int ret          = chdir(path);
+    return INTEGER_VAL(ret);
+}
+
+static DaiObjBuiltinFunction builtin_os_funcs[] = {
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "getcwd",
+        .function = builtin_os_getcwd,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "system",
+        .function = builtin_os_system,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "chdir",
+        .function = builtin_os_chdir,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name = NULL,
+    },
+};
+
+static DaiObjModule*
+builtin_os_module(DaiVM* vm) {
+    DaiObjModule* module = DaiObjModule_New(vm, strdup("os"), strdup("<builtin>"));
+    for (int i = 0; builtin_os_funcs[i].name != NULL; i++) {
+        DaiObjModule_add_global(module, builtin_os_funcs[i].name, OBJ_VAL(&builtin_os_funcs[i]));
     }
     return module;
 }
@@ -452,6 +542,11 @@ init_builtin_objects(DaiVM* vm, int* count) {
     builtin_names[i]         = "math";
     builtin_objects[i].name  = "math";
     builtin_objects[i].value = OBJ_VAL(builtin_math_module(vm));
+    i++;
+
+    builtin_names[i]         = "os";
+    builtin_objects[i].name  = "os";
+    builtin_objects[i].value = OBJ_VAL(builtin_os_module(vm));
     i++;
 
     *count = i;

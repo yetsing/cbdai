@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "dai_value.h"
 #include "munit/munit.h"
 
 #include "dai_compile.h"
@@ -14,6 +13,7 @@
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
+#include "dai_value.h"
 #include "dai_vm.h"
 
 // 获取当前文件所在文件夹路径

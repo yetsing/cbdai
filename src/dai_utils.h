@@ -40,4 +40,18 @@ dai_line_from_file(const char* filename, int lineno);
 int
 dai_generate_seed(uint8_t seed[16]);
 
+typedef struct {
+    char* elements;
+    size_t length;
+    size_t capacity;
+    size_t elsize;
+} DaiRawArray;
+
+void
+DaiRawArray_init(DaiRawArray* array, size_t elsize);
+void
+DaiRawArray_reset(DaiRawArray* array);
+void
+DaiRawArray_append(DaiRawArray* array, const void* element);
+
 #endif /* AECB9C05_1769_47C9_99B4_8EB1E4235629 */

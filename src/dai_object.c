@@ -170,7 +170,7 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
 // #region module
 
 static bool
-DaiObjModule_getGlobal2(DaiObjModule* module, DaiObjString* name, DaiValue* value) {
+DaiObjModule_get_global1(DaiObjModule* module, DaiObjString* name, DaiValue* value) {
     DaiPropertyOffset offset = {
         .property = name,
         .offset   = 0,
@@ -187,7 +187,7 @@ DaiValue
 DaiObjModule_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     DaiObjModule* module = AS_MODULE(receiver);
     DaiValue value;
-    if (DaiObjModule_getGlobal2(module, name, &value)) {
+    if (DaiObjModule_get_global1(module, name, &value)) {
         return value;
     }
     DaiObjError* err = DaiObjError_Newf(
@@ -195,12 +195,21 @@ DaiObjModule_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     return OBJ_VAL(err);
 }
 
+char*
+DaiObjModule_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
+    DaiObjModule* module = AS_MODULE(value);
+    int size             = module->name->length + 16;
+    char* buf            = ALLOCATE(char, size);
+    snprintf(buf, size, "<module %s>", module->name->chars);
+    return buf;
+}
+
 static struct DaiOperation module_operation = {
     .get_property_func  = DaiObjModule_get_property,
     .set_property_func  = dai_default_set_property,
     .subscript_get_func = dai_default_subscript_get,
     .subscript_set_func = dai_default_subscript_set,
-    .string_func        = dai_default_string_func,
+    .string_func        = DaiObjModule_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
@@ -249,8 +258,8 @@ DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
     }
 
     // 设置两个内置的全局变量 __name__ 和 __file__
-    DaiObjModule_addGlobal(module, "__name__", OBJ_VAL(module->name));
-    DaiObjModule_addGlobal(module, "__file__", OBJ_VAL(module->filename));
+    DaiObjModule_add_global(module, "__name__", OBJ_VAL(module->name));
+    DaiObjModule_add_global(module, "__file__", OBJ_VAL(module->filename));
     return module;
 }
 
@@ -329,14 +338,14 @@ DaiObjModule_afterCompile(DaiObjModule* module, DaiSymbolTable* symbol_table) {
 }
 
 bool
-DaiObjModule_getGlobal(DaiObjModule* module, const char* name, DaiValue* value) {
+DaiObjModule_get_global(DaiObjModule* module, const char* name, DaiValue* value) {
     assert(module->compiled);
     DaiObjString* property = dai_find_string_intern(module->vm, name, strlen(name));
-    return DaiObjModule_getGlobal2(module, property, value);
+    return DaiObjModule_get_global1(module, property, value);
 }
 
 bool
-DaiObjModule_setGlobal(DaiObjModule* module, const char* name, DaiValue value) {
+DaiObjModule_set_global(DaiObjModule* module, const char* name, DaiValue value) {
     assert(module->compiled);
     DaiObjString* property = dai_find_string_intern(module->vm, name, strlen(name));
     assert(property != NULL);
@@ -351,7 +360,7 @@ DaiObjModule_setGlobal(DaiObjModule* module, const char* name, DaiValue value) {
 }
 
 bool
-DaiObjModule_addGlobal(DaiObjModule* module, const char* name, DaiValue value) {
+DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value) {
     assert(!(module->compiled));
     DaiObjString* property   = dai_copy_string_intern(module->vm, name, strlen(name));
     DaiPropertyOffset offset = {
