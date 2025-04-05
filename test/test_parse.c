@@ -779,14 +779,36 @@ test_integer_literal_expression(__attribute__((unused)) const MunitParameter par
         int64_t value;
         int end_column;
     } integerTests[] = {
+        {"0;", 0, 2},
+        {"1;", 1, 2},
         {"5;", 5, 2},
         {"15;", 15, 3},
+        {"4294967296;", 4294967296LL, -1},
+        {"9223372036854775807;", 9223372036854775807LL, -1},
+
         {"0b1;", 1, 4},
         {"0B1;", 1, 4},
+        {"0b10;", 2, -1},
+        {"0B10;", 2, -1},
+        {"0b100000000000000000000000000000000;", 4294967296, -1},
+        {"0b111111111111111111111111111111111111111111111111111111111111111;",
+         9223372036854775807LL,
+         -1},
+
         {"0o1;", 1, 4},
         {"0O1;", 1, 4},
+        {"0o10;", 8, -1},
+        {"0O10;", 8, -1},
+        {"0o777777777777777777777;", 9223372036854775807LL, -1},
+
         {"0x1;", 1, 4},
         {"0X1;", 1, 4},
+        {"0x10;", 16, -1},
+        {"0X10;", 16, -1},
+        {"0x0123456789abcdef;", 81985529216486895, -1},
+        {"0X0123456789ABCDEF;", 81985529216486895, -1},
+        {"0x7fffffffffffffff;", 9223372036854775807LL, -1},
+
     };
 
     for (int i = 0; i < sizeof(integerTests) / sizeof(integerTests[0]); i++) {
@@ -807,7 +829,7 @@ test_integer_literal_expression(__attribute__((unused)) const MunitParameter par
             munit_assert_int(integer->start_line, ==, 1);
             munit_assert_int(integer->start_column, ==, 1);
             munit_assert_int(integer->end_line, ==, 1);
-            munit_assert_int(integer->end_column, ==, integerTests[i].end_column);
+            munit_assert_int(integer->end_column, ==, strlen(input));
         }
         program->free_fn((DaiAstBase*)program, true);
     }
@@ -1556,6 +1578,10 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
         const char* input;
         const char* expected;
     } tests[] = {
+        {
+            "1231231231312312312312312312312312313123;",
+            "SyntaxError: Out of range \"1231231231312312312312312312312312313123\" in <test>:1:1",
+        },
         {
             "let a = 5;",
             "SyntaxError: expected token to be \"DaiTokenType_semicolon\" but "

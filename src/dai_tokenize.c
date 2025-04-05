@@ -365,6 +365,7 @@ Tokenizer_readFloatAfterDot(Tokenizer* tker) {
 
 // 数字字面量语法
 // 参考： https://docs.python.org/3/reference/lexical_analysis.html#integer-literals
+// 下划线不能出现在数字的开头或结尾，也不能出现在小数点前后
 // number     ::= zero | decinteger | bininteger | octinteger | hexinteger | float
 // zero       ::= "0"
 // decinteger ::= nonzerodigit ( ("_")* digit)*

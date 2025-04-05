@@ -1,18 +1,15 @@
 #include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "dai_array.h"
 #include "dai_assert.h"
 #include "dai_ast.h"
-#include "dai_ast/dai_astForInStatement.h"
 #include "dai_common.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
-#include "dai_parseint.h"
 #include "dai_tokenize.h"
 
 typedef struct TParser Parser;
@@ -557,24 +554,55 @@ Parser_parseInteger(Parser* p) {
     daiassert(p->cur_token->type == DaiTokenType_int,
               "not an integer: %s",
               DaiTokenType_string(p->cur_token->type));
-    // 解析字符串为整数
+    // 确定进制
     int base      = 10;
     char* literal = p->cur_token->literal;
     if (strlen(literal) >= 3 && literal[0] == '0') {
         switch (literal[1]) {
             case 'x':
-            case 'X': base = 16; break;
+            case 'X':
+                base = 16;
+                literal += 2;
+                break;
             case 'o':
-            case 'O': base = 8; break;
+            case 'O':
+                base = 8;
+                literal += 2;
+                break;
             case 'b':
-            case 'B': base = 2; break;
+            case 'B':
+                base = 2;
+                literal += 2;
+                break;
         }
     }
-    char* error = NULL;
-    int64_t n   = dai_parseint(literal, base, &error);
-    if (error != NULL) {
+    // 去除字面量中的下划线
+    char pure[256];
+    char* curr      = literal;
+    char* pure_curr = pure;
+    while (*curr != '\0') {
+        if (*curr == '_') {
+            curr++;
+        } else {
+            *pure_curr++ = *curr++;
+        }
+    }
+    *pure_curr = '\0';
+    // 解析整数
+    char* end;
+    errno           = 0;   // Reset errno before calling strtoll
+    const int64_t n = strtoll(pure, &end, base);
+    if (errno == ERANGE) {
         char buf[256];
-        snprintf(buf, sizeof(buf), "%s \"%s\"", error, p->cur_token->literal);
+        snprintf(buf, sizeof(buf), "Out of range \"%s\"", p->cur_token->literal);
+        int line        = p->cur_token->start_line;
+        int column      = p->cur_token->start_column;
+        p->syntax_error = DaiSyntaxError_New(buf, line, column);
+        return NULL;
+    }
+    if (*end != '\0') {
+        char buf[256];
+        snprintf(buf, sizeof(buf), "Invalid character \"%c\" in number \"%s\"", *end, literal);
         int line        = p->cur_token->start_line;
         int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New(buf, line, column);
@@ -594,7 +622,7 @@ Parser_parseFloat(Parser* p) {
               DaiTokenType_string(p->cur_token->type));
 
     // 去除字面量中的下划线
-    char* numbuf      = dai_malloc(strlen(p->cur_token->literal) + 1);
+    char numbuf[256];
     char* numbuf_curr = numbuf;
     char* curr        = p->cur_token->literal;
     while (*curr != '\0') {
@@ -605,10 +633,10 @@ Parser_parseFloat(Parser* p) {
         }
     }
     *numbuf_curr = '\0';
-
+    // 解析浮点数
     char* end;
-    const double value = strtod(numbuf, &end);
-    dai_free(numbuf);
+    errno          = 0;   // Reset errno before calling strtod
+    const double f = strtod(numbuf, &end);
     if (errno == ERANGE) {
         char buf[256];
         snprintf(buf, sizeof(buf), "Out of range \"%s\"", p->cur_token->literal);
@@ -617,8 +645,21 @@ Parser_parseFloat(Parser* p) {
         p->syntax_error = DaiSyntaxError_New(buf, line, column);
         return NULL;
     }
+    if (*end != '\0') {
+        char buf[256];
+        snprintf(buf,
+                 sizeof(buf),
+                 "Invalid character \"%c\" in number \"%s\"",
+                 *end,
+                 p->cur_token->literal);
+        int line        = p->cur_token->start_line;
+        int column      = p->cur_token->start_column;
+        p->syntax_error = DaiSyntaxError_New(buf, line, column);
+        return NULL;
+    }
+    // 创建浮点数节点
     DaiAstFloatLiteral* num = DaiAstFloatLiteral_New(p->cur_token);
-    num->value              = value;
+    num->value              = f;
     return (DaiAstExpression*)num;
 }
 
@@ -1224,9 +1265,9 @@ Parser_parseClassStatement(Parser* p) {
     }
     klass->body = body;
 
-    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
-        klass->free_fn((DaiAstBase*)klass, true);
-        return NULL;
+    // 末尾分号可选
+    if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
+        Parser_nextToken(p);
     }
     {
         klass->end_line   = p->cur_token->end_line;
