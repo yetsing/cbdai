@@ -773,7 +773,7 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
         abort();
     }
     klass->parent             = NULL;
-    klass->init               = UNDEFINED_VAL;
+    klass->init_fn            = UNDEFINED_VAL;
     klass->define_field_names = DaiObjTuple_New(vm);
 
     // 定义内置类属性
@@ -805,7 +805,7 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
             vm, "Too many arguments, max expected=%d got=%d", define_field_count, argc);
         return OBJ_VAL(err);
     }
-    if (IS_UNDEFINED(instance->klass->init)) {
+    if (IS_UNDEFINED(instance->klass->init_fn)) {
         for (int i = 0; i < argc; i++) {
             DaiObjString* field_name = AS_STRING(DaiObjTuple_get(klass->define_field_names, i));
             const void* res          = hashmap_get_with_hash(
@@ -813,8 +813,14 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
             assert(res != NULL);
             instance->fields[((DaiFieldDesc*)res)->index] = argv[i];
         }
+    } else if (IS_BUILTINFN(instance->klass->init_fn)) {
+        const BuiltinFn func  = AS_BUILTINFN(instance->klass->init_fn)->function;
+        const DaiValue result = func(vm, OBJ_VAL(instance), argc, argv);
+        if (IS_ERROR(result)) {
+            return result;
+        }
     } else {
-        DaiValue res = DaiVM_runCall2(vm, instance->klass->init, argc);
+        DaiValue res = DaiVM_runCall2(vm, instance->klass->init_fn, argc);
         if (IS_ERROR(res)) {
             return res;
         }
@@ -871,54 +877,54 @@ DaiObjClass_define_class_method(DaiObjClass* klass, DaiObjString* name, DaiValue
     DaiTable_set(&klass->class_methods, name, value);
 }
 
-void
+int
 DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value, bool is_const) {
     const void* res = hashmap_get_with_hash(
         klass->fields, &(DaiPropertyOffset){.property = name, .offset = 0}, name->hash);
+    DaiFieldDesc property = {
+        .name     = name,
+        .is_const = is_const,
+        .value    = value,
+        .index    = hashmap_count(klass->fields),
+    };
     if (res == NULL) {
         if (!is_builtin_property(name->chars)) {
             DaiObjTuple_append(klass->define_field_names, OBJ_VAL(name));
         }
-        DaiFieldDesc property = {
-            .name     = name,
-            .is_const = is_const,
-            .value    = value,
-            .index    = hashmap_count(klass->fields),
-        };
-        res = hashmap_set_with_hash(klass->fields, &property, name->hash);
-        if (res == NULL && hashmap_oom(klass->fields)) {
-            dai_error("DaiObjClass_define_field: Out of memory\n");
-            abort();
-        }
     } else {
-        DaiFieldDesc* prop = (DaiFieldDesc*)res;
-        prop->is_const     = is_const;
-        prop->value        = value;
+        property.index = ((DaiFieldDesc*)res)->index;
     }
+
+    res = hashmap_set_with_hash(klass->fields, &property, name->hash);
+    if (res == NULL && hashmap_oom(klass->fields)) {
+        dai_error("DaiObjClass_define_field: Out of memory\n");
+        abort();
+    }
+    return property.index;
 }
 
 void
 DaiObjClass_define_method(DaiObjClass* klass, DaiObjString* name, DaiValue value) {
     // 设置方法的 super class
     {
-        DaiObjFunction* function = NULL;
         if (IS_CLOSURE(value)) {
-            function = AS_CLOSURE(value)->function;
-        } else {
-            function = AS_FUNCTION(value);
+            DaiObjFunction* function = AS_CLOSURE(value)->function;
+            function->superclass     = klass->parent;
+        } else if (IS_FUNCTION(value)) {
+            DaiObjFunction* function = AS_FUNCTION(value);
+            function->superclass     = klass->parent;
         }
-        function->superclass = klass->parent;
     }
     DaiTable_set(&klass->methods, name, value);
-    if (strcmp(name->chars, "init") == 0) {
-        klass->init = value;
+    if (strcmp(name->chars, "__init__") == 0) {
+        klass->init_fn = value;
     }
 }
 
 void
 DaiObjClass_inherit(DaiObjClass* klass, DaiObjClass* parent) {
-    klass->parent = parent;
-    klass->init   = parent->init;
+    klass->parent  = parent;
+    klass->init_fn = parent->init_fn;
     // 复制实例属性
     {
         void* item;

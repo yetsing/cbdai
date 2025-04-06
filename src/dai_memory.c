@@ -331,6 +331,10 @@ blackenObject(DaiVM* vm, DaiObj* object) {
 
 static void
 markRoots(DaiVM* vm) {
+    // 标记内置对象
+    for (int i = 0; i < BUILTIN_OBJECT_MAX_COUNT; i++) {
+        markValue(vm, vm->builtin_objects[i]);
+    }
     // 标记栈
     for (DaiValue* slot = vm->stack; slot < vm->stack_top; slot++) {
         markValue(vm, *slot);

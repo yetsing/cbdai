@@ -215,7 +215,7 @@ typedef struct _DaiObjClass {
     DaiObjTuple* define_field_names;   // 按定义顺序存储实例属性名（内置类属性 __fields__ 的值）
     DaiObjClass* parent;
     // 下面是一些特殊的实例方法
-    DaiValue init;   // 自定义的实例初始化方法
+    DaiValue init_fn;   // __init__ 方法
 } DaiObjClass;
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name);
@@ -228,7 +228,7 @@ DaiObjClass_define_class_field(DaiObjClass* klass, DaiObjString* name, DaiValue 
                                bool is_const);
 void
 DaiObjClass_define_class_method(DaiObjClass* klass, DaiObjString* name, DaiValue value);
-void
+int
 DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value, bool is_const);
 void
 DaiObjClass_define_method(DaiObjClass* klass, DaiObjString* name, DaiValue value);

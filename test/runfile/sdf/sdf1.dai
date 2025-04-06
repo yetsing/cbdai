@@ -1,7 +1,7 @@
 
 fn sample(x, y) {
   # draw an alternating checkboard pattern
-  if ((x + y + time_time()) % 2) {
+  if ((x + y + time.time()) % 2) {
     return '#';
   } else {
     return ' ';
@@ -20,5 +20,5 @@ while (true) {
     # print out a control sequence to clear the terminal, then the frame.
     # important note! if you're using windows, see the note below.
     print('\x1b[2J' + ''.join(frame_chars));
-    time_sleep(1.0 / 30);
+    time.sleep(1.0 / 30);
 }

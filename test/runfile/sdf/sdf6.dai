@@ -1,17 +1,17 @@
 fn donut(x, y, z) {
     var radius = 0.4;
     var thickness = 0.3;
-    var xy_d = math_sqrt(x*x + y*y) - radius;
-    var d = math_sqrt(xy_d*xy_d + z*z);
+    var xy_d = math.sqrt(x*x + y*y) - radius;
+    var d = math.sqrt(xy_d*xy_d + z*z);
     return d - thickness / 2;
 }
 
 fn sample(x, y) {
     var z = -10;
     for (var _, _step in range(30)) {
-        var θ = time_timef() * 2;
-        var t_x = x * math_cos(θ) - z * math_sin(θ);
-        var t_z = x * math_sin(θ) + z * math_cos(θ);
+        var θ = time.timef() * 2;
+        var t_x = x * math.cos(θ) - z * math.sin(θ);
+        var t_z = x * math.sin(θ) + z * math.cos(θ);
         var d = donut(t_x, y, t_z);
         if (d <= 0.01) {
             return '#';
@@ -33,5 +33,5 @@ while (true) {
         frame_chars.append('\n');
     }
     print('\x1b[2J' + ''.join(frame_chars));
-    time_sleep(1.0 / 30);
+    time.sleep(1.0 / 30);
 }

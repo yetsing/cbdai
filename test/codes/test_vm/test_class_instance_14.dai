@@ -2,7 +2,7 @@
 class Foo {
   var a = 1;
   var increment;
-  fn init(a) {
+  fn __init__(a) {
     self.a = a;
     self.increment = 2;
   };

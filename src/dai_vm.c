@@ -93,6 +93,9 @@ DaiVM_init(DaiVM* vm) {
 
     // 初始化内置函数
     {
+        for (int i = 0; i < BUILTIN_OBJECT_MAX_COUNT; i++) {
+            vm->builtin_objects[i] = UNDEFINED_VAL;
+        }
         int count                         = 0;
         DaiBuiltinObject* builtin_objects = init_builtin_objects(vm, &count);
         for (int i = 0; i < count; i++) {

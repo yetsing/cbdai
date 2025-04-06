@@ -176,6 +176,7 @@ def runfile(*args):
         except KeyboardInterrupt:
             print("Ctrl+C")
     if exitcode != 0:
+        print(f"Exit code: {exitcode}")
         sys.exit(exitcode)
 
 

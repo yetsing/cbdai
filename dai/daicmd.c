@@ -280,6 +280,10 @@ daicmd_runfile(int argc, const char** argv) {
     }
     const char* filename = argv[1];
     char* filepath       = realpath(filename, NULL);
+    if (filepath == NULL) {
+        perror("Error: cannot read file");
+        return 1;
+    }
     DaiVM vm;
     DaiVM_init(&vm);
     DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filepath));

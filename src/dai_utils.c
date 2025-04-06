@@ -77,24 +77,47 @@ dai_string_from_file(const char* filename) {
     if (fp == NULL) {
         return NULL;
     }
-    if (fseek(fp, 0L, SEEK_END) < 0) {
+
+    // Get file size
+    if (fseek(fp, 0L, SEEK_END) != 0) {
         fclose(fp);
         return NULL;
     }
-    size_t length = ftell(fp);
-    rewind(fp);
-    char* s = malloc(length + 1);
-    if (s == NULL) {
+
+    long file_size = ftell(fp);
+    if (file_size < 0) {
         fclose(fp);
         return NULL;
     }
-    if (fread(s, 1, length, fp) < length) {
+
+    if (fseek(fp, 0L, SEEK_SET) != 0) {
         fclose(fp);
         return NULL;
     }
-    s[length] = '\0';
+
+    // Allocate memory for file contents plus null terminator
+    char* buffer = malloc((size_t)file_size + 1);
+    if (buffer == NULL) {
+        fclose(fp);
+        return NULL;
+    }
+
+    // Read file contents
+    size_t bytes_read = fread(buffer, 1, (size_t)file_size, fp);
+
+    // Check for read errors
+    if (ferror(fp)) {
+        fclose(fp);
+        free(buffer);
+        return NULL;
+    }
+
     fclose(fp);
-    return s;
+
+    // Null-terminate the string
+    buffer[bytes_read] = '\0';
+
+    return buffer;
 }
 
 char*

@@ -1,0 +1,22 @@
+// 读写文件
+fn main() {
+    var p = Path("file_rw_test.txt");
+    assert(not p.exists());
+    var text = "hello world\n";
+    p.write_text(text);
+    assert(p.exists());
+    var read_text = p.read_text();
+    assert_eq(read_text, text);
+    p.unlink();
+    p.unlink(true);
+
+    assert_eq(p.string(), "file_rw_test.txt");
+
+    assert(not p.is_absolute());
+
+    var absp = p.absolute();
+    assert(absp.is_absolute());
+    print(absp.string());
+}
+
+main();

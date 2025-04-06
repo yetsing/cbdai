@@ -1,8 +1,8 @@
 fn donut(x, y, z) {
     var radius = 0.4;
     var thickness = 0.3;
-    var xy_d = math_sqrt(x*x + y*y) - radius;
-    var d = math_sqrt(xy_d*xy_d + z*z);
+    var xy_d = math.sqrt(x*x + y*y) - radius;
+    var d = math.sqrt(xy_d*xy_d + z*z);
     return d - thickness / 2;
 }
 
@@ -35,5 +35,5 @@ while (true) {
     # print out a control sequence to clear the terminal, then the frame.
     # important note! if you're using windows, see the note below.
     print('\x1b[2J' + ''.join(frame_chars));
-    time_sleep(1.0 / 30);
+    time.sleep(1.0 / 30);
 }
