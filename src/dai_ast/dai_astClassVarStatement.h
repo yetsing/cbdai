@@ -6,6 +6,7 @@
 
 typedef struct {
     DAI_AST_STATEMENT_HEAD
+    bool is_con;
     DaiAstIdentifier* name;
     DaiAstExpression* value;
 } DaiAstClassVarStatement;

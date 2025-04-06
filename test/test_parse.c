@@ -649,7 +649,7 @@ test_class_statements(__attribute__((unused)) const MunitParameter params[],
     }
 
     {
-        const char* input = "class Foo < Bar {\n"
+        const char* input = "class Foo(Bar) {\n"
                             "  var a1;\n"
                             "  var a2 = 2;\n"
                             "  var a3 = 1 + 2;\n"
@@ -2098,6 +2098,22 @@ recursive_string_and_free(DaiAstBase* ast) {
             }
             recursive_string_and_free((DaiAstBase*)expression->left);
             recursive_string_and_free((DaiAstBase*)expression->name);
+            expression->free_fn((DaiAstBase*)expression, false);
+            break;
+        }
+        case DaiAstType_ClassExpression: {
+            DaiAstClassExpression* expression = (DaiAstClassExpression*)ast;
+            {
+                char* s = expression->string_fn((DaiAstBase*)expression, false);
+                free(s);
+            }
+            {
+                char* s = expression->literal_fn((DaiAstExpression*)expression);
+                free(s);
+            }
+            if (expression->name != NULL) {
+                recursive_string_and_free((DaiAstBase*)expression->name);
+            }
             expression->free_fn((DaiAstBase*)expression, false);
             break;
         }

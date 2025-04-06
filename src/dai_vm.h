@@ -107,6 +107,8 @@ DaiVM_getCurrentFilename(const DaiVM* vm);
 void
 DaiVM_pauseGC(DaiVM* vm);
 void
+DaiVM_resumeGC(DaiVM* vm);
+void
 DaiVM_push1(DaiVM* vm, DaiValue value);
 void
 DaiVM_getSeed2(DaiVM* vm, uint64_t* seed0, uint64_t* seed1);

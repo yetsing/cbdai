@@ -145,6 +145,8 @@ Parser_parseCallExpression(Parser* p, DaiAstExpression* left);
 static DaiAstExpression*
 Parser_parseDotExpression(Parser* p, DaiAstExpression* left);
 static DaiAstExpression*
+Parser_parseClassExpression(Parser* p);
+static DaiAstExpression*
 Parser_parseSelfExpression(Parser* p);
 static DaiAstExpression*
 Parser_parseSuperExpression(Parser* p);
@@ -307,6 +309,7 @@ Parser_register(Parser* p) {
         Parser_registerPrefix(p, DaiTokenType_lparen, Parser_parseGroupedExpression);
         Parser_registerPrefix(p, DaiTokenType_function, Parser_parseFunctionLiteral);
         Parser_registerPrefix(p, DaiTokenType_str, Parser_parseStringLiteral);
+        Parser_registerPrefix(p, DaiTokenType_class, Parser_parseClassExpression);
         Parser_registerPrefix(p, DaiTokenType_self, Parser_parseSelfExpression);
         Parser_registerPrefix(p, DaiTokenType_super, Parser_parseSuperExpression);
         Parser_registerPrefix(p, DaiTokenType_lbracket, Parser_parseArrayLiteral);
@@ -934,6 +937,36 @@ Parser_parseInfixExpression(Parser* p, DaiAstExpression* left) {
 }
 
 static DaiAstExpression*
+Parser_parseClassExpression(Parser* p) {
+    DaiAstClassExpression* expr = DaiAstClassExpression_New();
+    {
+        expr->start_line   = p->cur_token->start_line;
+        expr->start_column = p->cur_token->start_column;
+    }
+    if (!Parser_peekTokenIs(p, DaiTokenType_dot)) {
+        // 单独的 class 表达式
+        expr->end_line   = p->cur_token->end_line;
+        expr->end_column = p->cur_token->end_column;
+        return (DaiAstExpression*)expr;
+    }
+    if (!Parser_expectPeek(p, DaiTokenType_dot)) {
+        expr->free_fn((DaiAstBase*)expr, true);
+        return NULL;
+    }
+    if (!Parser_expectPeek(p, DaiTokenType_ident)) {
+        expr->free_fn((DaiAstBase*)expr, true);
+        return NULL;
+    }
+    DaiAstIdentifier* name = (DaiAstIdentifier*)Parser_parseIdentifier(p);
+    expr->name             = name;
+    {
+        expr->end_line   = name->end_line;
+        expr->end_column = name->end_column;
+    }
+    return (DaiAstExpression*)expr;
+}
+
+static DaiAstExpression*
 Parser_parseSelfExpression(Parser* p) {
     DaiAstSelfExpression* expr = DaiAstSelfExpression_New();
     {
@@ -941,6 +974,7 @@ Parser_parseSelfExpression(Parser* p) {
         expr->start_column = p->cur_token->start_column;
     }
     if (!Parser_peekTokenIs(p, DaiTokenType_dot)) {
+        // 单独的 self 表达式
         expr->end_line   = p->cur_token->end_line;
         expr->end_column = p->cur_token->end_column;
         return (DaiAstExpression*)expr;
@@ -1055,9 +1089,10 @@ Parser_parseClassMethodStatement(Parser* p) {
         func->start_line   = p->cur_token->start_line;
         func->start_column = p->cur_token->start_column;
     }
-    // 跳过 class 关键字，现在当前 token 是 var
-    Parser_nextToken(p);
-
+    if (!Parser_expectPeek(p, DaiTokenType_function)) {
+        func->free_fn((DaiAstBase*)func, true);
+        return NULL;
+    }
 
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
         func->free_fn((DaiAstBase*)func, true);
@@ -1103,8 +1138,11 @@ Parser_parseClassVarStatement(Parser* p) {
     stmt->start_line              = p->cur_token->start_line;
     stmt->start_column            = p->cur_token->start_column;
 
-    // 跳过 class ，现在当前 token 是 var
+    // 跳过 class ，现在当前 token 是 var/con
     Parser_nextToken(p);
+    if (Parser_curTokenIs(p, DaiTokenType_con)) {
+        stmt->is_con = true;
+    }
 
     // 下一个 token 应该是 identifier
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
@@ -1146,6 +1184,9 @@ Parser_parseInsVarStatement(Parser* p) {
     DaiAstInsVarStatement* stmt = DaiAstInsVarStatement_New(NULL, NULL);
     stmt->start_line            = p->cur_token->start_line;
     stmt->start_column          = p->cur_token->start_column;
+    if (Parser_curTokenIs(p, DaiTokenType_con)) {
+        stmt->is_con = true;
+    }
 
     // 下一个 token 应该是 identifier
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
@@ -1231,6 +1272,7 @@ Parser_parseMethodStatement(Parser* p) {
     return func;
 }
 
+// class NAME(PARENT) { ... }
 static DaiAstClassStatement*
 Parser_parseClassStatement(Parser* p) {
     DaiToken* start_token = p->cur_token;
@@ -1243,12 +1285,16 @@ Parser_parseClassStatement(Parser* p) {
         klass->start_line   = start_token->start_line;
         klass->start_column = start_token->start_column;
     }
-    if (Parser_peekTokenIs(p, DaiTokenType_lt)) {
+    if (Parser_peekTokenIs(p, DaiTokenType_lparen)) {
         // 父类
         Parser_nextToken(p);
         Parser_nextToken(p);
         klass->parent = (DaiAstIdentifier*)Parser_parseIdentifier(p);
         if (klass->parent == NULL) {
+            klass->free_fn((DaiAstBase*)klass, true);
+            return NULL;
+        }
+        if (!Parser_expectPeek(p, DaiTokenType_rparen)) {
             klass->free_fn((DaiAstBase*)klass, true);
             return NULL;
         }
@@ -1281,7 +1327,7 @@ Parser_parseStatementOfClass(Parser* p) {
     switch (p->cur_token->type) {
         case DaiTokenType_class: {
             // class var 语句
-            if (Parser_peekTokenIs(p, DaiTokenType_var)) {
+            if (Parser_peekTokenIn(p, DaiTokenType_var, DaiTokenType_con, DaiTokenType_end)) {
                 return (DaiAstStatement*)Parser_parseClassVarStatement(p);
             }
             if (Parser_peekTokenIs(p, DaiTokenType_function)) {
@@ -1289,6 +1335,7 @@ Parser_parseStatementOfClass(Parser* p) {
             }
             break;
         }
+        case DaiTokenType_con:
         case DaiTokenType_var: {
             // var 语句
             return (DaiAstStatement*)Parser_parseInsVarStatement(p);
@@ -1797,8 +1844,14 @@ static DaiAstStatement*
 Parser_parseStatement(Parser* p) {
     switch (p->cur_token->type) {
         case DaiTokenType_class: {
-            // class 语句
-            return (DaiAstStatement*)Parser_parseClassStatement(p);
+            if (Parser_peekTokenIs(p, DaiTokenType_ident)) {
+                // 类定义语句
+                return (DaiAstStatement*)Parser_parseClassStatement(p);
+            } else {
+                // class.xxx 表达式语句
+                // 访问类属性
+                return (DaiAstStatement*)Parser_parseExpressionOrAssignStatement(p);
+            }
         }
         case DaiTokenType_con:
         case DaiTokenType_var: {

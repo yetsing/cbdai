@@ -1,6 +1,6 @@
 #6
 class Foo {
-  var a = 1;
+  con a = 1;
   var increment;
   fn init(a) {
     self.a = a;
@@ -16,7 +16,8 @@ class Foo {
   };
   class var c = 0;
   class fn cinc() {
-    class.c = class.c + 1;
+    var cls = class;
+    cls.c = cls.c + 1;
   };
   class fn cget() {
      return class.c;
@@ -24,6 +25,7 @@ class Foo {
 };
 class Goo(Foo) {
   fn get() {
+    class.cinc();
     return super.get();
   };
   class fn cget() {
@@ -32,5 +34,7 @@ class Goo(Foo) {
 };
 Goo.cinc();
 var goo = Goo(2);
-Goo.cinc();
 goo.get() + Goo.cget();
+var fields = Goo.__fields__;
+assert_eq(fields[0], 'a');
+assert_eq(fields[1], 'increment');

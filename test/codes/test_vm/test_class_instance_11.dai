@@ -12,7 +12,7 @@ class Foo {
   };
   class var c = 3;
   class fn cget() {
-     return self.c;
+     return class.c;
   };
 };
 var foo = Foo(2, 2);

@@ -1,6 +1,3 @@
-//
-// Created by  on 2024/6/5.
-//
 #include <assert.h>
 
 #include "dai_ast/dai_astcommon.h"
@@ -33,7 +30,8 @@ DaiAstVarStatement_string(DaiAstBase* base, bool recursive) {
         DaiStringBuffer_write(sb, ",\n");
         dai_free(value);
     } else {
-        DaiStringBuffer_write(sb, "    value: ");
+        DaiStringBuffer_write(sb, indent);
+        DaiStringBuffer_write(sb, "value: ");
         DaiStringBuffer_writePointer(sb, stmt->value);
         DaiStringBuffer_write(sb, ",\n");
     }

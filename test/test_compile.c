@@ -2214,16 +2214,16 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             s3
         */
         uint8_t expected_codes2[] = {
-            // self;
+            // class;
             DaiOpGetLocal,
             0,
             DaiOpPop,
-            // self.classVar;
+            // class.classVar;
             DaiOpGetSelfProperty,
             0,
             0,
             DaiOpPop,
-            // self.classVar = 5;
+            // class.classVar = 5;
             DaiOpConstant,
             0,
             1,
@@ -2279,16 +2279,16 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             s3
         */
         uint8_t expected_codes2[] = {
-            // self;
+            // class;
             DaiOpGetLocal,
             0,
             DaiOpPop,
-            // self.classVar;
+            // class.classVar;
             DaiOpGetSelfProperty,
             0,
             0,
             DaiOpPop,
-            // self.classVar = 5;
+            // class.classVar = 5;
             DaiOpConstant,
             0,
             1,
@@ -2355,7 +2355,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "class C {\n"
             "  var s2;\n"
             "};\n",
-            14 + 1,
+            15 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2370,6 +2370,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 1,
+                0,
                 DaiOpPop,
                 DaiOpEnd,
             },
@@ -2383,7 +2384,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "  var s2;\n"
             "  var s3 = 0;\n"
             "};\n",
-            20 + 1,
+            22 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2399,6 +2400,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 1,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2406,6 +2408,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 3,
+                0,
 
                 DaiOpPop,
                 DaiOpEnd,
@@ -2423,7 +2426,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "  var s3 = 0;\n"
             "  fn s4() {};\n"
             "};\n",
-            26 + 1,
+            28 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2439,6 +2442,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 1,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2446,6 +2450,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 3,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2473,7 +2478,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "  fn s4() {};\n"
             "  class var classVar = 3;\n"
             "};\n",
-            32 + 1,
+            35 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2489,6 +2494,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 1,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2496,6 +2502,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 3,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2510,6 +2517,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineClassField,
                 0,
                 7,
+                0,
                 DaiOpPop,
                 DaiOpEnd,
             },
@@ -2531,16 +2539,16 @@ test_class(__attribute__((unused)) const MunitParameter params[],
             "  fn s4() {};\n"
             "  class var classVar = 3;\n"
             "  class fn func2() {\n"
-            "    self;\n"
-            "    self.classVar;\n"
-            "    self.classVar = 5;\n"
+            "    class;\n"
+            "    class.classVar;\n"
+            "    class.classVar = 5;\n"
             "    super.func2;\n"
             "    var c = C();\n"
             "    c.s2 = 6;\n"
             "    c.s3;\n"
             "  };\n"
             "};\n",
-            38 + 1,
+            41 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2556,6 +2564,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 1,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2563,6 +2572,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 3,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2577,6 +2587,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineClassField,
                 0,
                 7,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2612,22 +2623,22 @@ test_class(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "class B {};\n"
-            "class C < B {\n"
+            "class C(B) {\n"
             "  var s2;\n"
             "  var s3 = 0;\n"
             "  fn s4() {};\n"
             "  class var classVar = 3;\n"
             "  class fn func2_2() {\n"
-            "    self;\n"
-            "    self.classVar;\n"
-            "    self.classVar = 5;\n"
+            "    class;\n"
+            "    class.classVar;\n"
+            "    class.classVar = 5;\n"
             "    super.func2_2;\n"
             "    var c = C();\n"
             "    c.s2 = 6;\n"
             "    c.s3;\n"
             "  };\n"
             "};\n",
-            52 + 1,
+            55 + 1,
             {
                 DaiOpClass,
                 0,
@@ -2658,6 +2669,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 2,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2665,6 +2677,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineField,
                 0,
                 4,
+                0,
 
                 DaiOpConstant,
                 0,
@@ -2679,6 +2692,7 @@ test_class(__attribute__((unused)) const MunitParameter params[],
                 DaiOpDefineClassField,
                 0,
                 8,
+                0,
 
                 DaiOpConstant,
                 0,

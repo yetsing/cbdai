@@ -16,7 +16,8 @@ class Foo {
   };
   class var c = 0;
   class fn cinc() {
-    class.c = class.c + 1;
+    var cls = class;
+    cls.c = cls.c + 1;
   };
   class fn cget() {
      return class.c;

@@ -1,6 +1,3 @@
-//
-// Created by  on 2024/6/5.
-//
 #include <assert.h>
 
 #include "dai_ast/dai_astcommon.h"
@@ -18,6 +15,10 @@ DaiAstInsVarStatement_string(DaiAstBase* base, bool recursive) {
     // DaiStringBuffer_write(sb, "type: DaiAstType_InsVarStatement,\n");
     DaiStringBuffer_write(sb,
                           KEY_COLOR("type") ": " TYPE_COLOR("DaiAstType_InsVarStatement") ",\n");
+    DaiStringBuffer_write(sb, indent);
+    DaiStringBuffer_write(sb, "is_con: ");
+    DaiStringBuffer_write(sb, stmt->is_con ? "true" : "false");
+    DaiStringBuffer_write(sb, ",\n");
     DaiStringBuffer_write(sb, indent);
     DaiStringBuffer_write(sb, "name: ");
     DaiStringBuffer_write(sb, stmt->name->value);
@@ -65,7 +66,8 @@ DaiAstInsVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value) {
         stmt->string_fn = DaiAstInsVarStatement_string;
         stmt->free_fn   = DaiAstInsVarStatement_free;
     }
-    stmt->name  = name;
-    stmt->value = value;
+    stmt->is_con = false;
+    stmt->name   = name;
+    stmt->value  = value;
     return stmt;
 }

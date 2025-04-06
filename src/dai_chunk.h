@@ -4,9 +4,10 @@
 #ifndef A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0
 #define A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0
 
+#include <stdint.h>
+
 #include "dai_common.h"
 #include "dai_value.h"
-#include <stdint.h>
 
 #define GLOBAL_MAX 65536   // uint16
 #define LOCAL_MAX 256      // uint8

@@ -800,16 +800,19 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             case DaiOpClass: {
                 uint16_t name_index = READ_UINT16();
                 DaiValue name       = chunk->constants.values[name_index];
-                DaiObjClass* cls    = DaiObjClass_New(vm, AS_STRING(name));
+                DaiVM_pauseGC(vm);
+                DaiObjClass* cls = DaiObjClass_New(vm, AS_STRING(name));
                 DaiVM_push(vm, OBJ_VAL(cls));
+                DaiVM_resumeGC(vm);
                 break;
             }
             case DaiOpDefineField: {
                 uint16_t name_index = READ_UINT16();
+                uint8_t is_const    = READ_BYTE();
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
                 DaiValue value      = DaiVM_pop(vm);
-                DaiObjClass_define_field(klass, name, value);
+                DaiObjClass_define_field(klass, name, value, is_const);
                 break;
             }
             case DaiOpDefineMethod: {
@@ -822,10 +825,11 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             }
             case DaiOpDefineClassField: {
                 uint16_t name_index = READ_UINT16();
+                uint8_t is_const    = READ_BYTE();
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
                 DaiValue value      = DaiVM_pop(vm);
-                DaiTable_set(&klass->class_fields, name, value);
+                DaiObjClass_define_class_field(klass, name, value, is_const);
                 break;
             }
             case DaiOpDefineClassMethod: {
@@ -833,17 +837,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiObjClass* klass  = AS_CLASS(DaiVM_peek(vm, 1));
                 DaiValue method     = DaiVM_pop(vm);
-                // 设置方法的 super class
-                {
-                    DaiObjFunction* function = NULL;
-                    if (IS_CLOSURE(method)) {
-                        function = AS_CLOSURE(method)->function;
-                    } else {
-                        function = AS_FUNCTION(method);
-                    }
-                    function->superclass = klass->parent;
-                }
-                DaiTable_set(&klass->class_methods, name, method);
+                DaiObjClass_define_class_method(klass, name, method);
                 break;
             }
             case DaiOpGetProperty: {
@@ -1213,6 +1207,11 @@ DaiVM_getCurrentFilename(const DaiVM* vm) {
 void
 DaiVM_pauseGC(DaiVM* vm) {
     vm->state = VMState_pending;
+}
+
+void
+DaiVM_resumeGC(DaiVM* vm) {
+    vm->state = VMState_running;
 }
 
 void

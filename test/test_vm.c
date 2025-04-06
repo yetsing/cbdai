@@ -2243,7 +2243,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             OBJ_VAL(DaiObjError_Newf(&vm, "set() expected 0 arguments but got 1")),
         },
         {
-            "class G { var a = 1; }; class F < G { var a = 1; fn get() { return super.a;}; }; "
+            "class G { var a = 1; }; class F(G) { var a = 1; fn get() { return super.a;}; }; "
             "var f = F(); f.get();",
             OBJ_VAL(DaiObjError_Newf(&vm, "'super' object has not property 'a'")),
         },
@@ -2266,6 +2266,14 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         {
             "class F { var age = 30; var name; }; var f = F();",
             OBJ_VAL(DaiObjError_Newf(&vm, "'F' object has uninitialized field 'name'")),
+        },
+        {
+            "class F { con age; var name; }; var f = F(30, 'Bob'); f.age = 18;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'F' object can not set const property 'age'")),
+        },
+        {
+            "class F { class con age = 30; var name; }; var f = F('Bob'); f.__class__.age = 18;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "'class' object can not set const property 'age'")),
         },
         // #endregion
 

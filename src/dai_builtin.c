@@ -196,6 +196,7 @@ builtin_import(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     cwk_path_get_basename(abs_path, &basename, &length);
     DaiVM_pauseGC(vm);
     module = DaiObjModule_New(vm, strndup(basename, length - SUFFIX_LEN), strdup(abs_path));
+    // loadModule 会恢复 GC ，所以不需要手动恢复
     DaiObjError* err = DaiVM_loadModule(vm, text, module);
     free((void*)text);
     if (err != NULL) {

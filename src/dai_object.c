@@ -481,7 +481,112 @@ DaiObjClosure_name(DaiObjClosure* closure) {
 
 // #endregion
 
+// #region tuple
+
+static DaiValue
+DaiObjTuple_subscript_get(__attribute__((unused)) DaiVM* vm, DaiValue receiver, DaiValue index) {
+    assert(IS_TUPLE(receiver));
+    if (!IS_INTEGER(index)) {
+        DaiObjError* err = DaiObjError_Newf(vm, "tuple index must be integer");
+        return OBJ_VAL(err);
+    }
+    const DaiObjTuple* tuple = AS_TUPLE(receiver);
+    int64_t n                = AS_INTEGER(index);
+    if (n < 0) {
+        n += tuple->values.count;
+    }
+    if (n < 0 || n >= tuple->values.count) {
+        DaiObjError* err = DaiObjError_Newf(vm, "tuple index out of range");
+        return OBJ_VAL(err);
+    }
+    return tuple->values.values[n];
+}
+
+static char*
+DaiObjTuple_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
+    if (DaiPtrArray_contains(visited, AS_OBJ(value))) {
+        return strdup("(...)");
+    }
+    DaiPtrArray_write(visited, AS_OBJ(value));
+    DaiStringBuffer* sb = DaiStringBuffer_New();
+    DaiObjArray* array  = AS_ARRAY(value);
+    DaiStringBuffer_write(sb, "(");
+    for (int i = 0; i < array->length; i++) {
+        char* s = dai_value_string_with_visited(array->elements[i], visited);
+        DaiStringBuffer_write(sb, s);
+        free(s);
+        if (i != array->length - 1) {
+            DaiStringBuffer_write(sb, ", ");
+        }
+    }
+    DaiStringBuffer_write(sb, ")");
+    return DaiStringBuffer_getAndFree(sb, NULL);
+}
+
+static struct DaiOperation tuple_operation = {
+    .get_property_func  = dai_default_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = DaiObjTuple_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjTuple_String,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
+};
+
+DaiObjTuple*
+DaiObjTuple_New(DaiVM* vm) {
+    DaiObjTuple* tuple   = ALLOCATE_OBJ(vm, DaiObjTuple, DaiObjType_tuple);
+    tuple->obj.operation = &tuple_operation;
+    DaiValueArray_init(&tuple->values);
+    return tuple;
+}
+
+void
+DaiObjTuple_Free(DaiVM* vm, DaiObjTuple* tuple) {
+    DaiValueArray_reset(&tuple->values);
+    VM_FREE(vm, DaiObjTuple, tuple);
+}
+void
+DaiObjTuple_append(DaiObjTuple* tuple, DaiValue value) {
+    DaiValueArray_write(&tuple->values, value);
+}
+
+static int
+DaiObjTuple_length(DaiObjTuple* tuple) {
+    return tuple->values.count;
+}
+static DaiValue
+DaiObjTuple_get(DaiObjTuple* tuple, int index) {
+    assert(index >= 0 && index < tuple->values.count);
+    return tuple->values.values[index];
+}
+static void
+DaiObjTuple_set(DaiObjTuple* tuple, int index, DaiValue value) {
+    assert(index >= 0 && index < tuple->values.count);
+    tuple->values.values[index] = value;
+}
+// #endregion
+
 // #region 类与实例
+
+static int
+DaiFieldDesc_compare(const void* a, const void* b, void* udata) {
+    const DaiFieldDesc* pa = a;
+    const DaiFieldDesc* pb = b;
+    if (pa->name == pb->name) {
+        return 0;
+    }
+    return strcmp(pa->name->chars, pb->name->chars);
+}
+
+static uint64_t
+DaiFieldDesc_hash(const void* item, uint64_t seed0, uint64_t seed1) {
+    const DaiFieldDesc* p = item;
+    return p->name->hash;
+}
 
 static bool
 DaiObjInstance_get_method1(DaiVM* vm, DaiObjClass* klass, DaiObjString* name, DaiValue* method) {
@@ -500,13 +605,10 @@ static DaiValue
 DaiObjInstance_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     assert(IS_OBJ(receiver));
     DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiPropertyOffset offset = {
-        .property = name,
-        .offset   = 0,
-    };
-    const void* res = hashmap_get_with_hash(instance->klass->fields, &offset, name->hash);
+    DaiFieldDesc prop        = {.name = name};
+    const void* res          = hashmap_get_with_hash(instance->klass->fields, &prop, name->hash);
     if (res) {
-        return instance->fields[((DaiPropertyOffset*)res)->offset];
+        return instance->fields[((DaiFieldDesc*)res)->index];
     }
 
     DaiValue value;
@@ -524,13 +626,20 @@ static DaiValue
 DaiObjInstance_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     assert(IS_OBJ(receiver));
     DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiPropertyOffset offset = {
-        .property = name,
-        .offset   = 0,
-    };
-    const void* res = hashmap_get_with_hash(instance->klass->fields, &offset, name->hash);
+    DaiFieldDesc prop        = {.name = name};
+    const void* res          = hashmap_get_with_hash(instance->klass->fields, &prop, name->hash);
     if (res) {
-        instance->fields[((DaiPropertyOffset*)res)->offset] = value;
+        const DaiFieldDesc* propp = res;
+        if (!(instance->initialized && propp->is_const)) {
+            instance->fields[propp->index] = value;
+        } else {
+            // 不能修改常量属性
+            DaiObjError* err = DaiObjError_Newf(vm,
+                                                "'%s' object can not set const property '%s'",
+                                                dai_object_ts(receiver),
+                                                name->chars);
+            return OBJ_VAL(err);
+        }
         return NIL_VAL;
     }
     DaiObjError* err = DaiObjError_Newf(
@@ -554,10 +663,12 @@ static DaiValue
 DaiObjClass_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     assert(IS_OBJ(receiver));
     DaiObjClass* klass = AS_CLASS(receiver);
-    DaiValue value;
-    if (DaiTable_get(&klass->class_fields, name, &value)) {
-        return value;
+    DaiFieldDesc prop  = {.name = name};
+    const void* res    = hashmap_get_with_hash(klass->class_fields, &prop, name->hash);
+    if (res) {
+        return ((DaiFieldDesc*)res)->value;
     }
+    DaiValue value;
     if (DaiObjClass_get_method1(vm, klass, name, &value)) {
         DaiObjBoundMethod* bound_method = DaiObjBoundMethod_New(vm, receiver, value);
         return OBJ_VAL(bound_method);
@@ -572,12 +683,32 @@ static DaiValue
 DaiObjClass_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     assert(IS_OBJ(receiver));
     DaiObjClass* klass = AS_CLASS(receiver);
-    if (!DaiTable_set_if_exist(&klass->class_fields, name, value)) {
-        DaiObjError* err = DaiObjError_Newf(
-            vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
-        return OBJ_VAL(err);
+    DaiFieldDesc prop  = {.name = name};
+    const void* res    = hashmap_get_with_hash(klass->class_fields, &prop, name->hash);
+    if (res) {
+        const DaiFieldDesc* propp = res;
+        if (!(propp->is_const)) {
+            DaiFieldDesc nprop = {
+                .name     = name,
+                .value    = value,
+                .is_const = propp->is_const,
+            };
+            res = hashmap_set_with_hash(klass->class_fields, &nprop, name->hash);
+            assert(res != NULL);
+        } else {
+            // 不能修改常量属性
+            DaiObjError* err = DaiObjError_Newf(vm,
+                                                "'%s' object can not set const property '%s'",
+                                                dai_object_ts(receiver),
+                                                name->chars);
+            return OBJ_VAL(err);
+        }
+        return NIL_VAL;
     }
-    return NIL_VAL;
+
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 }
 
 static char*
@@ -615,42 +746,50 @@ static struct DaiOperation class_operation = {
     .get_method_func    = DaiObjClass_get_method,
 };
 
+#define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
+
+
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
     DaiObjClass* klass   = ALLOCATE_OBJ(vm, DaiObjClass, DaiObjType_class);
     klass->obj.operation = &class_operation;
     klass->name          = name;
-    DaiTable_init(&klass->class_fields);
+
     DaiTable_init(&klass->class_methods);
     DaiTable_init(&klass->methods);
+
     uint64_t seed0, seed1;
     DaiVM_getSeed2(vm, &seed0, &seed1);
-    klass->fields = hashmap_new(sizeof(DaiPropertyOffset),
-                                8,
-                                seed0,
-                                seed1,
-                                DaiPropertyOffset_hash,
-                                DaiPropertyOffset_compare,
-                                NULL,
-                                vm);
+    klass->class_fields = hashmap_new(
+        sizeof(DaiFieldDesc), 8, seed0, seed1, DaiFieldDesc_hash, DaiFieldDesc_compare, NULL, vm);
+    if (klass->class_fields == NULL) {
+        dai_error("DaiObjClass_New: Out of memory\n");
+        abort();
+    }
+    klass->fields = hashmap_new(
+        sizeof(DaiFieldDesc), 8, seed0, seed1, DaiFieldDesc_hash, DaiFieldDesc_compare, NULL, vm);
     if (klass->fields == NULL) {
         dai_error("DaiObjClass_New: Out of memory\n");
         abort();
     }
-    DaiValueArray_init(&klass->field_names);
-    DaiValueArray_init(&klass->field_values);
-    klass->parent = NULL;
-    klass->init   = UNDEFINED_VAL;
+    klass->parent             = NULL;
+    klass->init               = UNDEFINED_VAL;
+    klass->define_field_names = DaiObjTuple_New(vm);
+
+    // 定义内置类属性
+    DaiObjClass_define_class_field(klass, STRING_NAME("__name__"), OBJ_VAL(klass->name), true);
+    DaiObjClass_define_class_field(
+        klass, STRING_NAME("__fields__"), OBJ_VAL(klass->define_field_names), true);
+    // 定义内置实例属性
+    DaiObjClass_define_field(klass, STRING_NAME("__class__"), OBJ_VAL(klass), true);
     return klass;
 }
 
 void
 DaiObjClass_Free(DaiVM* vm, DaiObjClass* klass) {
-    DaiTable_reset(&klass->class_fields);
-    DaiTable_reset(&klass->class_methods);
+    hashmap_free(klass->class_fields);
     hashmap_free(klass->fields);
-    DaiValueArray_reset(&klass->field_names);
-    DaiValueArray_reset(&klass->field_values);
+    DaiTable_reset(&klass->class_methods);
     DaiTable_reset(&klass->methods);
     VM_FREE(vm, DaiObjClass, klass);
 }
@@ -659,16 +798,20 @@ DaiValue
 DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     DaiObjInstance* instance = DaiObjInstance_New(vm, klass);
     // 设置此次调用的实例
-    vm->stack_top[-argc - 1]   = OBJ_VAL(instance);
-    DaiValueArray* field_names = &(instance->klass->field_names);
-    if (argc > field_names->count) {
+    vm->stack_top[-argc - 1] = OBJ_VAL(instance);
+    int define_field_count   = DaiObjTuple_length(klass->define_field_names);
+    if (argc > define_field_count) {
         DaiObjError* err = DaiObjError_Newf(
-            vm, "Too many arguments, max expected=%d got=%d", field_names->count, argc);
+            vm, "Too many arguments, max expected=%d got=%d", define_field_count, argc);
         return OBJ_VAL(err);
     }
     if (IS_UNDEFINED(instance->klass->init)) {
         for (int i = 0; i < argc; i++) {
-            instance->fields[i] = argv[i];
+            DaiObjString* field_name = AS_STRING(DaiObjTuple_get(klass->define_field_names, i));
+            const void* res          = hashmap_get_with_hash(
+                klass->fields, &(DaiFieldDesc){.name = field_name}, field_name->hash);
+            assert(res != NULL);
+            instance->fields[((DaiFieldDesc*)res)->index] = argv[i];
         }
     } else {
         DaiValue res = DaiVM_runCall2(vm, instance->klass->init, argc);
@@ -677,39 +820,80 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
         }
     }
     // check all fields are initialized
-    for (int i = argc; i < field_names->count; i++) {
-        DaiObjString* name = AS_STRING(field_names->values[i]);
-        DaiValue value     = instance->fields[i];
-        if (IS_UNDEFINED(value)) {
+    for (int i = argc; i < define_field_count; i++) {
+        DaiObjString* field_name = AS_STRING(DaiObjTuple_get(klass->define_field_names, i));
+        const void* res          = hashmap_get_with_hash(
+            klass->fields, &(DaiFieldDesc){.name = field_name}, field_name->hash);
+        assert(res != NULL);
+        if (IS_UNDEFINED(instance->fields[((DaiFieldDesc*)res)->index])) {
             DaiObjError* err = DaiObjError_Newf(vm,
                                                 "'%s' object has uninitialized field '%s'",
-                                                dai_object_ts(OBJ_VAL(instance)),
-                                                name->chars);
+                                                klass->name->chars,
+                                                field_name->chars);
             return OBJ_VAL(err);
         }
     }
+    instance->initialized = true;
     return OBJ_VAL(instance);
 }
 
 void
-DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value) {
+DaiObjClass_define_class_field(DaiObjClass* klass, DaiObjString* name, DaiValue value,
+                               bool is_const) {
+    const void* res =
+        hashmap_get_with_hash(klass->class_fields, &(DaiFieldDesc){.name = name}, name->hash);
+    if (res == NULL) {
+        DaiFieldDesc property = {
+            .name     = name,
+            .is_const = is_const,
+            .value    = value,
+        };
+        res = hashmap_set_with_hash(klass->class_fields, &property, name->hash);
+        if (res == NULL && hashmap_oom(klass->class_fields)) {
+            dai_error("DaiObjClass_define_class_field: Out of memory\n");
+            abort();
+        }
+    }
+}
+
+void
+DaiObjClass_define_class_method(DaiObjClass* klass, DaiObjString* name, DaiValue value) {
+    // 设置方法的 super class
+    {
+        if (IS_CLOSURE(value)) {
+            DaiObjFunction* function = AS_CLOSURE(value)->function;
+            function->superclass     = klass->parent;
+        } else if (IS_FUNCTION(value)) {
+            DaiObjFunction* function = AS_FUNCTION(value);
+            function->superclass     = klass->parent;
+        }
+    }
+    DaiTable_set(&klass->class_methods, name, value);
+}
+
+void
+DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value, bool is_const) {
     const void* res = hashmap_get_with_hash(
         klass->fields, &(DaiPropertyOffset){.property = name, .offset = 0}, name->hash);
     if (res == NULL) {
-        DaiValueArray_write(&klass->field_names, OBJ_VAL(name));
-        DaiValueArray_write(&klass->field_values, value);
-        res = hashmap_set_with_hash(
-            klass->fields,
-            &(DaiPropertyOffset){.property = name, .offset = klass->field_names.count - 1},
-            name->hash);
+        if (!is_builtin_property(name->chars)) {
+            DaiObjTuple_append(klass->define_field_names, OBJ_VAL(name));
+        }
+        DaiFieldDesc property = {
+            .name     = name,
+            .is_const = is_const,
+            .value    = value,
+            .index    = hashmap_count(klass->fields),
+        };
+        res = hashmap_set_with_hash(klass->fields, &property, name->hash);
         if (res == NULL && hashmap_oom(klass->fields)) {
             dai_error("DaiObjClass_define_field: Out of memory\n");
             abort();
         }
     } else {
-        DaiPropertyOffset* offset = (DaiPropertyOffset*)res;
-        assert(offset->offset < klass->field_names.count);
-        klass->field_values.values[offset->offset] = value;
+        DaiFieldDesc* prop = (DaiFieldDesc*)res;
+        prop->is_const     = is_const;
+        prop->value        = value;
     }
 }
 
@@ -735,15 +919,29 @@ void
 DaiObjClass_inherit(DaiObjClass* klass, DaiObjClass* parent) {
     klass->parent = parent;
     klass->init   = parent->init;
-    void* item;
-    size_t i = 0;
-    while (hashmap_iter(parent->fields, &i, &item)) {
-        DaiPropertyOffset* offset = item;
-        DaiObjString* name        = offset->property;
-        DaiValue value            = parent->field_values.values[offset->offset];
-        DaiObjClass_define_field(klass, name, value);
+    // 复制实例属性
+    {
+        void* item;
+        size_t i = 0;
+        while (hashmap_iter(parent->fields, &i, &item)) {
+            DaiFieldDesc* prop = item;
+            DaiObjClass_define_field(klass, prop->name, prop->value, prop->is_const);
+        }
+        int count = DaiObjTuple_length(parent->define_field_names);
+        for (int i = 0; i < count; i++) {
+            DaiObjTuple_set(
+                klass->define_field_names, i, DaiObjTuple_get(parent->define_field_names, i));
+        }
     }
-    DaiTable_copy(&parent->class_fields, &klass->class_fields);
+    // 复制类属性
+    {
+        void* item;
+        size_t i = 0;
+        while (hashmap_iter(parent->class_fields, &i, &item)) {
+            DaiFieldDesc* prop = item;
+            DaiObjClass_define_class_field(klass, prop->name, prop->value, prop->is_const);
+        }
+    }
 }
 
 static char*
@@ -786,14 +984,25 @@ DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass) {
     DaiObjInstance* instance = ALLOCATE_OBJ(vm, DaiObjInstance, DaiObjType_instance);
     instance->obj.operation  = &instance_operation;
     instance->klass          = klass;
-    instance->field_count    = klass->field_names.count;
-    instance->fields         = DaiValueArray_raw_copy(&klass->field_values);
-    if (instance->fields == NULL && instance->field_count > 0) {
-        dai_error("DaiObjInstance_New: Out of memory\n");
-        abort();
+    instance->initialized    = false;
+    instance->field_count    = hashmap_count(klass->fields);
+    instance->fields         = NULL;
+    if (instance->field_count > 0) {
+        instance->fields = malloc(sizeof(DaiValue) * instance->field_count);
+        if (instance->fields == NULL) {
+            dai_error("DaiObjInstance_New: Out of memory\n");
+            abort();
+        }
+    }
+    void* item;
+    size_t i = 0;
+    while (hashmap_iter(klass->fields, &i, &item)) {
+        DaiFieldDesc* prop            = item;
+        instance->fields[prop->index] = prop->value;
     }
     return instance;
 }
+
 void
 DaiObjInstance_Free(DaiVM* vm, DaiObjInstance* instance) {
     free(instance->fields);
@@ -2704,6 +2913,7 @@ dai_object_ts(DaiValue value) {
         case DaiObjType_error: return "error";
         case DaiObjType_cFunction: return "c-function";
         case DaiObjType_module: return "module";
+        case DaiObjType_tuple: return "tuple";
     }
     return "unknown";
 }

@@ -48,6 +48,7 @@ class Foo {
     var a2 = 3;
     var a3 = s1;
     var a4 = s1 + s2;
+    con a5 = 9;
 
     fn get() {
         self.a1 = 3;
@@ -63,9 +64,10 @@ class Foo {
     }
 
     class var c = 4;
+    class con cc = 5;
     class fn cget() {}
     class fn cset(c) {
-        self.c = c;
+        class.c = c;
         s = c;
     };
     class fn csay(msg, name='world') {
@@ -73,7 +75,9 @@ class Foo {
     }
 };
 
-class Goo < Foo {};
+class Goo(Foo) {
+    var a5 = 10;
+};
 
 var foo = Foo();
 foo.a1;

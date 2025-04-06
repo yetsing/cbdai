@@ -89,12 +89,12 @@ static DaiOpCodeDefinition definitions[] = {
 
     // 操作数：类名的常量索引
     [DaiOpClass] = {.name = "DaiOpClass", .operand_bytes = 2},
-    // 操作数：属性名的常量索引
-    [DaiOpDefineField] = {.name = "DaiOpDefineField", .operand_bytes = 2},
+    // 操作数：uint16 属性名的常量索引，uint8 是否 const
+    [DaiOpDefineField] = {.name = "DaiOpDefineField", .operand_bytes = 3},
     // 操作数：属性名的常量索引
     [DaiOpDefineMethod] = {.name = "DaiOpDefineMethod", .operand_bytes = 2},
-    // 操作数：属性名的常量索引
-    [DaiOpDefineClassField] = {.name = "DaiOpDefineClassField", .operand_bytes = 2},
+    // 操作数：uint16 属性名的常量索引，uint8 是否 const
+    [DaiOpDefineClassField] = {.name = "DaiOpDefineClassField", .operand_bytes = 3},
     // 操作数：属性名的常量索引
     [DaiOpDefineClassMethod] = {.name = "DaiOpDefineClassMethod", .operand_bytes = 2},
     // 操作数：属性名的常量索引

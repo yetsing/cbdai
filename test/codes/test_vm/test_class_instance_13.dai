@@ -22,11 +22,11 @@ class Foo {
   class var c = 0;
 
   class fn cinc() {
-    self.c = self.c + 1;
+    class.c = class.c + 1;
   };
 
   class fn cget() {
-     return self.c;
+     return class.c;
   };
 };
 Foo.cinc();

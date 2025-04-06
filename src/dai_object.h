@@ -2,6 +2,7 @@
 #define SRC_DAI_OBJECT_H_
 
 #include <stdbool.h>
+#include <string.h>
 
 #include "hashmap.h"
 
@@ -32,6 +33,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
 #define IS_CFUNCTION(value) dai_is_obj_type(value, DaiObjType_nativeFn)
 #define IS_MODULE(value) dai_is_obj_type(value, DaiObjType_module)
+#define IS_TUPLE(value) dai_is_obj_type(value, DaiObjType_tuple)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
 #define AS_INSTANCE(value) ((DaiObjInstance*)AS_OBJ(value))
@@ -49,6 +51,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_ERROR(value) ((DaiObjError*)AS_OBJ(value))
 #define AS_CFUNCTION(value) ((DaiObjCFunction*)AS_OBJ(value))
 #define AS_MODULE(value) ((DaiObjModule*)AS_OBJ(value))
+#define AS_TUPLE(value) ((DaiObjTuple*)AS_OBJ(value))
 
 typedef enum {
     DaiObjType_function,
@@ -66,6 +69,7 @@ typedef enum {
     DaiObjType_error,
     DaiObjType_cFunction,   // c api registered function
     DaiObjType_module,
+    DaiObjType_tuple,
 } DaiObjType;
 
 typedef void (*CFunction)(void* dai);
@@ -175,15 +179,40 @@ DaiObjClosure_New(DaiVM* vm, DaiObjFunction* function);
 const char*
 DaiObjClosure_name(DaiObjClosure* closure);
 
+typedef struct {
+    DaiObj obj;
+    DaiValueArray values;
+} DaiObjTuple;
+DaiObjTuple*
+DaiObjTuple_New(DaiVM* vm);
+void
+DaiObjTuple_Free(DaiVM* vm, DaiObjTuple* tuple);
+void
+DaiObjTuple_append(DaiObjTuple* tuple, DaiValue value);
+
+typedef struct {
+    DaiObjString* name;
+    bool is_const;
+    DaiValue value;
+    int index;   // 实例属性索引
+} DaiFieldDesc;
+
+static inline bool
+is_builtin_property(const char* name) {
+    // like __xxx__
+    size_t name_len = strlen(name);
+    return name_len > 4 && name[0] == '_' && name[1] == '_' && name[name_len - 2] == '_' &&
+           name[name_len - 1] == '_';
+}
+
 typedef struct _DaiObjClass {
     DaiObj obj;
     DaiObjString* name;
-    DaiTable class_fields;        // 类属性
-    DaiTable class_methods;       // 类方法
-    DaiTable methods;             // 实例方法
-    struct hashmap* fields;       // 实例属性，存储名字和索引
-    DaiValueArray field_names;    // 按定义顺序存储实例属性名
-    DaiValueArray field_values;   // 按定义顺序存储实例属性值
+    struct hashmap* class_fields;   // 类属性，存储名字 => DaiFieldDesc
+    DaiTable class_methods;         // 类方法
+    DaiTable methods;               // 实例方法
+    struct hashmap* fields;         // 实例属性，存储名字 => DaiFieldDesc
+    DaiObjTuple* define_field_names;   // 按定义顺序存储实例属性名（内置类属性 __fields__ 的值）
     DaiObjClass* parent;
     // 下面是一些特殊的实例方法
     DaiValue init;   // 自定义的实例初始化方法
@@ -195,7 +224,12 @@ DaiObjClass_Free(DaiVM* vm, DaiObjClass* klass);
 DaiValue
 DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv);
 void
-DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value);
+DaiObjClass_define_class_field(DaiObjClass* klass, DaiObjString* name, DaiValue value,
+                               bool is_const);
+void
+DaiObjClass_define_class_method(DaiObjClass* klass, DaiObjString* name, DaiValue value);
+void
+DaiObjClass_define_field(DaiObjClass* klass, DaiObjString* name, DaiValue value, bool is_const);
 void
 DaiObjClass_define_method(DaiObjClass* klass, DaiObjString* name, DaiValue value);
 void
@@ -206,7 +240,8 @@ typedef struct {
     DaiObj obj;
     DaiObjClass* klass;
     DaiValue* fields;   // 实例属性
-    int field_count;    // 实例属性数量
+    int field_count;    // 实例属性数量（包括内置属性）
+    bool initialized;
 } DaiObjInstance;
 DaiObjInstance*
 DaiObjInstance_New(DaiVM* vm, DaiObjClass* klass);

@@ -129,6 +129,10 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
             DaiObjModule_Free(vm, module);
             break;
         }
+        case DaiObjType_tuple: {
+            DaiObjTuple_Free(vm, (DaiObjTuple*)object);
+            break;
+        }
     }
 }
 
@@ -201,6 +205,11 @@ blackenObject(DaiVM* vm, DaiObj* object) {
     printf("\n");
 #endif
     switch (object->type) {
+        case DaiObjType_tuple: {
+            DaiObjTuple* tuple = (DaiObjTuple*)object;
+            markArray(vm, &tuple->values);
+            break;
+        }
         case DaiObjType_module: {
             DaiObjModule* module = (DaiObjModule*)object;
             markObject(vm, (DaiObj*)module->name);
@@ -268,11 +277,28 @@ blackenObject(DaiVM* vm, DaiObj* object) {
         case DaiObjType_class: {
             DaiObjClass* klass = (DaiObjClass*)object;
             markObject(vm, (DaiObj*)klass->name);
-            markTable(vm, &klass->class_fields);
+            {
+                void* res;
+                size_t i = 0;
+                while (hashmap_iter(klass->class_fields, &i, &res)) {
+                    DaiFieldDesc* prop = res;
+                    markObject(vm, (DaiObj*)prop->name);
+                    markValue(vm, prop->value);
+                }
+            }
+            {
+                void* res;
+                size_t i = 0;
+                while (hashmap_iter(klass->fields, &i, &res)) {
+                    DaiFieldDesc* prop = res;
+                    markObject(vm, (DaiObj*)prop->name);
+                    markValue(vm, prop->value);
+                }
+            }
             markTable(vm, &klass->class_methods);
             markTable(vm, &klass->methods);
-            markArray(vm, &klass->field_names);
-            markArray(vm, &klass->field_values);
+            markObject(vm, (DaiObj*)klass->define_field_names);
+
             markObject(vm, (DaiObj*)klass->parent);
             break;
         }

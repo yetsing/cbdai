@@ -21,24 +21,25 @@ DaiChunk_disassemble(DaiChunk* chunk, const char* name) {
 static int
 constant_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t constant = DaiChunk_readu16(chunk, offset + 1);
-    printf("%-16s %4d", name, constant);
+    printf("%-32s %4d", name, constant);
     // printf(" '");
     // dai_print_value(chunk->constants.values[constant]);
-    // printf("'\n");
+    // printf("'");
+    printf("\n");
     return offset + 3;
 }
 
 static int
 jump_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t jump_offset = DaiChunk_readu16(chunk, offset + 1);
-    printf("%-16s %4d -> %d\n", name, jump_offset, offset + 3 + jump_offset);
+    printf("%-32s %4d -> %d\n", name, jump_offset, offset + 3 + jump_offset);
     return offset + 3;
 }
 
 static int
 jump_back_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t jump_offset = DaiChunk_readu16(chunk, offset + 1);
-    printf("%-16s %4d -> %d\n", name, jump_offset, offset + 3 - jump_offset);
+    printf("%-32s %4d -> %d\n", name, jump_offset, offset + 3 - jump_offset);
     return offset + 3;
 }
 
@@ -80,7 +81,7 @@ binary_instruction(const char* name, const DaiChunk* chunk, const int offset) {
 static int
 global_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t index = DaiChunk_readu16(chunk, offset + 1);
-    printf("%-16s %4d", name, index);
+    printf("%-32s %4d", name, index);
 #ifdef DISASSEMBLE_VARIABLE_NAME
     printf("  '%s'", DaiChunk_getName(chunk, offset));
 #endif
@@ -99,7 +100,7 @@ call_instruction(const char* name, DaiChunk* chunk, int offset) {
 static int
 local_instruction(const char* name, DaiChunk* chunk, int offset) {
     int index = DaiChunk_read(chunk, offset + 1);
-    printf("%-16s %4d", name, index);
+    printf("%-32s %4d", name, index);
     fflush(stdout);
 #ifdef DISASSEMBLE_VARIABLE_NAME
     printf("  '%s'", DaiChunk_getName(chunk, offset));
@@ -112,7 +113,7 @@ local_instruction(const char* name, DaiChunk* chunk, int offset) {
 static int
 builtin_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint8_t index = DaiChunk_read(chunk, offset + 1);
-    printf("%-16s %4d %s\n", name, index, builtin_names[index]);
+    printf("%-32s %4d %s\n", name, index, builtin_names[index]);
     return offset + 2;
 }
 
@@ -120,14 +121,14 @@ static int
 closure_instruction(const char* name, DaiChunk* chunk, int offset) {
     int index = DaiChunk_readu16(chunk, offset + 1);
     int count = DaiChunk_read(chunk, offset + 3);
-    printf("%-16s %4d %4d(free variable)\n", name, index, count);
+    printf("%-32s %4d %4d(free variable)\n", name, index, count);
     return offset + 4;
 }
 
 static int
 free_instruction(const char* name, DaiChunk* chunk, int offset) {
     int index = DaiChunk_read(chunk, offset + 1);
-    printf("%-16s %4d", name, index);
+    printf("%-32s %4d", name, index);
     fflush(stdout);
 #ifdef DISASSEMBLE_VARIABLE_NAME
     printf("  '%s'", DaiChunk_getName(chunk, offset));
@@ -140,17 +141,27 @@ free_instruction(const char* name, DaiChunk* chunk, int offset) {
 static int
 property_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t constant = DaiChunk_readu16(chunk, offset + 1);
-    printf("%-16s %4d '", name, constant);
+    printf("%-32s %4d '", name, constant);
     dai_print_value(chunk->constants.values[constant]);
     printf("'\n");
     return offset + 3;
 }
 
 static int
+property_instruction1(const char* name, DaiChunk* chunk, int offset) {
+    uint16_t constant = DaiChunk_readu16(chunk, offset + 1);
+    uint8_t is_const  = DaiChunk_read(chunk, offset + 3);
+    printf("%-32s %4d '", name, constant);
+    dai_print_value(chunk->constants.values[constant]);
+    printf("' %s\n", is_const ? "const" : "var");
+    return offset + 4;
+}
+
+static int
 call_method_instruction(const char* name, DaiChunk* chunk, int offset) {
     uint16_t constant = DaiChunk_readu16(chunk, offset + 1);
     int argCount      = DaiChunk_read(chunk, offset + 1);
-    printf("%-16s %4d %d '", name, constant, argCount);
+    printf("%-32s %4d %d '", name, constant, argCount);
     dai_print_value(chunk->constants.values[constant]);
     printf("'\n");
     return offset + 4;
@@ -225,10 +236,10 @@ DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset) {
         case DaiOpGetFree: return free_instruction("OP_GET_FREE", chunk, offset);
 
         case DaiOpClass: return constant_instruction("OP_CLASS", chunk, offset);
-        case DaiOpDefineField: return property_instruction("OP_DEFINE_FIELD", chunk, offset);
+        case DaiOpDefineField: return property_instruction1("OP_DEFINE_FIELD", chunk, offset);
         case DaiOpDefineMethod: return property_instruction("OP_DEFINE_METHOD", chunk, offset);
         case DaiOpDefineClassField:
-            return property_instruction("OP_DEFINE_CLASS_FIELD", chunk, offset);
+            return property_instruction1("OP_DEFINE_CLASS_FIELD", chunk, offset);
         case DaiOpDefineClassMethod:
             return property_instruction("OP_DEFINE_CLASS_METHOD", chunk, offset);
         case DaiOpGetProperty: return property_instruction("OP_GET_PROPERTY", chunk, offset);

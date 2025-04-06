@@ -699,9 +699,45 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     DaiCompiler_emit2(compiler, DaiOpSetProperty, index, stmt->start_line);
                     break;
                 }
+                case DaiAstType_ClassExpression: {
+                    DaiAstClassExpression* expr = (DaiAstClassExpression*)stmt->left;
+                    if (compiler->type != FunctionType_method &&
+                        compiler->type != FunctionType_classMethod) {
+                        return DaiCompileError_Newf(compiler->filename,
+                                                    expr->start_line,
+                                                    expr->start_column,
+                                                    "cannot use 'class' outside of a method");
+                    }
+                    if (compiler->type == FunctionType_classMethod) {
+                        // 在类方法里面， class 类似于 self
+                        DaiObjString* name = dai_copy_string_intern(
+                            compiler->vm, expr->name->value, strlen(expr->name->value));
+                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                        DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
+                    } else {
+                        // 在实例方法里面，我们要从 self 里面获取类对象
+                        DaiObjString* name_class =
+                            dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
+                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
+                        DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+
+
+                        DaiObjString* name = dai_copy_string_intern(
+                            compiler->vm, expr->name->value, strlen(expr->name->value));
+                        index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                        DaiCompiler_emit2(compiler, DaiOpSetProperty, index, stmt->start_line);
+                    }
+                    break;
+                }
                 case DaiAstType_SelfExpression: {
                     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)stmt->left;
-                    DaiObjString* name         = dai_copy_string_intern(
+                    if (compiler->type != FunctionType_method) {
+                        return DaiCompileError_Newf(compiler->filename,
+                                                    expr->start_line,
+                                                    expr->start_column,
+                                                    "cannot use 'self' outside of a method");
+                    }
+                    DaiObjString* name = dai_copy_string_intern(
                         compiler->vm, expr->name->value, strlen(expr->name->value));
                     int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                     DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
@@ -867,7 +903,8 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             }
             DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
             int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit2(compiler, DaiOpDefineField, index, stmt->name->start_line);
+            DaiCompiler_emit3(
+                compiler, DaiOpDefineField, index, stmt->is_con, stmt->name->start_line);
             break;
         }
         case DaiAstType_MethodStatement: {
@@ -909,7 +946,8 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             }
             DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
             int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit2(compiler, DaiOpDefineClassField, index, stmt->start_line);
+            DaiCompiler_emit3(
+                compiler, DaiOpDefineClassField, index, stmt->is_con, stmt->start_line);
             break;
         }
         case DaiAstType_ClassMethodStatement: {
@@ -1006,22 +1044,55 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             IntArray_push(&compiler->continue_array, jump);
             break;
         }
-        case DaiAstType_SelfExpression: {
-            DaiAstSelfExpression* expr = (DaiAstSelfExpression*)node;
+        case DaiAstType_ClassExpression: {
+            DaiAstClassExpression* expr = (DaiAstClassExpression*)node;
             if (compiler->type != FunctionType_method &&
                 compiler->type != FunctionType_classMethod) {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->start_line,
                                             expr->start_column,
+                                            "cannot use 'class' outside of a method");
+            }
+            if (compiler->type == FunctionType_classMethod) {
+                // 在类方法里面， class 类似于 self
+                if (expr->name) {
+                    DaiObjString* name = dai_copy_string_intern(
+                        compiler->vm, expr->name->value, strlen(expr->name->value));
+                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                    DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+                } else {
+                    DaiCompiler_emit1(compiler, DaiOpGetLocal, 0, expr->start_line);
+                }
+            } else {
+                // 在实例方法里面，我们要从 self 里面获取类对象
+                DaiObjString* name_class =
+                    dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
+                int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
+                DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+                if (expr->name) {
+                    DaiObjString* name = dai_copy_string_intern(
+                        compiler->vm, expr->name->value, strlen(expr->name->value));
+                    index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                    DaiCompiler_emit2(compiler, DaiOpGetProperty, index, expr->start_line);
+                }
+            }
+            break;
+        }
+        case DaiAstType_SelfExpression: {
+            DaiAstSelfExpression* expr = (DaiAstSelfExpression*)node;
+            if (compiler->type != FunctionType_method) {
+                return DaiCompileError_Newf(compiler->filename,
+                                            expr->start_line,
+                                            expr->start_column,
                                             "cannot use 'self' outside of a method");
             }
-            if (expr->name == NULL) {
-                DaiCompiler_emit1(compiler, DaiOpGetLocal, 0, expr->start_line);
-            } else {
+            if (expr->name) {
                 DaiObjString* name = dai_copy_string_intern(
                     compiler->vm, expr->name->value, strlen(expr->name->value));
                 int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
                 DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+            } else {
+                DaiCompiler_emit1(compiler, DaiOpGetLocal, 0, expr->start_line);
             }
             break;
         }
@@ -1191,7 +1262,60 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                         compiler, DaiOpCallMethod, index, expr->arguments_count, expr->start_line);
                     return NULL;
                 }
+                case DaiAstType_ClassExpression: {
+                    if (compiler->type != FunctionType_method &&
+                        compiler->type != FunctionType_classMethod) {
+                        return DaiCompileError_Newf(compiler->filename,
+                                                    expr->start_line,
+                                                    expr->start_column,
+                                                    "cannot use 'class' outside of a method");
+                    }
+                    DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
+                    for (int i = 0; i < expr->arguments_count; i++) {
+                        DaiCompileError* err =
+                            DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
+                        if (err != NULL) {
+                            return err;
+                        }
+                    }
+                    DaiAstClassExpression* classexpr = (DaiAstClassExpression*)expr->function;
+                    if (compiler->type == FunctionType_classMethod) {
+                        // 在类方法里面， class 类似于 self
+                        DaiObjString* name = dai_copy_string_intern(
+                            compiler->vm, classexpr->name->value, strlen(classexpr->name->value));
+                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                        DaiCompiler_emit3(compiler,
+                                          DaiOpCallSelfMethod,
+                                          index,
+                                          expr->arguments_count,
+                                          expr->start_line);
+                    } else {
+                        // 在实例方法里面，我们要从 self 里面获取类对象
+                        DaiObjString* name_class =
+                            dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
+                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
+                        DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+                        // 调用对象方法
+                        DaiObjString* name = dai_copy_string_intern(
+                            compiler->vm, classexpr->name->value, strlen(classexpr->name->value));
+                        index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                        DaiCompiler_emit3(compiler,
+                                          DaiOpCallMethod,
+                                          index,
+                                          expr->arguments_count,
+                                          expr->start_line);
+                        return NULL;
+                    }
+                    return NULL;
+                }
                 case DaiAstType_SelfExpression: {
+                    if (compiler->type != FunctionType_method) {
+                        return DaiCompileError_Newf(compiler->filename,
+                                                    expr->start_line,
+                                                    expr->start_column,
+                                                    "cannot use 'self' outside of a method");
+                    }
+                    // 塞一个 nil 到栈顶，代替原本的函数对象入栈操作
                     DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
                     for (int i = 0; i < expr->arguments_count; i++) {
                         DaiCompileError* err =

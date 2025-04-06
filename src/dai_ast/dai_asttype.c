@@ -36,6 +36,7 @@ static const char* DaiAstTypeStrings[] = {
     "DaiAstType_CallExpression",
     "DaiAstType_DotExpression",
     "DaiAstType_SelfExpression",
+    "DaiAstType_ClassExpression",
     "DaiAstType_SuperExpression",
     "DaiAstType_SubscriptExpression",
     "DaiAstType_MapLiteral",
