@@ -1,21 +1,30 @@
 // 读写文件
 fn main() {
+    // 创建一个文件路径
     var p = Path("file_rw_test.txt");
+    // exists() 检查文件是否存在
     assert(not p.exists());
+
     var text = "hello world\n";
+    // write_text() 写入文本
     p.write_text(text);
     assert(p.exists());
+
+    // read_text() 读取文本
     var read_text = p.read_text();
     assert_eq(read_text, text);
+    // unlink(missing_ok=false) 删除文件
     p.unlink();
     p.unlink(true);
 
     assert_eq(p.string(), "file_rw_test.txt");
 
+    // is_absolute() 检查路径是否是绝对路径
     assert(not p.is_absolute());
-
+    // absolute() 返回绝对路径
     var absp = p.absolute();
     assert(absp.is_absolute());
+    // string() 返回路径字符串
     print(absp.string());
 }
 

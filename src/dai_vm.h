@@ -63,6 +63,7 @@ typedef struct _DaiVM {
 
     // 内置对象（模块/类/函数）
     DaiValue builtin_objects[BUILTIN_OBJECT_MAX_COUNT];
+    int builtin_objects_count;
 
     // 临时引用，防止被 GC 回收
     // 一些内置函数会创建一些对象，他既不在栈上，也没有被其他对象引用
@@ -81,6 +82,8 @@ void
 DaiVM_reset(DaiVM* vm);
 void
 DaiVM_resetStack(DaiVM* vm);
+void
+DaiVM_addBuiltin(DaiVM* vm, const char* name, DaiValue value);
 DaiObjError*
 DaiVM_runModule(DaiVM* vm, DaiObjModule* module);
 // filename 为绝对路径

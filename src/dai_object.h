@@ -31,7 +31,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_MAP_ITERATOR(value) dai_is_obj_type(value, DaiObjType_mapIterator)
 #define IS_RANGE_ITERATOR(value) dai_is_obj_type(value, DaiObjType_rangeIterator)
 #define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
-#define IS_CFUNCTION(value) dai_is_obj_type(value, DaiObjType_nativeFn)
+#define IS_CFUNCTION(value) dai_is_obj_type(value, DaiObjType_cFunction)
 #define IS_MODULE(value) dai_is_obj_type(value, DaiObjType_module)
 #define IS_TUPLE(value) dai_is_obj_type(value, DaiObjType_tuple)
 
@@ -52,6 +52,9 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_CFUNCTION(value) ((DaiObjCFunction*)AS_OBJ(value))
 #define AS_MODULE(value) ((DaiObjModule*)AS_OBJ(value))
 #define AS_TUPLE(value) ((DaiObjTuple*)AS_OBJ(value))
+
+#define IS_FUNCTION_LIKE(value) \
+    (IS_FUNCTION(value) || IS_CLOSURE(value) || IS_BUILTINFN(value) || IS_CFUNCTION(value))
 
 typedef enum {
     DaiObjType_function,
@@ -189,6 +192,10 @@ void
 DaiObjTuple_Free(DaiVM* vm, DaiObjTuple* tuple);
 void
 DaiObjTuple_append(DaiObjTuple* tuple, DaiValue value);
+int
+DaiObjTuple_length(DaiObjTuple* tuple);
+DaiValue
+DaiObjTuple_get(DaiObjTuple* tuple, int index);
 
 typedef struct {
     DaiObjString* name;

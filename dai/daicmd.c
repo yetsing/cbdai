@@ -6,7 +6,11 @@
 #include <sys/time.h>
 #include <time.h>
 
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
+
 #include "atstr/atstr.h"
+#include "dai_canvas.h"
 #include "dai_compile.h"
 #include "dai_debug.h"
 #include "dai_malloc.h"
@@ -224,6 +228,11 @@ daicmd_dis(int argc, const char** argv) {
         DaiAstProgram_init(&program);
         DaiVM vm;
         DaiVM_init(&vm);
+        if (dai_canvas_init(&vm) != 0) {
+            fprintf(stderr, "Error: cannot initialize canvas\n");
+            has_error = true;
+            goto end;
+        }
 
         err = dai_tokenize_string(text, &tlist);
         if (err != NULL) {
@@ -271,7 +280,6 @@ daicmd_dis(int argc, const char** argv) {
     return 1 ? has_error : 0;
 }
 
-
 int
 daicmd_runfile(int argc, const char** argv) {
     if (argc != 2) {
@@ -284,14 +292,20 @@ daicmd_runfile(int argc, const char** argv) {
         perror("Error: cannot read file");
         return 1;
     }
+    DaiObjError* err = NULL;
     DaiVM vm;
     DaiVM_init(&vm);
-    DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filepath));
-    DaiObjError* err     = Dairun_File(&vm, filepath, module);
+    if (dai_canvas_init(&vm) != 0) {
+        fprintf(stderr, "Error: cannot initialize canvas\n");
+        goto END;
+    }
+    err = Dairun_File(&vm, filepath);
     if (err != NULL) {
         DaiVM_printError(&vm, err);
     }
+END:
     free(filepath);
+    dai_canvas_quit(&vm);
     DaiVM_reset(&vm);
     return err == NULL ? 0 : 1;
 }

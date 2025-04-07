@@ -110,6 +110,7 @@ DaiVM_init(DaiVM* vm) {
             assert(found);
             vm->builtin_objects[i] = builtin_object.value;
         }
+        vm->builtin_objects_count = count;
     }
 }
 
@@ -119,6 +120,22 @@ DaiVM_reset(DaiVM* vm) {
     vm->builtinSymbolTable = NULL;
     DaiTable_reset(&vm->strings);
     dai_free_objects(vm);
+}
+
+void
+DaiVM_addBuiltin(DaiVM* vm, const char* name, DaiValue value) {
+    if (vm->builtin_objects_count >= BUILTIN_OBJECT_MAX_COUNT) {
+        dai_error("too many builtin objects\n");
+        abort();
+    }
+    // 在符号表中注册内置对象
+    DaiSymbolTable_defineBuiltin(vm->builtinSymbolTable, vm->builtin_objects_count, name);
+    DaiSymbol symbol;
+    bool found = DaiSymbolTable_resolve(vm->builtinSymbolTable, name, &symbol);
+    assert(found);
+    // 在内置对象数组中注册内置对象
+    builtin_names[vm->builtin_objects_count]         = name;
+    vm->builtin_objects[vm->builtin_objects_count++] = value;
 }
 
 // #region DaiVM runtime
@@ -1109,6 +1126,7 @@ DaiVM_runCall(DaiVM* vm, DaiValue callee, int argCount, ...) {
     }
     return DaiVM_pop(vm);
 }
+
 DaiValue
 DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
     DaiObjError* err = NULL;

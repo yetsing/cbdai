@@ -1,0 +1,74 @@
+var b = 0;
+var step = 1;
+
+fn draw() {
+    // canvas.clear() 清空 canvas 的内容
+    canvas.clear();
+    for (var r in range(256)) {
+        for (var g in range(256)) {
+            var a = 255;
+            // canvas.fillRect(x, y, w, h, r, g, b, a) 填充矩形
+            canvas.fillRect(r * 4, g * 4, 4, 4, r, g, b, a);
+        }
+    }
+    // canvas.present() 展示 canvas 的内容
+    canvas.present();
+    time.sleep(1.0/30);
+    b += step;
+    if (b >= 255) {
+        step = -1;
+    } elif (b <= 0) {
+        step = 1;
+    }
+}
+
+fn main() {
+    print("Canvas example");
+    // canvas_enum.dai 包含 canvas 的枚举值，包括键盘 code 和鼠标 button
+    con canvas_enum = import("canvas_enum.dai");
+    canvas.init(1024, 1024); // Reduced canvas size
+
+    // canvas.addEventListener(event_type, callback) 添加事件监听器
+    // event_type 事件类型
+    //      canvas.EventKeyDown 键盘按下事件
+    //      canvas.EventKeyUp 键盘抬起事件
+    //      canvas.EventMouseDown 鼠标按下事件
+    //      canvas.EventMouseUp 鼠标抬起事件
+    //      canvas.EventMouseMotion 鼠标移动事件
+    // callback 回调函数接受一个参数 event
+    canvas.addEventListener(canvas.EventKeyDown, fn(event) {
+        // 键盘事件 KeyBoardEvent 包括下列字段
+        //   code int 键码
+        //   key str 字符串键值
+        //   altKey bool 是否按下 Alt 键
+        //   ctrlKey bool 是否按下 Ctrl 键
+        //   shiftKey bool 是否按下 Shift 键
+        //   metaKey bool 是否按下 command/windows 键
+        //   repeat bool 是否重复按下
+        print(event, "Key pressed:", event.code, event.key);
+        print("    Alt:", event.altKey, "Ctrl:", event.ctrlKey, "Shift:", event.shiftKey, "Meta:", event.metaKey);
+        if (event.code == canvas_enum.Keycode.key_a) {
+            print("    A pressed");
+        } elif (event.code == canvas_enum.Keycode.key_escape) {
+            print("    Escape pressed");
+            // 调用 canvas.quit() 退出 canvas
+            canvas.quit();
+        }
+    });
+    canvas.addEventListener(canvas.EventMouseDown, fn(event){
+        // 鼠标事件 MouseEvent 包括下列字段
+        //   x float 鼠标在 canvas 上的 x 坐标
+        //   y float 鼠标在 canvas 上的 y 坐标
+        //   button int 鼠标按键 0:左键 1:中键 2:右键
+        print(event, "Mouse pressed:", event.x, event.y, event.button);
+    });
+    // canvas.addEventListener(canvas.EventMouseMotion, fn(event){
+    //     print(event, "Mouse move:", event.x, event.y, event.button);
+    // });
+
+    // canvas.run() 在窗口关闭或者调用 canvas.quit() 后返回
+    canvas.run(draw);
+    print("Canvas quited");
+}
+
+main();

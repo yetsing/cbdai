@@ -37,7 +37,11 @@ DaiAstForInStatement_string(DaiAstBase* base, bool recursive) {
     DaiStringBuffer_write(sb, KEY_COLOR("type") ": " TYPE_COLOR("DaiAstType_ForInStatement") ",\n");
 
     DaiStringBuffer_write(sb, indent);
-    DaiStringBuffer_writef(sb, "var: %s, %s,\n", stmt->i->value, stmt->e->value);
+    if (stmt->i) {
+        DaiStringBuffer_writef(sb, "var: %s, %s,\n", stmt->i->value, stmt->e->value);
+    } else {
+        DaiStringBuffer_writef(sb, "var: _, %s,\n", stmt->e->value);
+    }
 
     DaiStringBuffer_write(sb, indent);
     DaiStringBuffer_write(sb, "iterator: ");

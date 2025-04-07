@@ -2,3 +2,6 @@
 	path = lib/cwalk
 	url = git@github.com:likle/cwalk.git
     branch = stable
+[submodule "lib/SDL"]
+	path = lib/SDL
+	url = git@github.com:libsdl-org/SDL.git

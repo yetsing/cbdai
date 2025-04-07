@@ -405,6 +405,46 @@ builtin_math_cos(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiV
     }
 }
 
+static DaiValue
+builtin_math_floor(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                   int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "math.floor() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[0])) {
+        return argv[0];
+    } else if (IS_FLOAT(argv[0])) {
+        double n = floor(AS_FLOAT(argv[0]));
+        return INTEGER_VAL(n);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math.floor() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+}
+
+static DaiValue
+builtin_math_ceil(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                  int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "math.ceil() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[0])) {
+        return argv[0];
+    } else if (IS_FLOAT(argv[0])) {
+        double n = ceil(AS_FLOAT(argv[0]));
+        return INTEGER_VAL(n);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math.ceil() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+}
+
 static DaiObjBuiltinFunction builtin_math_funcs[] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -420,6 +460,16 @@ static DaiObjBuiltinFunction builtin_math_funcs[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "cos",
         .function = builtin_math_cos,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "floor",
+        .function = builtin_math_floor,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "ceil",
+        .function = builtin_math_ceil,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},

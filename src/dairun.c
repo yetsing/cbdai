@@ -10,7 +10,7 @@
 
 
 DaiObjError*
-Dairun_File(DaiVM* vm, const char* filename, DaiObjModule* module) {
+Dairun_FileWithModule(DaiVM* vm, const char* filename, DaiObjModule* module) {
     char* filepath = realpath(filename, NULL);
     char* text     = dai_string_from_file(filepath);
     if (text == NULL) {
@@ -22,4 +22,10 @@ Dairun_File(DaiVM* vm, const char* filename, DaiObjModule* module) {
     free(text);
     free(filepath);
     return err;
+}
+
+DaiObjError*
+Dairun_File(DaiVM* vm, const char* filename) {
+    DaiObjModule* module = DaiObjModule_New(vm, strdup("__main__"), strdup(filename));
+    return Dairun_FileWithModule(vm, filename, module);
 }

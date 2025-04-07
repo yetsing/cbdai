@@ -8,7 +8,7 @@ include_directories(src)
 include_directories(src/utf8.h)
 include_directories(src/hashmap.c)
 
-add_compile_options(-g -Wno-unused-function -Werror -Wall)
+add_compile_options(-Wno-unused-function -Werror -Wall)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/cwalk)
 
@@ -51,8 +51,15 @@ target_link_libraries(coverage m cwalk)
 target_compile_options(coverage PRIVATE -fprofile-instr-generate -fcoverage-mapping)
 target_link_options(coverage PRIVATE -fprofile-instr-generate)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/SDL EXCLUDE_FROM_ALL)
 
+# set the output directory for built objects.
+# This makes sure that the dynamic library goes into the build directory automatically.
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
+
+# Ensure the dai target is properly configured
 add_executable(dai ${MAIN_SRC} ${DAI_SRC})
 target_compile_options(dai PRIVATE -O3 -flto)
-target_link_libraries(dai m cwalk)
+target_link_libraries(dai PRIVATE m cwalk SDL3::SDL3)
 

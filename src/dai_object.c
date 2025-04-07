@@ -554,15 +554,17 @@ DaiObjTuple_append(DaiObjTuple* tuple, DaiValue value) {
     DaiValueArray_write(&tuple->values, value);
 }
 
-static int
+int
 DaiObjTuple_length(DaiObjTuple* tuple) {
     return tuple->values.count;
 }
-static DaiValue
+
+DaiValue
 DaiObjTuple_get(DaiObjTuple* tuple, int index) {
     assert(index >= 0 && index < tuple->values.count);
     return tuple->values.values[index];
 }
+
 static void
 DaiObjTuple_set(DaiObjTuple* tuple, int index, DaiValue value) {
     assert(index >= 0 && index < tuple->values.count);

@@ -608,7 +608,6 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 }
                 case DaiSymbolType_local: {
                     if (symbol.index >= LOCAL_MAX) {
-                        printf("symbol.index = %d\n", symbol.index);
                         return DaiCompileError_Newf(compiler->filename,
                                                     stmt->name->start_line,
                                                     stmt->name->start_column,
@@ -630,7 +629,7 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             if (stmt->operator!= NULL) {
                 DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->left);
                 if (err != NULL) {
-                    return NULL;
+                    return err;
                 }
             }
             DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);

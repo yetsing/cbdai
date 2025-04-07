@@ -93,24 +93,24 @@ def test(*args):
 
 def repl():
     compile("dai")
-    subprocess.check_call(["./cmake-build-debug/dai"])
+    subprocess.check_call(["./cmake-build-debug/Debug/dai"])
 
 
 def show_ast(*args):
     compile("dai")
-    subprocess.check_call(["./cmake-build-debug/dai", "ast", *args])
+    subprocess.check_call(["./cmake-build-debug/Debug/dai", "ast", *args])
 
 
 def benchmark(*args):
     compile("dai")
-    subprocess.check_call(["/usr/bin/time", "-v", "./cmake-build-debug/dai", *args])
+    subprocess.check_call(["/usr/bin/time", "-v", "./cmake-build-debug/Debug/dai", *args])
 
 
 def benchmark_profile(*args):
     # todo
     compile("dai")
-    subprocess.check_call(["./cmake-build-debug/dai", *args])
-    subprocess.check_call(["gprof", "./cmake-build-debug/dai", "gmon.out", ">benchmark.txt"])
+    subprocess.check_call(["./cmake-build-debug/Debug/dai", *args])
+    subprocess.check_call(["gprof", "./cmake-build-debug/Debug/dai", "gmon.out", ">benchmark.txt"])
 
 
 def mem():
@@ -167,7 +167,8 @@ def fmt():
 
 def runfile(*args):
     compile("dai")
-    child = subprocess.Popen(["./cmake-build-debug/dai", *args])
+    cp_compile_commands_json()
+    child = subprocess.Popen(["./cmake-build-debug/Debug/dai", *args])
     exitcode = 0
     while True:
         try:
@@ -182,7 +183,7 @@ def runfile(*args):
 
 def dis(*args):
     compile("dai")
-    subprocess.check_call(["./cmake-build-debug/dai", "dis", *args])
+    subprocess.check_call(["./cmake-build-debug/Debug/dai", "dis", *args])
 
 
 if __name__ == "__main__":

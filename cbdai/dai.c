@@ -60,7 +60,7 @@ dai_load_file(Dai* dai, const char* filename) {
         abort();
     }
     dai->loaded      = true;
-    DaiObjError* err = Dairun_File(&dai->vm, filename, dai->module);
+    DaiObjError* err = Dairun_FileWithModule(&dai->vm, filename, dai->module);
     if (err != NULL) {
         DaiVM_printError(&dai->vm, err);
         abort();
