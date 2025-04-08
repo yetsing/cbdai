@@ -52,6 +52,7 @@ target_compile_options(coverage PRIVATE -fprofile-instr-generate -fcoverage-mapp
 target_link_options(coverage PRIVATE -fprofile-instr-generate)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/SDL EXCLUDE_FROM_ALL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/SDL_image EXCLUDE_FROM_ALL)
 
 # set the output directory for built objects.
 # This makes sure that the dynamic library goes into the build directory automatically.
@@ -61,5 +62,5 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIGURATION>")
 # Ensure the dai target is properly configured
 add_executable(dai ${MAIN_SRC} ${DAI_SRC})
 target_compile_options(dai PRIVATE -O3 -flto)
-target_link_libraries(dai PRIVATE m cwalk SDL3::SDL3)
+target_link_libraries(dai PRIVATE m cwalk SDL3::SDL3 SDL3_image::SDL3_image)
 

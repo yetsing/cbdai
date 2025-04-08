@@ -741,6 +741,50 @@ builtin_path_absolute(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     return DaiObjClass_call(instance->klass, vm, 1, &abs_path);
 }
 
+static DaiValue
+builtin_path_joinpath(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc == 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.joinpath() expected 1 or more arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjInstance* instance = AS_INSTANCE(receiver);
+    DaiObjString* path =
+        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
+    char path_buf[PATH_MAX];
+    char path_res[PATH_MAX];
+    strcpy(path_res, path->chars);
+    for (int i = 0; i < argc; i++) {
+        if (!IS_STRING(argv[i])) {
+            DaiObjError* err = DaiObjError_Newf(
+                vm, "Path.joinpath() expected string arguments, but got %s", dai_value_ts(argv[i]));
+            return OBJ_VAL(err);
+        }
+        const char* arg = AS_STRING(argv[i])->chars;
+        cwk_path_join(path_res, arg, path_buf, sizeof(path_buf));
+        strcpy(path_res, path_buf);
+    }
+    DaiValue joined_path = OBJ_VAL(dai_copy_string_intern(vm, path_res, strlen(path_res)));
+    return DaiObjClass_call(instance->klass, vm, 1, &joined_path);
+}
+
+static DaiValue
+builtin_path_parent(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.parent() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjInstance* instance = AS_INSTANCE(receiver);
+    DaiObjString* path =
+        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
+    size_t length;
+    cwk_path_get_dirname(path->chars, &length);
+    DaiValue parent_path = OBJ_VAL(
+        dai_copy_string_intern(vm, path->chars, length));   // 这里的 path 是一个 string 对象
+    return DaiObjClass_call(instance->klass, vm, 1, &parent_path);
+}
+
 
 static DaiObjBuiltinFunction builtin_path_methods[] = {
     {
@@ -782,6 +826,16 @@ static DaiObjBuiltinFunction builtin_path_methods[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "absolute",
         .function = builtin_path_absolute,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "joinpath",
+        .function = builtin_path_joinpath,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "parent",
+        .function = builtin_path_parent,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},

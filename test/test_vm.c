@@ -1818,6 +1818,28 @@ test_array(__attribute__((unused)) const MunitParameter params[],
             "m.pop(); }; m.length();",
             INTEGER_VAL(0),
         },
+
+        // find
+        {
+            "var m = [1, 2, 3, 4]; m.find(1);",
+            INTEGER_VAL(0),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.find(2);",
+            INTEGER_VAL(1),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.find(3);",
+            INTEGER_VAL(2),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.find(4);",
+            INTEGER_VAL(3),
+        },
+        {
+            "var m = [1, 2, 3, 4]; m.find(5);",
+            INTEGER_VAL(-1),
+        },
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

@@ -799,8 +799,6 @@ DaiObjClass_Free(DaiVM* vm, DaiObjClass* klass) {
 DaiValue
 DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     DaiObjInstance* instance = DaiObjInstance_New(vm, klass);
-    // 设置此次调用的实例
-    vm->stack_top[-argc - 1] = OBJ_VAL(instance);
     int define_field_count   = DaiObjTuple_length(klass->define_field_names);
     if (argc > define_field_count) {
         DaiObjError* err = DaiObjError_Newf(
@@ -822,7 +820,9 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
             return result;
         }
     } else {
-        DaiValue res = DaiVM_runCall2(vm, instance->klass->init_fn, argc);
+        // 设置此次调用的实例
+        vm->stack_top[-argc - 1] = OBJ_VAL(instance);
+        DaiValue res             = DaiVM_runCall2(vm, instance->klass->init_fn, argc);
         if (IS_ERROR(res)) {
             return res;
         }
@@ -2030,6 +2030,28 @@ DaiObjArray_sort(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
     return receiver;
 }
 
+static DaiValue
+DaiObjArray_find(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "sort() expected 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    DaiObjArray* array = AS_ARRAY(receiver);
+    DaiValue value     = argv[0];
+    for (int i = 0; i < array->length; i++) {
+        int ret = dai_value_equal(array->elements[i], value);
+        if (ret == -1) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "maximum recursion depth exceeded in comparison");
+            return OBJ_VAL(err);
+        }
+        if (ret == 1) {
+            return INTEGER_VAL(i);
+        }
+    }
+    return INTEGER_VAL(-1);
+}
+
 
 enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_length = 0,
@@ -2043,6 +2065,7 @@ enum DaiObjArrayFunctionNo {
     DaiObjArrayFunctionNo_reversed,
     DaiObjArrayFunctionNo_reverse,
     DaiObjArrayFunctionNo_sort,
+    DaiObjArrayFunctionNo_find,
 };
 
 static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
@@ -2112,6 +2135,12 @@ static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
             .name     = "sort",
             .function = &DaiObjArray_sort,
         },
+    [DaiObjArrayFunctionNo_find] =
+        {
+            {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+            .name     = "find",
+            .function = &DaiObjArray_find,
+        },
 };
 
 static DaiValue
@@ -2127,6 +2156,12 @@ DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
         case 'e': {
             if (strcmp(cname, "extend") == 0) {
                 return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_extend]);
+            }
+            break;
+        }
+        case 'f': {
+            if (strcmp(cname, "find") == 0) {
+                return OBJ_VAL(&DaiObjArrayBuiltins[DaiObjArrayFunctionNo_find]);
             }
             break;
         }

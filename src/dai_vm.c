@@ -227,8 +227,10 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
             }
             case DaiObjType_builtinFn: {
                 const BuiltinFn func = AS_BUILTINFN(callee)->function;
+                DaiVM_pauseGC(vm);
                 const DaiValue result =
                     func(vm, DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
+                DaiVM_resumeGC(vm);
                 vm->stack_top = vm->stack_top - argCount - 1;
                 if (IS_ERROR(result)) {
                     return AS_ERROR(result);
@@ -1147,7 +1149,7 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
     for (int i = 1; i < vm->frameCount; ++i) {
         CallFrame* frame = &vm->frames[i];
         DaiChunk* chunk  = frame->chunk;
-        int lineno       = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
+        int lineno       = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code - 1));
         const char* name = "<module>";
         if (frame->function) {
             // 运行 module 的帧没有 function

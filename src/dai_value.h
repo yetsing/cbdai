@@ -92,7 +92,7 @@ dai_value_equal_with_limit(DaiValue a, DaiValue b, int* limit);
  * @param a 值
  * @param b 值
  *
- * @return 1 相等，0 不相等， -1 错误
+ * @return 1 相等，0 不相等， -1 错误(递归深度超过限制)
  */
 int
 dai_value_equal(DaiValue a, DaiValue b);

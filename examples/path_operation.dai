@@ -26,6 +26,14 @@ fn main() {
     assert(absp.is_absolute());
     // string() 返回路径字符串
     print(absp.string());
+
+    var cwd = Path(os.getcwd());
+    // joinpath(path) 拼接路径
+    var p1 = cwd.joinpath("test");
+    print(p1.string());
+
+    // parent() 返回父路径
+    print(p1.parent().string());
 }
 
 main();
