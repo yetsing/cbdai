@@ -93,24 +93,16 @@ DaiVM_init(DaiVM* vm) {
 
     // 初始化内置函数
     {
+        vm->builtin_objects_count = 0;
         for (int i = 0; i < BUILTIN_OBJECT_MAX_COUNT; i++) {
             vm->builtin_objects[i] = UNDEFINED_VAL;
         }
         int count                         = 0;
         DaiBuiltinObject* builtin_objects = init_builtin_objects(vm, &count);
         for (int i = 0; i < count; i++) {
-            DaiBuiltinObject builtin_object = builtin_objects[i];
-            if (builtin_object.name == NULL) {
-                break;
-            }
-            DaiSymbolTable_defineBuiltin(vm->builtinSymbolTable, i, builtin_object.name);
-            DaiSymbol symbol;
-            bool found =
-                DaiSymbolTable_resolve(vm->builtinSymbolTable, builtin_object.name, &symbol);
-            assert(found);
-            vm->builtin_objects[i] = builtin_object.value;
+            DaiBuiltinObject bobj = builtin_objects[i];
+            DaiVM_addBuiltin(vm, bobj.name, bobj.value);
         }
-        vm->builtin_objects_count = count;
     }
 }
 
@@ -128,14 +120,18 @@ DaiVM_addBuiltin(DaiVM* vm, const char* name, DaiValue value) {
         dai_error("too many builtin objects\n");
         abort();
     }
+    if (IS_MODULE(value)) {
+        builtin_module_setup(AS_MODULE(value));
+    }
     // 在符号表中注册内置对象
     DaiSymbolTable_defineBuiltin(vm->builtinSymbolTable, vm->builtin_objects_count, name);
     DaiSymbol symbol;
     bool found = DaiSymbolTable_resolve(vm->builtinSymbolTable, name, &symbol);
     assert(found);
     // 在内置对象数组中注册内置对象
-    builtin_names[vm->builtin_objects_count]         = name;
-    vm->builtin_objects[vm->builtin_objects_count++] = value;
+    builtin_names[vm->builtin_objects_count]       = name;
+    vm->builtin_objects[vm->builtin_objects_count] = value;
+    vm->builtin_objects_count++;
 }
 
 // #region DaiVM runtime

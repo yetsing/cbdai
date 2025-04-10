@@ -34,6 +34,7 @@ typedef struct _DaiObjClass DaiObjClass;
 #define IS_CFUNCTION(value) dai_is_obj_type(value, DaiObjType_cFunction)
 #define IS_MODULE(value) dai_is_obj_type(value, DaiObjType_module)
 #define IS_TUPLE(value) dai_is_obj_type(value, DaiObjType_tuple)
+#define IS_STRUCT(value) dai_is_obj_type(value, DaiObjType_struct)
 
 #define AS_BOUND_METHOD(value) ((DaiObjBoundMethod*)AS_OBJ(value))
 #define AS_INSTANCE(value) ((DaiObjInstance*)AS_OBJ(value))
@@ -52,9 +53,11 @@ typedef struct _DaiObjClass DaiObjClass;
 #define AS_CFUNCTION(value) ((DaiObjCFunction*)AS_OBJ(value))
 #define AS_MODULE(value) ((DaiObjModule*)AS_OBJ(value))
 #define AS_TUPLE(value) ((DaiObjTuple*)AS_OBJ(value))
+#define AS_STRUCT(value) ((DaiObjStruct*)AS_OBJ(value))
 
-#define IS_FUNCTION_LIKE(value) \
-    (IS_FUNCTION(value) || IS_CLOSURE(value) || IS_BUILTINFN(value) || IS_CFUNCTION(value))
+#define IS_FUNCTION_LIKE(value)                                                               \
+    (IS_FUNCTION(value) || IS_CLOSURE(value) || IS_BUILTINFN(value) || IS_CFUNCTION(value) || \
+     IS_BOUND_METHOD(value))
 
 typedef enum {
     DaiObjType_function,
@@ -73,6 +76,7 @@ typedef enum {
     DaiObjType_cFunction,   // c api registered function
     DaiObjType_module,
     DaiObjType_tuple,
+    DaiObjType_struct,   // c struct
 } DaiObjType;
 
 typedef void (*CFunction)(void* dai);
@@ -130,9 +134,7 @@ typedef struct {
 
     // 全局变量和全局符号表
     struct hashmap* global_map;
-    // DaiSymbolTable* globalSymbolTable;
     DaiValue* globals;
-    int predefine_global_count;
 
     int max_local_count;
 
@@ -154,6 +156,8 @@ bool
 DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value);
 bool
 DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiValue* key, DaiValue* value);
+void
+builtin_module_setup(DaiObjModule* module);
 
 typedef struct {
     DaiObj obj;
@@ -377,6 +381,21 @@ typedef struct {
 DaiObjCFunction*
 DaiObjCFunction_New(DaiVM* vm, void* dai, BuiltinFn wrapper, CFunction func, const char* name,
                     int arity);
+
+
+typedef struct {
+    DaiObj obj;
+    DaiTable table;
+    const char* name;
+    void* udata;
+    void (*free)(void* udata);
+} DaiObjStruct;
+DaiObjStruct*
+DaiObjStruct_New(DaiVM* vm, const char* name, void* udata, void (*free)(void* udata));
+void
+DaiObjStruct_Free(DaiVM* vm, DaiObjStruct* obj);
+void
+DaiObjStruct_set(DaiVM* vm, DaiObjStruct* obj, const char* name, DaiValue value);
 
 const char*
 dai_object_ts(DaiValue value);

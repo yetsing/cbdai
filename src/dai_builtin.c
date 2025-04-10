@@ -205,6 +205,39 @@ builtin_import(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     return OBJ_VAL(module);
 }
 
+static DaiValue
+builtin_int(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "int() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[0])) {
+        return argv[0];
+    } else if (IS_FLOAT(argv[0])) {
+        return INTEGER_VAL((int64_t)AS_FLOAT(argv[0]));
+    } else if (IS_STRING(argv[0])) {
+        char* endptr;
+        errno    = 0;
+        long val = strtol(AS_STRING(argv[0])->chars, &endptr, 10);
+        if (errno != 0) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "int() failed to convert string to int: %s", strerror(errno));
+            return OBJ_VAL(err);
+        }
+        if (*endptr != '\0') {
+            DaiObjError* err = DaiObjError_Newf(
+                vm,
+                "int() failed to convert string to int: invalid literal for int() with base 10");
+            return OBJ_VAL(err);
+        }
+        return INTEGER_VAL(val);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "int() expected number argument, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+}
+
 static DaiObjBuiltinFunction builtin_funcs[] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -246,7 +279,11 @@ static DaiObjBuiltinFunction builtin_funcs[] = {
         .name     = "import",
         .function = builtin_import,
     },
-
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "int",
+        .function = builtin_int,
+    },
     {
         .name = NULL,
     },
@@ -864,6 +901,12 @@ static DaiBuiltinObject builtin_objects[BUILTIN_OBJECT_MAX_COUNT] = {};
 
 DaiBuiltinObject*
 init_builtin_objects(DaiVM* vm, int* count) {
+    for (int i = 0; i < BUILTIN_OBJECT_MAX_COUNT; i++) {
+        builtin_names[i]         = NULL;
+        builtin_objects[i].name  = NULL;
+        builtin_objects[i].value = UNDEFINED_VAL;
+    }
+
     int i = 0;
     for (; builtin_funcs[i].name != NULL; i++) {
         builtin_names[i]         = builtin_funcs[i].name;

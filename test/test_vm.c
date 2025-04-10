@@ -1330,6 +1330,9 @@ test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
         {"abs(-1);", INTEGER_VAL(1)},
         {"abs(1.0);", FLOAT_VAL(1.0)},
         {"abs(-1.0);", FLOAT_VAL(1.0)},
+        {"int(1);", INTEGER_VAL(1)},
+        {"int(1.1);", INTEGER_VAL(1)},
+        {"int('1');", INTEGER_VAL(1)},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

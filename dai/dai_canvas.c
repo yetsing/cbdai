@@ -5,10 +5,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "SDL3/SDL_keyboard.h"
-#include "hashmap.h"
 #include <SDL3/SDL.h>
+#include <SDL3_image/SDL_image.h>
 
+#include "SDL3/SDL_rect.h"
 #include "dai_object.h"
 #include "dai_value.h"
 #include "dai_vm.h"
@@ -17,7 +17,8 @@ static SDL_Window* window          = NULL;
 static SDL_Renderer* renderer      = NULL;
 static const char* module_name     = "canvas";
 static bool is_running             = false;
-static struct hashmap* keycode_map = NULL;
+static DaiObjModule* canvas_module = NULL;
+static const char* texture_name    = "CanvasTexture";
 
 #define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
 #define CHECK_INIT()                                                       \
@@ -36,21 +37,7 @@ typedef struct {
 
 static DaiObjClass* keyboard_event_class = NULL;
 static DaiObjClass* mouse_event_class    = NULL;
-// static EventCallbacks keydown_callbacks  = {
-//      .callback_count = 0,
-// };
-// static EventCallbacks keyup_callbacks = {
-//     .callback_count = 0,
-// };
-// static EventCallbacks mousedown_callbacks = {
-//     .callback_count = 0,
-// };
-// static EventCallbacks mouseup_callbacks = {
-//     .callback_count = 0,
-// };
-// static EventCallbacks mousemotion_callbacks = {
-//     .callback_count = 0,
-// };
+
 
 static DaiObjTuple* keydown_callbacks     = NULL;
 static DaiObjTuple* keyup_callbacks       = NULL;
@@ -156,6 +143,8 @@ handle_event(DaiVM* vm) {
 //      run(callback)
 //      quit()
 //      addEventListener(event, callback)
+//      loadImage(path)
+//      drawImage(...)
 
 static DaiValue
 builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
@@ -191,6 +180,8 @@ builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int ar
         return OBJ_VAL(err);
     }
 
+    DaiObjModule_set_global(canvas_module, "width", INTEGER_VAL(width));
+    DaiObjModule_set_global(canvas_module, "height", INTEGER_VAL(height));
     return NIL_VAL;
 }
 
@@ -278,6 +269,7 @@ builtin_canvas_present(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int
     }
     return NIL_VAL;
 }
+
 static DaiValue
 builtin_canvas_run(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 1) {
@@ -368,6 +360,111 @@ builtin_canvas_addEventListener(DaiVM* vm, __attribute__((unused)) DaiValue rece
     return INTEGER_VAL(index);
 }
 
+static void
+texture_destructor(void* ptr) {
+    SDL_DestroyTexture((SDL_Texture*)ptr);
+}
+
+static DaiValue
+builtin_canvas_loadImage(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                         DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.loadImage() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "canvas.loadImage() expected string argument, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    CHECK_INIT();
+    const char* path     = AS_CSTRING(argv[0]);
+    SDL_Texture* texture = IMG_LoadTexture(renderer, path);
+    if (texture == NULL) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not load image! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    DaiObjStruct* obj = DaiObjStruct_New(vm, texture_name, texture, texture_destructor);
+    float w, h;
+    SDL_GetTextureSize(texture, &w, &h);
+    DaiObjStruct_set(vm, obj, "width", INTEGER_VAL(w));
+    DaiObjStruct_set(vm, obj, "height", INTEGER_VAL(h));
+    return OBJ_VAL(obj);
+}
+
+// ref: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+// drawImage(image, dx, dy)
+// drawImage(image, dx, dy, dWidth, dHeight)
+// drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+static DaiValue
+builtin_canvas_drawImage(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                         DaiValue* argv) {
+    if (argc != 3 && argc != 5 && argc != 9) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.drawImage() expected 3/5/9 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRUCT(argv[0])) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm,
+                             "canvas.drawImage() expected struct %s argument, but got %s",
+                             texture_name,
+                             dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    for (int i = 1; i < argc; i++) {
+        if (!IS_INTEGER(argv[i])) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm,
+                                 "canvas.drawImage() expected integer arguments, but got %s",
+                                 dai_value_ts(argv[i]));
+            return OBJ_VAL(err);
+        }
+    }
+    DaiObjStruct* obj = AS_STRUCT(argv[0]);
+    if (obj->name != texture_name) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.drawImage() expected struct %s argument", texture_name);
+        return OBJ_VAL(err);
+    }
+    CHECK_INIT();
+
+    SDL_Texture* texture = (SDL_Texture*)obj->udata;
+    float w, h;
+    SDL_GetTextureSize(texture, &w, &h);
+    SDL_FRect srcrect = {.x = 0, .y = 0, .w = w, .h = h};
+    SDL_FRect dstrect = {.x = 0, .y = 0, .w = w, .h = h};
+    if (argc == 3) {
+        // dx, dy
+        dstrect.x = AS_INTEGER(argv[1]);
+        dstrect.y = AS_INTEGER(argv[2]);
+    } else if (argc == 5) {
+        // dx, dy, dWidth, dHeight
+        dstrect.x = AS_INTEGER(argv[1]);
+        dstrect.y = AS_INTEGER(argv[2]);
+        dstrect.w = AS_INTEGER(argv[3]);
+        dstrect.h = AS_INTEGER(argv[4]);
+    } else if (argc == 9) {
+        // sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight
+        srcrect.x = AS_INTEGER(argv[1]);
+        srcrect.y = AS_INTEGER(argv[2]);
+        srcrect.w = AS_INTEGER(argv[3]);
+        srcrect.h = AS_INTEGER(argv[4]);
+        dstrect.x = AS_INTEGER(argv[5]);
+        dstrect.y = AS_INTEGER(argv[6]);
+        dstrect.w = AS_INTEGER(argv[7]);
+        dstrect.h = AS_INTEGER(argv[8]);
+    }
+    if (!SDL_RenderTexture(renderer, texture, &srcrect, &dstrect)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not draw image! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    return NIL_VAL;
+}
+
 
 static DaiObjBuiltinFunction canvas_funcs[] = {
     {
@@ -407,6 +504,16 @@ static DaiObjBuiltinFunction canvas_funcs[] = {
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "loadImage",
+        .function = builtin_canvas_loadImage,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "drawImage",
+        .function = builtin_canvas_drawImage,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name = NULL,
     },
 };
@@ -417,12 +524,16 @@ static DaiObjModule*
 create_canvas_module(DaiVM* vm) {
 
     DaiObjModule* module = DaiObjModule_New(vm, strdup(module_name), strdup("<builtin>"));
+    canvas_module        = module;
 
     DaiObjModule_add_global(module, "EventKeyDown", INTEGER_VAL(SDL_EVENT_KEY_DOWN));
     DaiObjModule_add_global(module, "EventKeyUp", INTEGER_VAL(SDL_EVENT_KEY_UP));
     DaiObjModule_add_global(module, "EventMouseDown", INTEGER_VAL(SDL_EVENT_MOUSE_BUTTON_DOWN));
     DaiObjModule_add_global(module, "EventMouseUp", INTEGER_VAL(SDL_EVENT_MOUSE_BUTTON_UP));
     DaiObjModule_add_global(module, "EventMouseMotion", INTEGER_VAL(SDL_EVENT_MOUSE_MOTION));
+
+    DaiObjModule_add_global(module, "width", INTEGER_VAL(0));
+    DaiObjModule_add_global(module, "height", INTEGER_VAL(0));
 
     for (int i = 0; canvas_funcs[i].name != NULL; i++) {
         DaiObjModule_add_global(module, canvas_funcs[i].name, OBJ_VAL(&canvas_funcs[i]));
@@ -485,10 +596,6 @@ dai_canvas_init(DaiVM* vm) {
 
 void
 dai_canvas_quit(DaiVM* vm) {
-    if (keycode_map != NULL) {
-        hashmap_free(keycode_map);
-        keycode_map = NULL;
-    }
     if (renderer != NULL) {
         SDL_DestroyRenderer(renderer);
         renderer = NULL;

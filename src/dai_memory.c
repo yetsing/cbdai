@@ -53,6 +53,11 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
     printf("%p free type %d\n", (void*)object, object->type);
 #endif
     switch (object->type) {
+        case DaiObjType_struct: {
+            DaiObjStruct* obj = (DaiObjStruct*)object;
+            DaiObjStruct_Free(vm, obj);
+            break;
+        }
         case DaiObjType_cFunction: {
             free(((DaiObjCFunction*)object)->name);
             VM_FREE(vm, DaiObjCFunction, object);
@@ -205,6 +210,11 @@ blackenObject(DaiVM* vm, DaiObj* object) {
     printf("\n");
 #endif
     switch (object->type) {
+        case DaiObjType_struct: {
+            DaiObjStruct* obj = (DaiObjStruct*)object;
+            markTable(vm, &obj->table);
+            break;
+        }
         case DaiObjType_tuple: {
             DaiObjTuple* tuple = (DaiObjTuple*)object;
             markArray(vm, &tuple->values);

@@ -241,7 +241,6 @@ DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
 
     module->vm = vm;
 
-    module->predefine_global_count = 0;
     uint64_t seed0, seed1;
     DaiVM_getSeed2(vm, &seed0, &seed1);
     module->global_map = hashmap_new(sizeof(DaiPropertyOffset),
@@ -276,8 +275,7 @@ void
 DaiObjModule_beforeCompile(DaiObjModule* module, DaiSymbolTable* symbol_table) {
     assert(!(module->compiled));
     // 按顺序排好
-    size_t count = hashmap_count(module->global_map);
-    assert(count == module->predefine_global_count);
+    size_t count               = hashmap_count(module->global_map);
     DaiPropertyOffset* offsets = malloc(sizeof(DaiPropertyOffset) * count);
     if (offsets == NULL) {
         dai_error("malloc offsets(%zu bytes) error\n", count * sizeof(DaiPropertyOffset));
@@ -349,9 +347,8 @@ DaiObjModule_set_global(DaiObjModule* module, const char* name, DaiValue value) 
     assert(module->compiled);
     DaiObjString* property = dai_find_string_intern(module->vm, name, strlen(name));
     assert(property != NULL);
-    const DaiPropertyOffset* offset = hashmap_get(
-        module->global_map,
-        &(DaiPropertyOffset){.property = property, .offset = module->predefine_global_count});
+    const DaiPropertyOffset* offset =
+        hashmap_get(module->global_map, &(DaiPropertyOffset){.property = property});
     if (offset == NULL) {
         return false;
     }
@@ -362,10 +359,15 @@ DaiObjModule_set_global(DaiObjModule* module, const char* name, DaiValue value) 
 bool
 DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value) {
     assert(!(module->compiled));
-    DaiObjString* property   = dai_copy_string_intern(module->vm, name, strlen(name));
+    DaiObjString* property = dai_copy_string_intern(module->vm, name, strlen(name));
+    size_t count           = hashmap_count(module->global_map);
+    if (count >= GLOBAL_MAX) {
+        dai_error("DaiObjModule_add_global: Too many globals\n");
+        abort();
+    }
     DaiPropertyOffset offset = {
         .property = property,
-        .offset   = module->predefine_global_count,
+        .offset   = count,
     };
     // 先检查是否已经存在
     const void* res = hashmap_get(module->global_map, &offset);
@@ -376,8 +378,7 @@ DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value) 
         dai_error("DaiObjModule_New: Out of memory\n");
         abort();
     }
-    module->globals[module->predefine_global_count] = value;
-    module->predefine_global_count++;
+    module->globals[count] = value;
     return true;
 }
 
@@ -391,6 +392,13 @@ DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiValue* key, DaiValue* valu
         return true;
     }
     return false;
+}
+
+void
+builtin_module_setup(DaiObjModule* module) {
+    module->compiled = true;
+    size_t count     = hashmap_count(module->global_map);
+    module->globals  = realloc(module->globals, sizeof(DaiValue) * count);
 }
 // #endregion
 
@@ -2930,6 +2938,68 @@ DaiObjCFunction_New(DaiVM* vm, void* dai, BuiltinFn wrapper, CFunction func, con
 
 // #endregion
 
+// #region DaiObjStruct
+
+static DaiValue
+DaiObjStruct_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    DaiObjStruct* obj = AS_STRUCT(receiver);
+    DaiValue value;
+    if (DaiTable_get(&obj->table, name, &value)) {
+        return value;
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
+    return OBJ_VAL(err);
+}
+
+static char*
+DaiObjStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
+    char buf[64];
+    DaiObjStruct* obj = AS_STRUCT(value);
+    int length        = snprintf(buf, sizeof(buf), "<struct %s of %p>", obj->name, obj->udata);
+    return strndup(buf, length);
+}
+
+static struct DaiOperation struct_operation = {
+    .get_property_func  = DaiObjStruct_get_property,
+    .set_property_func  = dai_default_set_property,
+    .subscript_get_func = dai_default_subscript_get,
+    .subscript_set_func = dai_default_subscript_set,
+    .string_func        = DaiObjStruct_String,
+    .equal_func         = dai_default_equal,
+    .hash_func          = NULL,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+    .get_method_func    = dai_default_get_method,
+};
+
+
+DaiObjStruct*
+DaiObjStruct_New(DaiVM* vm, const char* name, void* udata, void (*free)(void* udata)) {
+    DaiObjStruct* obj  = ALLOCATE_OBJ(vm, DaiObjStruct, DaiObjType_struct);
+    obj->obj.operation = &struct_operation;
+    DaiTable_init(&obj->table);
+    obj->name  = name;
+    obj->udata = udata;
+    obj->free  = free;
+    return obj;
+}
+void
+DaiObjStruct_Free(DaiVM* vm, DaiObjStruct* obj) {
+    DaiTable_reset(&obj->table);
+    if (obj->free != NULL) {
+        obj->free(obj->udata);
+    }
+    VM_FREE(vm, DaiObjStruct, obj);
+}
+void
+DaiObjStruct_set(DaiVM* vm, DaiObjStruct* obj, const char* name, DaiValue value) {
+    DaiObjString* key = dai_copy_string_intern(vm, name, strlen(name));
+    DaiTable_set(&obj->table, key, value);
+}
+
+// #endregion
+
 const char*
 dai_object_ts(DaiValue value) {
     switch (OBJ_TYPE(value)) {
@@ -2957,6 +3027,7 @@ dai_object_ts(DaiValue value) {
         case DaiObjType_cFunction: return "c-function";
         case DaiObjType_module: return "module";
         case DaiObjType_tuple: return "tuple";
+        case DaiObjType_struct: return "struct";
     }
     return "unknown";
 }
