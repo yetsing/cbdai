@@ -390,12 +390,15 @@ typedef struct {
     void* udata;
     void (*free)(void* udata);
 } DaiObjStruct;
+// name 使用字符串字面量，DaiObjStruct 不会管理 name 的内存
 DaiObjStruct*
 DaiObjStruct_New(DaiVM* vm, const char* name, void* udata, void (*free)(void* udata));
 void
 DaiObjStruct_Free(DaiVM* vm, DaiObjStruct* obj);
 void
 DaiObjStruct_set(DaiVM* vm, DaiObjStruct* obj, const char* name, DaiValue value);
+DaiValue
+DaiObjStruct_get(DaiVM* vm, DaiObjStruct* obj, const char* name);
 
 const char*
 dai_object_ts(DaiValue value);

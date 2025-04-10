@@ -168,14 +168,25 @@ def fmt():
 def runfile(*args):
     compile("dai")
     cp_compile_commands_json()
-    child = subprocess.Popen(["./cmake-build-debug/Debug/dai", *args])
     exitcode = 0
+    run_forever = os.environ.get("DAI_RUN_FOREVER", "0") != "0"
+    if run_forever:
+        print("Running forever, press Ctrl+C to stop")
     while True:
-        try:
-            exitcode = child.wait()
+        child = subprocess.Popen(["./cmake-build-debug/Debug/dai", *args])
+        while True:
+            try:
+                exitcode = child.wait()
+                break
+            except KeyboardInterrupt:
+                print("Ctrl+C")
+                run_forever = False
+        if not run_forever:
             break
-        except KeyboardInterrupt:
-            print("Ctrl+C")
+        print("Restarting...")
+        if exitcode != 0:
+            print(f"Exit code: {exitcode}")
+            input("Press Enter to continue...")
     if exitcode != 0:
         print(f"Exit code: {exitcode}")
         sys.exit(exitcode)

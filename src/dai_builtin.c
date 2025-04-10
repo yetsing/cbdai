@@ -482,6 +482,18 @@ builtin_math_ceil(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) Dai
     }
 }
 
+static DaiValue
+builtin_math_random(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                    int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "math.random() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    double n = (double)rand() / RAND_MAX;
+    return FLOAT_VAL(n);
+}
+
 static DaiObjBuiltinFunction builtin_math_funcs[] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -507,6 +519,11 @@ static DaiObjBuiltinFunction builtin_math_funcs[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "ceil",
         .function = builtin_math_ceil,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "random",
+        .function = builtin_math_random,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},

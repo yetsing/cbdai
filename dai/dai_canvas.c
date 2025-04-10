@@ -8,17 +8,18 @@
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
 
-#include "SDL3/SDL_rect.h"
 #include "dai_object.h"
 #include "dai_value.h"
 #include "dai_vm.h"
 
-static SDL_Window* window          = NULL;
-static SDL_Renderer* renderer      = NULL;
-static const char* module_name     = "canvas";
-static bool is_running             = false;
-static DaiObjModule* canvas_module = NULL;
-static const char* texture_name    = "CanvasTexture";
+static SDL_Window* window            = NULL;
+static SDL_Renderer* renderer        = NULL;
+static const char* module_name       = "canvas";
+static bool is_running               = false;
+static DaiObjModule* canvas_module   = NULL;
+static const char* texture_name      = "canvas.Texture";
+static const char* rect_struct_name  = "canvas.Rect";
+static const char* point_struct_name = "canvas.Point";
 
 #define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
 #define CHECK_INIT()                                                       \
@@ -145,6 +146,9 @@ handle_event(DaiVM* vm) {
 //      addEventListener(event, callback)
 //      loadImage(path)
 //      drawImage(...)
+//      Rect(x, y, width, height)
+//      Point(x, y)
+//      drawImageEx(image, srcrect, dstrect, angle, center, flip)
 
 static DaiValue
 builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
@@ -465,6 +469,192 @@ builtin_canvas_drawImage(DaiVM* vm, __attribute__((unused)) DaiValue receiver, i
     return NIL_VAL;
 }
 
+static DaiValue
+builtin_canvas_Rect(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                    DaiValue* argv) {
+    if (argc != 4) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.Rect() expected 4 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    for (int i = 0; i < 4; i++) {
+        if (!IS_INTEGER(argv[i])) {
+            DaiObjError* err = DaiObjError_Newf(
+                vm, "canvas.Rect() expected integer arguments, but got %s", dai_value_ts(argv[i]));
+            return OBJ_VAL(err);
+        }
+    }
+    DaiObjStruct* obj = DaiObjStruct_New(vm, rect_struct_name, NULL, NULL);
+    DaiObjStruct_set(vm, obj, "x", argv[0]);
+    DaiObjStruct_set(vm, obj, "y", argv[1]);
+    DaiObjStruct_set(vm, obj, "width", argv[2]);
+    DaiObjStruct_set(vm, obj, "height", argv[3]);
+    return OBJ_VAL(obj);
+}
+
+static DaiValue
+builtin_canvas_Point(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                     DaiValue* argv) {
+    if (argc != 2) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.Point() expected 2 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    for (int i = 0; i < 2; i++) {
+        if (!IS_INTEGER(argv[i])) {
+            DaiObjError* err = DaiObjError_Newf(
+                vm, "canvas.Point() expected integer arguments, but got %s", dai_value_ts(argv[i]));
+            return OBJ_VAL(err);
+        }
+    }
+    DaiObjStruct* obj = DaiObjStruct_New(vm, point_struct_name, NULL, NULL);
+    DaiObjStruct_set(vm, obj, "x", argv[0]);
+    DaiObjStruct_set(vm, obj, "y", argv[1]);
+    return OBJ_VAL(obj);
+}
+
+// drawImageEx(image, srcrect, dstrect, angle, center, flip)
+//     angle: int|float 角度
+static DaiValue
+builtin_canvas_drawImageEx(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                           DaiValue* argv) {
+    if (argc != 6) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.drawImageEx() expected 6 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    SDL_Texture* texture = NULL;
+    SDL_FRect srcrect;
+    SDL_FRect dstrect;
+    double angle = 0;
+    SDL_FPoint center;
+    SDL_FlipMode flip = SDL_FLIP_NONE;
+
+    // #region 验证并且提取参数
+    if (!IS_STRUCT(argv[0]) || AS_STRUCT(argv[0])->name != texture_name) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm,
+                             "canvas.drawImageEx() expected struct %s argument, but got %s",
+                             texture_name,
+                             dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    DaiObjStruct* obj = NULL;
+    texture           = AS_STRUCT(argv[0])->udata;
+
+    if (!IS_STRUCT(argv[1]) || AS_STRUCT(argv[1])->name != rect_struct_name) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm,
+                             "canvas.drawImageEx() expected struct %s argument, but got %s",
+                             rect_struct_name,
+                             dai_value_ts(argv[1]));
+        return OBJ_VAL(err);
+    }
+    obj             = AS_STRUCT(argv[1]);
+    DaiValue xvalue = DaiObjStruct_get(vm, obj, "x");
+    if (IS_ERROR(xvalue)) {
+        return xvalue;
+    }
+    DaiValue yvalue = DaiObjStruct_get(vm, obj, "y");
+    if (IS_ERROR(yvalue)) {
+        return yvalue;
+    }
+    DaiValue wvalue = DaiObjStruct_get(vm, obj, "width");
+    if (IS_ERROR(wvalue)) {
+        return wvalue;
+    }
+    DaiValue hvalue = DaiObjStruct_get(vm, obj, "height");
+    if (IS_ERROR(hvalue)) {
+        return hvalue;
+    }
+    srcrect.x = AS_INTEGER(xvalue);
+    srcrect.y = AS_INTEGER(yvalue);
+    srcrect.w = AS_INTEGER(wvalue);
+    srcrect.h = AS_INTEGER(hvalue);
+
+    if (!IS_STRUCT(argv[2]) || AS_STRUCT(argv[2])->name != rect_struct_name) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm,
+                             "canvas.drawImageEx() expected struct %s argument, but got %s",
+                             rect_struct_name,
+                             dai_value_ts(argv[2]));
+        return OBJ_VAL(err);
+    }
+    obj    = AS_STRUCT(argv[2]);
+    xvalue = DaiObjStruct_get(vm, obj, "x");
+    if (IS_ERROR(xvalue)) {
+        return xvalue;
+    }
+    yvalue = DaiObjStruct_get(vm, obj, "y");
+    if (IS_ERROR(yvalue)) {
+        return yvalue;
+    }
+    wvalue = DaiObjStruct_get(vm, obj, "width");
+    if (IS_ERROR(wvalue)) {
+        return wvalue;
+    }
+    hvalue = DaiObjStruct_get(vm, obj, "height");
+    if (IS_ERROR(hvalue)) {
+        return hvalue;
+    }
+    dstrect.x = AS_INTEGER(xvalue);
+    dstrect.y = AS_INTEGER(yvalue);
+    dstrect.w = AS_INTEGER(wvalue);
+    dstrect.h = AS_INTEGER(hvalue);
+
+    if (!IS_INTEGER(argv[3]) && !IS_FLOAT(argv[3])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "canvas.drawImageEx() expected number argument, but got %s", dai_value_ts(argv[3]));
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[3])) {
+        angle = AS_INTEGER(argv[3]);
+    } else {
+        angle = AS_FLOAT(argv[3]);
+    }
+
+    if (!IS_STRUCT(argv[4]) || AS_STRUCT(argv[4])->name != point_struct_name) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm,
+                             "canvas.drawImageEx() expected struct %s argument, but got %s",
+                             point_struct_name,
+                             dai_value_ts(argv[4]));
+        return OBJ_VAL(err);
+    }
+    obj    = AS_STRUCT(argv[4]);
+    xvalue = DaiObjStruct_get(vm, obj, "x");
+    if (IS_ERROR(xvalue)) {
+        return xvalue;
+    }
+    yvalue = DaiObjStruct_get(vm, obj, "y");
+    if (IS_ERROR(yvalue)) {
+        return yvalue;
+    }
+    center.x = AS_INTEGER(xvalue);
+    center.y = AS_INTEGER(yvalue);
+
+    if (!IS_INTEGER(argv[5])) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm,
+                             "canvas.drawImageEx() expected integer argument, but got %s",
+                             dai_value_ts(argv[5]));
+        return OBJ_VAL(err);
+    }
+    flip = (SDL_FlipMode)AS_INTEGER(argv[5]);
+    if (flip < 0 || flip > 2) {
+        DaiObjError* err = DaiObjError_Newf(vm, "canvas.drawImageEx() invalid flip %d", flip);
+        return OBJ_VAL(err);
+    }
+    // #endregion
+    CHECK_INIT();
+    if (!SDL_RenderTextureRotated(renderer, texture, &srcrect, &dstrect, angle, &center, flip)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not drawEx image! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    return NIL_VAL;
+}
+
 
 static DaiObjBuiltinFunction canvas_funcs[] = {
     {
@@ -511,6 +701,21 @@ static DaiObjBuiltinFunction canvas_funcs[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "drawImage",
         .function = builtin_canvas_drawImage,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "Rect",
+        .function = builtin_canvas_Rect,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "Point",
+        .function = builtin_canvas_Point,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "drawImageEx",
+        .function = builtin_canvas_drawImageEx,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},

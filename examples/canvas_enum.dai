@@ -271,3 +271,9 @@ class EventType {
     class con mouseDown = 0x401;
     class con mouseUp = 0x402;
 }
+
+class FlipMode {
+    class con none = 0;
+    class con horizontal = 1;
+    class con vertical = 2;
+}

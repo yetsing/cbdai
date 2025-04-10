@@ -1333,6 +1333,7 @@ test_builtin_functions(__attribute__((unused)) const MunitParameter params[],
         {"int(1);", INTEGER_VAL(1)},
         {"int(1.1);", INTEGER_VAL(1)},
         {"int('1');", INTEGER_VAL(1)},
+        {"math.random() < 1;", dai_true},
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     return MUNIT_OK;

@@ -180,6 +180,16 @@ DaiObjModule_get_global1(DaiObjModule* module, DaiObjString* name, DaiValue* val
         return false;
     }
     *value = module->globals[((DaiPropertyOffset*)res)->offset];
+    if (IS_UNDEFINED(*value)) {
+        // 如果是未定义的值，说明没有初始化
+        DaiObjError* err = DaiObjError_Newf(
+            module->vm,
+            "'%s' object has not property '%s' (most likely due to a circular import)",
+            dai_object_ts(OBJ_VAL(module)),
+            name->chars);
+        *value = OBJ_VAL(err);
+        return false;
+    }
     return true;
 }
 
@@ -352,6 +362,12 @@ DaiObjModule_set_global(DaiObjModule* module, const char* name, DaiValue value) 
     if (offset == NULL) {
         return false;
     }
+    if (strcmp(name, "SceneTitle") == 0) {
+        printf("DaiObjModule_set_global SceneTitle %d\n", offset->offset);
+        printf("    ");
+        dai_print_value(value);
+        printf("\n");
+    }
     module->globals[offset->offset] = value;
     return true;
 }
@@ -377,6 +393,12 @@ DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value) 
     if (hashmap_set(module->global_map, &offset) == NULL && hashmap_oom(module->global_map)) {
         dai_error("DaiObjModule_New: Out of memory\n");
         abort();
+    }
+    if (strcmp(name, "SceneTitle") == 0) {
+        printf("DaiObjModule_add_global SceneTitle %zu\n", count);
+        printf("    ");
+        dai_print_value(value);
+        printf("\n");
     }
     module->globals[count] = value;
     return true;
@@ -2996,6 +3018,18 @@ void
 DaiObjStruct_set(DaiVM* vm, DaiObjStruct* obj, const char* name, DaiValue value) {
     DaiObjString* key = dai_copy_string_intern(vm, name, strlen(name));
     DaiTable_set(&obj->table, key, value);
+}
+
+DaiValue
+DaiObjStruct_get(DaiVM* vm, DaiObjStruct* obj, const char* name) {
+    DaiObjString* key = dai_copy_string_intern(vm, name, strlen(name));
+    DaiValue value;
+    if (DaiTable_get(&obj->table, key, &value)) {
+        return value;
+    }
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not property '%s'", dai_object_ts(OBJ_VAL(obj)), name);
+    return OBJ_VAL(err);
 }
 
 // #endregion
