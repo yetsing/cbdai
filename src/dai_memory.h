@@ -12,6 +12,7 @@
 #define VM_ALLOCATE(vm, type, count) (type*)vm_reallocate(vm, NULL, 0, sizeof(type) * (count))
 
 #define VM_FREE(vm, type, pointer) vm_reallocate(vm, pointer, sizeof(type), 0)
+#define VM_FREE1(vm, size, pointer) vm_reallocate(vm, pointer, size, 0)
 
 #define VM_GROW_ARRAY(vm, type, pointer, oldCount, newCount) \
     (type*)vm_reallocate(vm, pointer, sizeof(type) * (oldCount), sizeof(type) * (newCount))

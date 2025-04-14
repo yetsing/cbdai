@@ -211,8 +211,6 @@ blackenObject(DaiVM* vm, DaiObj* object) {
 #endif
     switch (object->type) {
         case DaiObjType_struct: {
-            DaiObjStruct* obj = (DaiObjStruct*)object;
-            markTable(vm, &obj->table);
             break;
         }
         case DaiObjType_tuple: {

@@ -382,23 +382,40 @@ DaiObjCFunction*
 DaiObjCFunction_New(DaiVM* vm, void* dai, BuiltinFn wrapper, CFunction func, const char* name,
                     int arity);
 
+typedef struct DaiObjStruct DaiObjStruct;
+#define DAI_OBJ_STRUCT_BASE \
+    DaiObj obj;             \
+    const char* name;       \
+    size_t size;            \
+    void (*free)(DaiObjStruct * st);
 
-typedef struct {
-    DaiObj obj;
-    DaiTable table;
-    const char* name;
-    void* udata;
-    void (*free)(void* udata);
+typedef struct DaiObjStruct {
+    DAI_OBJ_STRUCT_BASE
 } DaiObjStruct;
 // name 使用字符串字面量，DaiObjStruct 不会管理 name 的内存
 DaiObjStruct*
-DaiObjStruct_New(DaiVM* vm, const char* name, void* udata, void (*free)(void* udata));
+DaiObjStruct_New(DaiVM* vm, const char* name, struct DaiOperation* operation, size_t size,
+                 void (*free)(DaiObjStruct* st));
 void
 DaiObjStruct_Free(DaiVM* vm, DaiObjStruct* obj);
-void
-DaiObjStruct_set(DaiVM* vm, DaiObjStruct* obj, const char* name, DaiValue value);
+
+
 DaiValue
-DaiObjStruct_get(DaiVM* vm, DaiObjStruct* obj, const char* name);
+dai_default_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name);
+DaiValue
+dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value);
+DaiValue
+dai_default_subscript_get(DaiVM* vm, DaiValue receiver, DaiValue index);
+DaiValue
+dai_default_subscript_set(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value);
+char*
+dai_default_string_func(DaiValue value, __attribute__((unused)) DaiPtrArray* visited);
+int
+dai_default_equal(DaiValue a, DaiValue b, __attribute__((unused)) int* limit);
+uint64_t
+dai_default_hash(DaiValue value);
+DaiValue
+dai_default_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name);
 
 const char*
 dai_object_ts(DaiValue value);

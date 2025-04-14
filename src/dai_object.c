@@ -23,6 +23,7 @@
 #include "dai_vm.h"
 
 #define ALLOCATE_OBJ(vm, type, objectType) (type*)allocate_object(vm, sizeof(type), objectType)
+#define ALLOCATE_OBJ1(vm, type, objectType, size) (type*)allocate_object(vm, size, objectType)
 
 static DaiObjString*
 dai_find_string_intern(DaiVM* vm, const char* chars, int length);
@@ -53,61 +54,61 @@ DaiPropertyOffset_hash(const void* item, uint64_t seed0, uint64_t seed1) {
 
 // #region default operation
 
-static DaiValue
+DaiValue
 dai_default_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     DaiObjError* err = DaiObjError_Newf(
         vm, "'%s' object has not property '%s'", dai_value_ts(receiver), name->chars);
     return OBJ_VAL(err);
 }
 
-static DaiValue
+DaiValue
 dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
     DaiObjError* err = DaiObjError_Newf(
         vm, "'%s' object can not set property '%s'", dai_value_ts(receiver), name->chars);
     return OBJ_VAL(err);
 }
 
-static DaiValue
+DaiValue
 dai_default_subscript_get(DaiVM* vm, DaiValue receiver, DaiValue index) {
     DaiObjError* err =
         DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
     return OBJ_VAL(err);
 }
 
-static DaiValue
+DaiValue
 dai_default_subscript_set(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value) {
     DaiObjError* err =
         DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
     return OBJ_VAL(err);
 }
 
-static char*
+char*
 dai_default_string_func(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     char buf[64];
     int length = snprintf(buf, sizeof(buf), "<obj at %p>", AS_OBJ(value));
     return strndup(buf, length);
 }
 
-static int
+int
 dai_default_equal(DaiValue a, DaiValue b, __attribute__((unused)) int* limit) {
     return AS_OBJ(a) == AS_OBJ(b);
 }
 
-static uint64_t
+uint64_t
 dai_default_hash(DaiValue value) {
     return (uint64_t)(uintptr_t)AS_OBJ(value);
+}
+
+DaiValue
+dai_default_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    DaiObjError* err = DaiObjError_Newf(
+        vm, "'%s' object has not method '%s'", dai_value_ts(receiver), name->chars);
+    return OBJ_VAL(err);
 }
 
 static DaiValue
 dai_iter_init_return_self(DaiVM* vm, DaiValue receiver) {
     return receiver;
-}
-
-static DaiValue
-dai_default_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object has not method '%s'", dai_value_ts(receiver), name->chars);
-    return OBJ_VAL(err);
 }
 
 static struct DaiOperation default_operation = {
@@ -2962,74 +2963,33 @@ DaiObjCFunction_New(DaiVM* vm, void* dai, BuiltinFn wrapper, CFunction func, con
 
 // #region DaiObjStruct
 
-static DaiValue
-DaiObjStruct_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
-    DaiObjStruct* obj = AS_STRUCT(receiver);
-    DaiValue value;
-    if (DaiTable_get(&obj->table, name, &value)) {
-        return value;
-    }
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object has not property '%s'", dai_object_ts(receiver), name->chars);
-    return OBJ_VAL(err);
-}
-
 static char*
 DaiObjStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     char buf[64];
     DaiObjStruct* obj = AS_STRUCT(value);
-    int length        = snprintf(buf, sizeof(buf), "<struct %s of %p>", obj->name, obj->udata);
+    int length        = snprintf(buf, sizeof(buf), "<struct %s>", obj->name);
     return strndup(buf, length);
 }
 
-static struct DaiOperation struct_operation = {
-    .get_property_func  = DaiObjStruct_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
-    .string_func        = DaiObjStruct_String,
-    .equal_func         = dai_default_equal,
-    .hash_func          = NULL,
-    .iter_init_func     = NULL,
-    .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
-};
-
-
 DaiObjStruct*
-DaiObjStruct_New(DaiVM* vm, const char* name, void* udata, void (*free)(void* udata)) {
-    DaiObjStruct* obj  = ALLOCATE_OBJ(vm, DaiObjStruct, DaiObjType_struct);
-    obj->obj.operation = &struct_operation;
-    DaiTable_init(&obj->table);
-    obj->name  = name;
-    obj->udata = udata;
-    obj->free  = free;
+DaiObjStruct_New(DaiVM* vm, const char* name, struct DaiOperation* operation, size_t size,
+                 void (*free)(DaiObjStruct* udata)) {
+    DaiObjStruct* obj  = ALLOCATE_OBJ1(vm, DaiObjStruct, DaiObjType_struct, size);
+    obj->obj.operation = operation;
+    if (operation->string_func == NULL) {
+        operation->string_func = DaiObjStruct_String;
+    }
+    obj->name = name;
+    obj->size = size;
+    obj->free = free;
     return obj;
 }
 void
 DaiObjStruct_Free(DaiVM* vm, DaiObjStruct* obj) {
-    DaiTable_reset(&obj->table);
     if (obj->free != NULL) {
-        obj->free(obj->udata);
+        obj->free(obj);
     }
-    VM_FREE(vm, DaiObjStruct, obj);
-}
-void
-DaiObjStruct_set(DaiVM* vm, DaiObjStruct* obj, const char* name, DaiValue value) {
-    DaiObjString* key = dai_copy_string_intern(vm, name, strlen(name));
-    DaiTable_set(&obj->table, key, value);
-}
-
-DaiValue
-DaiObjStruct_get(DaiVM* vm, DaiObjStruct* obj, const char* name) {
-    DaiObjString* key = dai_copy_string_intern(vm, name, strlen(name));
-    DaiValue value;
-    if (DaiTable_get(&obj->table, key, &value)) {
-        return value;
-    }
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object has not property '%s'", dai_object_ts(OBJ_VAL(obj)), name);
-    return OBJ_VAL(err);
+    VM_FREE1(vm, obj->size, obj);
 }
 
 // #endregion
