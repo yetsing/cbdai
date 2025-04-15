@@ -1,32 +1,46 @@
-var b = 0;
-var step = 1;
+// canvas_enum.dai 包含 canvas 的枚举值，包括键盘 code 和鼠标 button
+con canvas_enum = import("canvas_enum.dai");
 
 fn draw() {
-    // canvas.clear() 清空 canvas 的内容
-    canvas.clear();
-    for (var r in range(256)) {
-        for (var g in range(256)) {
-            var a = 255;
-            // canvas.fillRect(x, y, w, h, r, g, b, a) 填充矩形
-            canvas.fillRect(r * 4, g * 4, 4, 4, r, g, b, a);
-        }
-    }
+    var script_dir = Path(__file__).parent();
+    var img_path = script_dir.joinpath("example.jpeg");
+    // canvas.loadImage(path) 加载图片
+    var img = canvas.loadImage(img_path.string());
+    // ref: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
+    // 参考浏览器的 canvas drawImage API ，有三种用法
+    // canvas.drawImage(image, dx, dy) 绘制图片
+    canvas.drawImage(img, 0, 0);
+
+    // canvas.drawImage(image, dx, dy, dWidth, dHeight) 绘制图片
+    // canvas.drawImage(img, 0, 0, img.width, img.height);
+
+    // canvas.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) 绘制图片
+    // canvas.drawImage(img, 0, 0, img.width, img.height, 0, 0, img.width / 2, img.height / 2);
+
+    // drawImageEx(image, srcrect, dstrect, angle, center, flip)
+    //   image 图片
+    //   srcrect 源矩形区域
+    //   dstrect 目标矩形区域
+    //   angle 旋转角度
+    //   center 旋转中心
+    //   flip 翻转方式， canvas_enum.FlipMode
+    // var srcrect = canvas.Rect(0, 0, img.width, img.height);
+    // var dstrect = canvas.Rect(0, 0, img.width, img.height);
+    // var angle = 45;
+    // var center = canvas.Point(img.width / 2, img.height / 2);
+    // var flip = canvas_enum.FlipMode.none;
+    // canvas.drawImageEx(img, srcrect, dstrect, angle, center, flip);
+
     // canvas.present() 展示 canvas 的内容
     canvas.present();
-    time.sleep(1.0/30);
-    b += step;
-    if (b >= 255) {
-        step = -1;
-    } elif (b <= 0) {
-        step = 1;
-    }
+
+    // example.jpeg 来源
+    // <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
 }
 
 fn main() {
     print("Canvas example");
-    // canvas_enum.dai 包含 canvas 的枚举值，包括键盘 code 和鼠标 button
-    con canvas_enum = import("canvas_enum.dai");
-    canvas.init(1024, 1024); // Reduced canvas size
+    canvas.init(1524, 1024); // Reduced canvas size
 
     // canvas.addEventListener(event_type, callback) 添加事件监听器
     // event_type 事件类型
