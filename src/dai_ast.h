@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// ref: https://github.com/clangd/clangd/issues/1982
+// IWYU pragma: begin_exports
 #include "dai_ast/dai_astArrayLiteral.h"
 #include "dai_ast/dai_astBreakStatement.h"
 #include "dai_ast/dai_astClassExpression.h"
@@ -44,6 +46,7 @@
 #include "dai_ast/dai_astvarstatement.h"
 #include "dai_stringbuffer.h"
 #include "dai_tokenize.h"
+// IWYU pragma: end_exports
 
 
 #endif /* A2C6620F_B3CB_4FC2_A309_D76A873205C0 */

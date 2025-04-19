@@ -1,6 +1,5 @@
 #include <ctype.h>
 #include <limits.h>
-#include <math.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -9,8 +8,6 @@
 #include <string.h>
 #include <time.h>
 
-#include "cwalk.h"
-#include "dai_utils.h"
 #include "hashmap.h"
 #include "utf8.h"
 
@@ -52,79 +49,10 @@ DaiPropertyOffset_hash(const void* item, uint64_t seed0, uint64_t seed1) {
 
 // #endregion
 
-// #region default operation
-
-DaiValue
-dai_default_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object has not property '%s'", dai_value_ts(receiver), name->chars);
-    return OBJ_VAL(err);
-}
-
-DaiValue
-dai_default_set_property(DaiVM* vm, DaiValue receiver, DaiObjString* name, DaiValue value) {
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object can not set property '%s'", dai_value_ts(receiver), name->chars);
-    return OBJ_VAL(err);
-}
-
-DaiValue
-dai_default_subscript_get(DaiVM* vm, DaiValue receiver, DaiValue index) {
-    DaiObjError* err =
-        DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
-    return OBJ_VAL(err);
-}
-
-DaiValue
-dai_default_subscript_set(DaiVM* vm, DaiValue receiver, DaiValue index, DaiValue value) {
-    DaiObjError* err =
-        DaiObjError_Newf(vm, "'%s' object is not subscriptable", dai_value_ts(receiver));
-    return OBJ_VAL(err);
-}
-
-char*
-dai_default_string_func(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
-    char buf[64];
-    int length = snprintf(buf, sizeof(buf), "<obj at %p>", AS_OBJ(value));
-    return strndup(buf, length);
-}
-
-int
-dai_default_equal(DaiValue a, DaiValue b, __attribute__((unused)) int* limit) {
-    return AS_OBJ(a) == AS_OBJ(b);
-}
-
-uint64_t
-dai_default_hash(DaiValue value) {
-    return (uint64_t)(uintptr_t)AS_OBJ(value);
-}
-
-DaiValue
-dai_default_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'%s' object has not method '%s'", dai_value_ts(receiver), name->chars);
-    return OBJ_VAL(err);
-}
-
 static DaiValue
 dai_iter_init_return_self(DaiVM* vm, DaiValue receiver) {
     return receiver;
 }
-
-static struct DaiOperation default_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
-    .string_func        = dai_default_string_func,
-    .equal_func         = dai_default_equal,
-    .hash_func          = dai_default_hash,
-    .iter_init_func     = NULL,
-    .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
-};
-
-// #endregion
 
 // #region builtin function operation
 
@@ -137,17 +65,17 @@ DaiObjBuiltinFunction_String(DaiValue value, __attribute__((unused)) DaiPtrArray
     return buf;
 }
 
-struct DaiOperation builtin_function_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+struct DaiObjOperation builtin_function_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjBuiltinFunction_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 // #endregion
@@ -158,7 +86,7 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
     object->type      = type;
     object->is_marked = false;
     object->next      = vm->objects;
-    object->operation = &default_operation;
+    object->operation = NULL;
     vm->objects       = object;
 #ifdef DEBUG_LOG_GC
     dai_log("%p allocate %zu for %d\n", (void*)object, size, type);
@@ -215,11 +143,11 @@ DaiObjModule_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited
     return buf;
 }
 
-static struct DaiOperation module_operation = {
+static struct DaiObjOperation module_operation = {
     .get_property_func  = DaiObjModule_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjModule_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
@@ -436,17 +364,17 @@ DaiObjFunction_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visit
     return buf;
 }
 
-static struct DaiOperation function_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation function_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjFunction_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjFunction*
@@ -482,17 +410,17 @@ DaiObjClosure_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visite
     return buf;
 }
 
-static struct DaiOperation closure_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation closure_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjClosure_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjClosure*
@@ -554,17 +482,17 @@ DaiObjTuple_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited)
     return DaiStringBuffer_getAndFree(sb, NULL);
 }
 
-static struct DaiOperation tuple_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
+static struct DaiObjOperation tuple_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
     .subscript_get_func = DaiObjTuple_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjTuple_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjTuple*
@@ -766,11 +694,11 @@ DaiObjClass_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     return OBJ_VAL(err);
 }
 
-static struct DaiOperation class_operation = {
+static struct DaiObjOperation class_operation = {
     .get_property_func  = DaiObjClass_get_property,
     .set_property_func  = DaiObjClass_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjClass_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
@@ -781,6 +709,25 @@ static struct DaiOperation class_operation = {
 
 #define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
 
+static DaiValue
+DaiObjClass_builtin_init(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    DaiObjInstance* instance = AS_INSTANCE(receiver);
+    DaiObjClass* klass       = instance->klass;
+    for (int i = 0; i < argc; i++) {
+        DaiObjString* field_name = AS_STRING(DaiObjTuple_get(klass->define_field_names, i));
+        const void* res          = hashmap_get_with_hash(
+            klass->fields, &(DaiFieldDesc){.name = field_name}, field_name->hash);
+        assert(res != NULL);
+        instance->fields[((DaiFieldDesc*)res)->index] = argv[i];
+    }
+    return receiver;
+}
+
+static DaiObjBuiltinFunction builtin_init = {
+    {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+    .name     = "__init__",
+    .function = DaiObjClass_builtin_init,
+};
 
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
@@ -813,6 +760,7 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
     DaiObjClass_define_class_field(klass, STRING_NAME("__name__"), OBJ_VAL(klass->name), true);
     DaiObjClass_define_class_field(
         klass, STRING_NAME("__fields__"), OBJ_VAL(klass->define_field_names), true);
+    DaiObjClass_define_method(klass, STRING_NAME("__init__"), OBJ_VAL(&builtin_init));
     // 定义内置实例属性
     DaiObjClass_define_field(klass, STRING_NAME("__class__"), OBJ_VAL(klass), true);
     return klass;
@@ -836,15 +784,7 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
             vm, "Too many arguments, max expected=%d got=%d", define_field_count, argc);
         return OBJ_VAL(err);
     }
-    if (IS_UNDEFINED(instance->klass->init_fn)) {
-        for (int i = 0; i < argc; i++) {
-            DaiObjString* field_name = AS_STRING(DaiObjTuple_get(klass->define_field_names, i));
-            const void* res          = hashmap_get_with_hash(
-                klass->fields, &(DaiFieldDesc){.name = field_name}, field_name->hash);
-            assert(res != NULL);
-            instance->fields[((DaiFieldDesc*)res)->index] = argv[i];
-        }
-    } else if (IS_BUILTINFN(instance->klass->init_fn)) {
+    if (IS_BUILTINFN(instance->klass->init_fn)) {
         const BuiltinFn func  = AS_BUILTINFN(instance->klass->init_fn)->function;
         const DaiValue result = func(vm, OBJ_VAL(instance), argc, argv);
         if (IS_ERROR(result)) {
@@ -1004,11 +944,11 @@ DaiObjInstance_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     return OBJ_VAL(err);
 }
 
-static struct DaiOperation instance_operation = {
+static struct DaiObjOperation instance_operation = {
     .get_property_func  = DaiObjInstance_get_property,
     .set_property_func  = DaiObjInstance_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjInstance_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
@@ -1049,6 +989,32 @@ DaiObjInstance_Free(DaiVM* vm, DaiObjInstance* instance) {
     VM_FREE(vm, DaiObjInstance, instance);
 }
 
+DaiObjInstance*
+DaiObjInstance_Copy(DaiVM* vm, DaiObjInstance* instance) {
+    DaiObjInstance* new_instance = ALLOCATE_OBJ(vm, DaiObjInstance, DaiObjType_instance);
+    new_instance->obj.operation  = &instance_operation;
+    new_instance->klass          = instance->klass;
+    new_instance->initialized    = instance->initialized;
+    new_instance->field_count    = instance->field_count;
+    new_instance->fields         = malloc(sizeof(DaiValue) * instance->field_count);
+    if (new_instance->fields == NULL) {
+        dai_error("DaiObjInstance_Copy: Out of memory\n");
+        abort();
+    }
+    memcpy(new_instance->fields, instance->fields, sizeof(DaiValue) * instance->field_count);
+    return new_instance;
+}
+
+void
+DaiObjInstance_set(DaiObjInstance* instance, DaiObjString* name, DaiValue value) {
+    DaiFieldDesc prop = {.name = name};
+    const void* res   = hashmap_get_with_hash(instance->klass->fields, &prop, name->hash);
+    if (res) {
+        const DaiFieldDesc* propp      = res;
+        instance->fields[propp->index] = value;
+    }
+}
+
 static char*
 DaiObjBoundMethod_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     DaiObjBoundMethod* bound_method = AS_BOUND_METHOD(value);
@@ -1064,17 +1030,17 @@ DaiObjBoundMethod_String(DaiValue value, __attribute__((unused)) DaiPtrArray* vi
     return buf;
 }
 
-static struct DaiOperation bound_method_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation bound_method_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjBoundMethod_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjBoundMethod*
@@ -1687,9 +1653,9 @@ DaiObjString_hash(DaiValue value) {
     return AS_STRING(value)->hash;
 }
 
-static struct DaiOperation string_operation = {
+static struct DaiObjOperation string_operation = {
     .get_property_func  = DaiObjString_get_property,
-    .set_property_func  = dai_default_set_property,
+    .set_property_func  = NULL,
     .subscript_get_func = DaiObjString_subscript_get,
     .subscript_set_func = DaiObjString_subscript_set,
     .string_func        = DaiObjString_String,
@@ -2333,9 +2299,9 @@ DaiObjArray_iter_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver) {
     return OBJ_VAL(iterator);
 }
 
-static struct DaiOperation array_operation = {
+static struct DaiObjOperation array_operation = {
     .get_property_func  = DaiObjArray_get_property,
-    .set_property_func  = dai_default_set_property,
+    .set_property_func  = NULL,
     .subscript_get_func = DaiObjArray_subscript_get,
     .subscript_set_func = DaiObjArray_subscript_set,
     .string_func        = DaiObjArray_String,
@@ -2416,17 +2382,17 @@ DaiObjArrayIterator_iter_next(__attribute__((unused)) DaiVM* vm, DaiValue receiv
     return NIL_VAL;
 }
 
-static struct DaiOperation array_iterator_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation array_iterator_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = dai_default_string_func,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = dai_iter_init_return_self,
     .iter_next_func     = DaiObjArrayIterator_iter_next,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjArrayIterator*
@@ -2456,17 +2422,17 @@ DaiObjRangeIterator_iter_next(__attribute__((unused)) DaiVM* vm, DaiValue receiv
     return NIL_VAL;
 }
 
-static struct DaiOperation range_iterator_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation range_iterator_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = dai_default_string_func,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = dai_iter_init_return_self,
     .iter_next_func     = DaiObjRangeIterator_iter_next,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjRangeIterator*
@@ -2744,9 +2710,9 @@ DaiObjMap_iter_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver) {
     return OBJ_VAL(iterator);
 }
 
-static struct DaiOperation map_operation = {
+static struct DaiObjOperation map_operation = {
     .get_property_func  = DaiObjMap_get_property,
-    .set_property_func  = dai_default_set_property,
+    .set_property_func  = NULL,
     .subscript_get_func = DaiObjMap_subscript_get,
     .subscript_set_func = DaiObjMap_subscript_set,
     .string_func        = DaiObjMap_String,
@@ -2857,17 +2823,17 @@ DaiObjMapIterator_iter_next(__attribute__((unused)) DaiVM* vm, DaiValue receiver
     return UNDEFINED_VAL;
 }
 
-static struct DaiOperation map_iterator_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation map_iterator_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = dai_default_string_func,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = dai_iter_init_return_self,
     .iter_next_func     = DaiObjMapIterator_iter_next,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjMapIterator*
@@ -2896,17 +2862,17 @@ DaiObjError_hash(DaiValue value) {
     return hash_string(AS_ERROR(value)->message, strlen(AS_ERROR(value)->message));
 }
 
-static struct DaiOperation error_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation error_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjError_String,
     .equal_func         = dai_default_equal,
     .hash_func          = DaiObjError_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjError*
@@ -2933,17 +2899,17 @@ DaiObjCFunction_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visi
     return buf;
 }
 
-static struct DaiOperation c_function_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation c_function_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = DaiObjCFunction_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 DaiObjCFunction*
@@ -2972,7 +2938,7 @@ DaiObjStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited
 }
 
 DaiObjStruct*
-DaiObjStruct_New(DaiVM* vm, const char* name, struct DaiOperation* operation, size_t size,
+DaiObjStruct_New(DaiVM* vm, const char* name, struct DaiObjOperation* operation, size_t size,
                  void (*free)(DaiObjStruct* udata)) {
     DaiObjStruct* obj  = ALLOCATE_OBJ1(vm, DaiObjStruct, DaiObjType_struct, size);
     obj->obj.operation = operation;

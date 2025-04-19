@@ -130,14 +130,6 @@ dai_value_is_hashable(DaiValue value) {
     }
 }
 
-bool
-dai_value_is_iterable(DaiValue value) {
-    switch (value.type) {
-        case DaiValueType_obj: return AS_OBJ(value)->operation->iter_init_func != NULL;
-        default: return false;
-    }
-}
-
 // #region DaiValueArray
 
 void

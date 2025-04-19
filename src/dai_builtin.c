@@ -791,8 +791,10 @@ builtin_path_absolute(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     }
     char path_buf[PATH_MAX];
     cwk_path_get_absolute(cwd, path->chars, path_buf, sizeof(path_buf));
-    DaiValue abs_path = OBJ_VAL(dai_copy_string_intern(vm, path_buf, strlen(path_buf)));
-    return DaiObjClass_call(instance->klass, vm, 1, &abs_path);
+    DaiValue abs_path            = OBJ_VAL(dai_copy_string_intern(vm, path_buf, strlen(path_buf)));
+    DaiObjInstance* new_instance = DaiObjInstance_Copy(vm, instance);
+    new_instance->fields[path_field_index] = abs_path;
+    return OBJ_VAL(new_instance);
 }
 
 static DaiValue

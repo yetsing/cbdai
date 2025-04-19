@@ -391,17 +391,17 @@ TextureStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visite
     int length         = snprintf(buf, sizeof(buf), "<struct %s(%p)>", obj->name, obj->texture);
     return strndup(buf, length);
 }
-static struct DaiOperation texture_struct_operation = {
+static struct DaiObjOperation texture_struct_operation = {
     .get_property_func  = TextureStruct_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = TextureStruct_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 static void
 texture_destructor(DaiObjStruct* st) {
@@ -529,17 +529,17 @@ RectStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) 
     return strndup(buf, length);
 }
 
-static struct DaiOperation rect_struct_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation rect_struct_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = RectStruct_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 static DaiValue
@@ -581,17 +581,17 @@ PointStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited)
     return strndup(buf, length);
 }
 
-static struct DaiOperation point_struct_operation = {
-    .get_property_func  = dai_default_get_property,
-    .set_property_func  = dai_default_set_property,
-    .subscript_get_func = dai_default_subscript_get,
-    .subscript_set_func = dai_default_subscript_set,
+static struct DaiObjOperation point_struct_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
     .string_func        = PointStruct_String,
     .equal_func         = dai_default_equal,
     .hash_func          = dai_default_hash,
     .iter_init_func     = NULL,
     .iter_next_func     = NULL,
-    .get_method_func    = dai_default_get_method,
+    .get_method_func    = NULL,
 };
 
 static DaiValue

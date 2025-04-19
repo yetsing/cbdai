@@ -447,10 +447,13 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             }
             case DaiOpSubscript: {
                 // 从栈顶排列为 index, object (object[index])
-                DaiValue receiver = DaiVM_peek(vm, 1);
+                DaiValue receiver   = DaiVM_peek(vm, 1);
+                SubscriptGetFn func = NULL;
                 if (IS_OBJ(receiver)) {
-                    DaiValue result = AS_OBJ(receiver)->operation->subscript_get_func(
-                        vm, receiver, DaiVM_peek(vm, 0));
+                    func = AS_OBJ(receiver)->operation->subscript_get_func;
+                }
+                if (func) {
+                    DaiValue result = func(vm, receiver, DaiVM_peek(vm, 0));
                     if (IS_ERROR(result)) {
                         return AS_ERROR(result);
                     }
@@ -464,11 +467,14 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             }
             case DaiOpSubscriptSet: {
                 // 从栈顶排列为 index, object, value (object[index] = value)
-                DaiValue receiver = DaiVM_peek(vm, 1);
+                DaiValue receiver   = DaiVM_peek(vm, 1);
+                SubscriptSetFn func = NULL;
                 if (IS_OBJ(receiver)) {
-                    DaiValue result = AS_OBJ(receiver)->operation->subscript_set_func(
-                        vm, receiver, DaiVM_peek(vm, 0), DaiVM_peek(vm, 2));
-                    vm->stack_top = vm->stack_top - 3;   // 弹出 index, object, value
+                    func = AS_OBJ(receiver)->operation->subscript_set_func;
+                }
+                if (func) {
+                    DaiValue result = func(vm, receiver, DaiVM_peek(vm, 0), DaiVM_peek(vm, 2));
+                    vm->stack_top   = vm->stack_top - 3;   // 弹出 index, object, value
                     if (IS_ERROR(result)) {
                         return AS_ERROR(result);
                     }
@@ -664,8 +670,12 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             case DaiOpIterInit: {
                 uint8_t iterator_slot = READ_BYTE();
                 DaiValue val          = DaiVM_peek(vm, 0);   // 先不要 pop ，以免被 GC 回收
-                if (dai_value_is_iterable(val)) {
-                    DaiValue iterator           = AS_OBJ(val)->operation->iter_init_func(vm, val);
+                IterInitFn func       = NULL;
+                if (IS_OBJ(val)) {
+                    func = AS_OBJ(val)->operation->iter_init_func;
+                }
+                if (func) {
+                    DaiValue iterator           = func(vm, val);
                     frame->slots[iterator_slot] = iterator;
                     DaiVM_pop(vm);
                 } else {
@@ -862,9 +872,12 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 uint16_t name_index = READ_UINT16();
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = DaiVM_pop(vm);
+                GetPropertyFn func  = NULL;
                 if (IS_OBJ(receiver)) {
-                    DaiValue res =
-                        AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
+                    func = AS_OBJ(receiver)->operation->get_property_func;
+                }
+                if (func) {
+                    DaiValue res = func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
@@ -882,9 +895,12 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = DaiVM_pop(vm);
                 DaiValue value      = DaiVM_pop(vm);
+                SetPropertyFn func  = NULL;
                 if (IS_OBJ(receiver)) {
-                    DaiValue res =
-                        AS_OBJ(receiver)->operation->set_property_func(vm, receiver, name, value);
+                    func = AS_OBJ(receiver)->operation->set_property_func;
+                }
+                if (func) {
+                    DaiValue res = func(vm, receiver, name, value);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
@@ -944,8 +960,12 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = DaiVM_peek(vm, argCount);
+                GetMethodFn func    = NULL;
                 if (IS_OBJ(receiver)) {
-                    DaiValue res = AS_OBJ(receiver)->operation->get_method_func(vm, receiver, name);
+                    func = AS_OBJ(receiver)->operation->get_method_func;
+                }
+                if (func) {
+                    DaiValue res = func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
@@ -969,8 +989,9 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 int argCount        = READ_BYTE();
                 DaiValue receiver   = frame->slots[0];
-                if (IS_OBJ(receiver)) {
-                    DaiValue res = AS_OBJ(receiver)->operation->get_method_func(vm, receiver, name);
+                GetMethodFn func    = AS_OBJ(receiver)->operation->get_method_func;
+                if (func) {
+                    DaiValue res = func(vm, receiver, name);
                     if (IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
