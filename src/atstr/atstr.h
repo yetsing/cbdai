@@ -5,7 +5,7 @@
 
 typedef struct {
     const char* start;
-    int         length;
+    int length;
 } atstr_t;
 
 extern const atstr_t atstr_nil;

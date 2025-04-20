@@ -70,7 +70,7 @@ static DaiOpCodeDefinition definitions[] = {
     [DaiOpGetGlobal]    = {.name = "DaiOpGetGlobal", .operand_bytes = 2},
     [DaiOpSetGlobal]    = {.name = "DaiOpSetGlobal", .operand_bytes = 2},
 
-    [DaiOpCall] = {.name = "DaiOpCall", .operand_bytes = 1},   // 操作数是函数调用参数个数
+    [DaiOpCall]        = {.name = "DaiOpCall", .operand_bytes = 1},   // 操作数是函数调用参数个数
     [DaiOpReturnValue] = {.name = "DaiOpReturnValue", .operand_bytes = 0},
     [DaiOpReturn]      = {.name = "DaiOpReturn", .operand_bytes = 0},
 

@@ -154,13 +154,16 @@ def fmt():
         print("clang-format could not be found")
         sys.exit(1)
 
-    paths = [
-        "./*.c",
-        "atstr/*.c",
+    patterns = [
         "test/*.c", "test/*.h",
+        "src/atstr/*",
         "src/dai_*.c", "src/dai_*.h",
         "src/dai_ast/*.c", "src/dai_ast/*.h"
     ]
+    paths = []
+    # glob with patterns
+    for pattern in patterns:
+        paths.extend(pathlib.Path(".").glob(pattern))
     for path in paths:
         subprocess.check_call([clang_format_command, "-i", "--verbose", path])
 
