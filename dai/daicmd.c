@@ -2,12 +2,9 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/resource.h>
-#include <sys/time.h>
 #include <time.h>
 
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_main.h>
 
 #include "atstr/atstr.h"
 #include "dai_canvas.h"
@@ -20,6 +17,7 @@
 #include "dai_utils.h"
 #include "dai_vm.h"
 #include "dairun.h"
+#include "dai_windows.h"
 
 __attribute__((unused)) static void
 sljust(char* dst, char* s, int n) {
@@ -175,7 +173,7 @@ parse_helper(const char* input, DaiAstProgram* program) {
 }
 
 int
-daicmd_ast(int argc, const char** argv) {
+daicmd_ast(int argc, char* argv[]) {
     if (argc != 3) {
         fprintf(stderr, "Usage: %s ast <filename>\n", argv[0]);
         return 1;
@@ -205,7 +203,7 @@ daicmd_ast(int argc, const char** argv) {
 }
 
 int
-daicmd_dis(int argc, const char** argv) {
+daicmd_dis(int argc, char* argv[]) {
     if (argc != 3) {
         printf("Usage: %s dis <filename>\n", argv[0]);
         return 1;
@@ -281,7 +279,7 @@ daicmd_dis(int argc, const char** argv) {
 }
 
 int
-daicmd_runfile(int argc, const char** argv) {
+daicmd_runfile(int argc, char* argv[]) {
     if (argc != 2) {
         printf("Usage: %s <filename>\n", argv[0]);
         return 1;
@@ -311,7 +309,7 @@ END:
 }
 
 int
-Daicmd_Main(int argc, const char** argv) {
+Daicmd_Main(int argc, char* argv[]) {
     if (argc == 1) {
         return daicmd_repl();
     }

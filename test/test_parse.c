@@ -2,16 +2,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "dai_array.h"
-#include "dai_ast/dai_astexpression.h"
-#include "dai_ast/dai_asttype.h"
 #include "munit/munit.h"
+#include "cwalk.h"
 
 #include "dai_common.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
+#include "dai_windows.h"
+#include "dai_array.h"
+#include "dai_ast.h"
 
 
 // 获取当前文件所在文件夹路径
@@ -21,10 +22,9 @@ get_file_directory(char* path) {
         perror("realpath");
         assert(false);
     }
-    char* last_slash = strrchr(path, '/');
-    if (last_slash) {
-        *(last_slash + 1) = '\0';
-    }
+    size_t len = 0;
+    cwk_path_get_dirname(path, &len);
+    path[len] = '\0';
 }
 
 // #region 测试辅助函数

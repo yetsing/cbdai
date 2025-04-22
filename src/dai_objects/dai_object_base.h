@@ -75,7 +75,7 @@ dai_default_hash(DaiValue value);
 #define IS_MAP(value) dai_is_obj_type(value, DaiObjType_map)
 #define IS_MAP_ITERATOR(value) dai_is_obj_type(value, DaiObjType_mapIterator)
 #define IS_RANGE_ITERATOR(value) dai_is_obj_type(value, DaiObjType_rangeIterator)
-#define IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
+#define DAI_IS_ERROR(value) dai_is_obj_type(value, DaiObjType_error)
 #define IS_CFUNCTION(value) dai_is_obj_type(value, DaiObjType_cFunction)
 #define IS_MODULE(value) dai_is_obj_type(value, DaiObjType_module)
 #define IS_TUPLE(value) dai_is_obj_type(value, DaiObjType_tuple)

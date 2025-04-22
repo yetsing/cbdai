@@ -2,6 +2,6 @@
 #define H_DAI_DAICMD_H_
 
 int
-Daicmd_Main(int argc, const char* argv[]);
+Daicmd_Main(int argc, char* argv[]);
 
 #endif   // H_DAI_DAICMD_H_

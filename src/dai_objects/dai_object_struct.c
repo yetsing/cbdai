@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "dai_memory.h"
+#include "dai_windows.h"
 
 static char*
 DaiObjStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {

@@ -33,9 +33,17 @@ test_stringbuffer(__attribute__((unused)) const MunitParameter params[],
     sb = DaiStringBuffer_New();
     munit_assert_int(DaiStringBuffer_length(sb), ==, 0);
     DaiStringBuffer_writePointer(sb, (void*)0x3039);
+#ifdef _WIN32
+    munit_assert_int(DaiStringBuffer_length(sb), ==, 16);
+    #else
     munit_assert_int(DaiStringBuffer_length(sb), ==, 6);
+    #endif
     s = DaiStringBuffer_getAndFree(sb, NULL);
+#ifdef _WIN32
+    munit_assert_string_equal(s, "0000000000003039");
+#else
     munit_assert_string_equal(s, "0x3039");
+#endif
     free(s);
 
     sb = DaiStringBuffer_New();

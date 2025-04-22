@@ -51,10 +51,10 @@ dai_assert_value_equal(DaiValue actual, DaiValue expected) {
             }
             dai_assert_value_equal(OBJ_VAL(AS_CLOSURE(actual)->function),
                                    OBJ_VAL(AS_CLOSURE(expected)->function));
-        } else if (IS_ERROR(expected)) {
-            if (!IS_ERROR(actual)) {
+        } else if (DAI_IS_ERROR(expected)) {
+            if (!DAI_IS_ERROR(actual)) {
                 fprintf(stderr, "expected a error, but got %d\n", OBJ_TYPE(actual));
-                munit_assert_true(IS_ERROR(actual));
+                munit_assert_true(DAI_IS_ERROR(actual));
             }
             munit_assert_string_equal(AS_ERROR(actual)->message, AS_ERROR(expected)->message);
         } else if (IS_ARRAY(expected)) {

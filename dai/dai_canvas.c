@@ -11,6 +11,7 @@
 #include "dai_object.h"
 #include "dai_value.h"
 #include "dai_vm.h"
+#include "dai_windows.h"
 
 static SDL_Window* window            = NULL;
 static SDL_Renderer* renderer        = NULL;
@@ -120,7 +121,7 @@ handle_event(DaiVM* vm) {
                 int count = DaiObjTuple_length(callbacks);
                 for (int i = 0; i < count; i++) {
                     DaiValue ret = DaiVM_runCall(vm, DaiObjTuple_get(callbacks, i), 1, dai_event);
-                    if (IS_ERROR(ret)) {
+                    if (DAI_IS_ERROR(ret)) {
                         return ret;
                     }
                 }
@@ -294,11 +295,11 @@ builtin_canvas_run(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int arg
         DaiVM_pauseGC(vm);
         ret = handle_event(vm);
         DaiVM_resumeGC(vm);
-        if (IS_ERROR(ret)) {
+        if (DAI_IS_ERROR(ret)) {
             return ret;
         }
         ret = DaiVM_runCall(vm, callback, 0);
-        if (IS_ERROR(ret)) {
+        if (DAI_IS_ERROR(ret)) {
             return ret;
         }
     }

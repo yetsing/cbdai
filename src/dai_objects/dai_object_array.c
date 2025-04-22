@@ -270,7 +270,7 @@ DaiObjArray_sort(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int argc,
         int j        = i - 1;
         for (; j >= 0; --j) {
             DaiValue ret = DaiVM_runCall(vm, cmp, 2, array->elements[j], val);
-            if (IS_ERROR(ret)) {
+            if (DAI_IS_ERROR(ret)) {
                 return ret;
             }
             if (!IS_INTEGER(ret)) {

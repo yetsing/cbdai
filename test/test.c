@@ -1,7 +1,3 @@
-//
-// Created by  on 2024/5/28.
-//
-
 #include <stdio.h>
 
 #include <munit/munit.h>

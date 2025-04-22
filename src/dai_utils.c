@@ -1,73 +1,79 @@
 /*
 工具函数
 */
+#include "dai_utils.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #ifdef _WIN32
 #    include <bcrypt.h>
 #    include <windows.h>
-#    pragma comment(lib, "bcrypt.lib")
 #else
 #    include <fcntl.h>
 #    include <unistd.h>
 #endif
 
-#include "dai_utils.h"
+#include "dai_windows.h"
 
-void
-pin_time_record(TimeRecord* record) {
+void pin_time_record(TimeRecord* record) {
+#ifdef _WIN32
+    /* 获取进程时间 */
+    GetProcessTimes(GetCurrentProcess(),
+        &record->creation_time,
+        &record->exit_time,
+        &record->kernel_time,
+        &record->user_time);
+
+    /* 获取高精度实时时钟 */
+    QueryPerformanceCounter(&record->perf_counter);
+#else
+    /* UNIX 系统实现 */
     getrusage(RUSAGE_SELF, &record->usage);
-    clock_gettime(CLOCK_MONOTONIC, &record->tv);
+    clock_gettime(CLOCK_MONOTONIC, &record->real_time);
+#endif
 }
 
-void
-print_used_time(TimeRecord* start, TimeRecord* end) {
-    // 计算 wall time
-    long wall_seconds     = end->tv.tv_sec - start->tv.tv_sec;
-    long wall_nanoseconds = end->tv.tv_nsec - start->tv.tv_nsec;
+#ifdef _WIN32
+static double filetime_to_seconds(const FILETIME* ft) {
+    ULARGE_INTEGER uli;
+    uli.LowPart = ft->dwLowDateTime;
+    uli.HighPart = ft->dwHighDateTime;
+    return uli.QuadPart / 1e7;  // 100ns单位转换为秒
+}
+#endif
 
-    struct timeval user_tv, sys_tv;
-    // 计算 user time
-    timersub(&end->usage.ru_utime, &start->usage.ru_utime, &user_tv);
-    // 计算 sys time
-    timersub(&end->usage.ru_stime, &start->usage.ru_stime, &sys_tv);
+void print_used_time(TimeRecord* start, TimeRecord* end) {
+#ifdef _WIN32
+    /* 计算CPU时间 */
+    double user = filetime_to_seconds(&end->user_time) -
+                filetime_to_seconds(&start->user_time);
+    double kernel = filetime_to_seconds(&end->kernel_time) -
+                  filetime_to_seconds(&start->kernel_time);
 
-    const char* unit;
-    unsigned long wall_ts = 0;
-    unsigned long sys_ts  = 0;
-    unsigned long user_ts = 0;
-    if (wall_seconds > 0) {
-        unit    = "s";
-        wall_ts = wall_seconds;
-        sys_ts  = sys_tv.tv_sec;
-        user_ts = user_tv.tv_sec;
-    } else if (wall_nanoseconds > 1000 * 1000) {
-        unit    = "ms";
-        wall_ts = wall_seconds * 1000 + wall_nanoseconds / 1000 / 1000;
-        sys_ts  = sys_tv.tv_sec * 1000 + sys_tv.tv_usec / 1000;
-        user_ts = user_tv.tv_sec * 1000 + user_tv.tv_usec / 1000;
-    } else if (wall_nanoseconds > 1000) {
-        unit    = "µs";
-        wall_ts = wall_seconds * 1000 * 1000 + wall_nanoseconds / 1000;
-        sys_ts  = sys_tv.tv_sec * 1000 * 1000 + sys_tv.tv_usec;
-        user_ts = user_tv.tv_sec * 1000 * 1000 + user_tv.tv_usec;
-    } else {
-        unit    = "ns";
-        wall_ts = wall_seconds * 1000 * 1000 * 1000 + wall_nanoseconds;
-        sys_ts  = sys_tv.tv_sec * 1000 * 1000 * 1000 + sys_tv.tv_usec * 1000;
-        user_ts = user_tv.tv_sec * 1000 * 1000 * 1000 + user_tv.tv_usec * 1000;
-    }
-    printf("CPU times: user %ld%s, system %ld%s, total %ld%s\n",
-           user_ts,
-           unit,
-           sys_ts,
-           unit,
-           user_ts + sys_ts,
-           unit);
-    printf("Wall times: %ld%s\n", wall_ts, unit);
+    /* 计算真实时间 */
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+    double real_time = (double)(end->perf_counter.QuadPart -
+                       start->perf_counter.QuadPart) /
+                       freq.QuadPart;
+
+    printf("Real: %.3fs | User: %.3fs | System: %.3fs\n",
+           real_time, user, kernel);
+#else
+    /* UNIX 系统计算 */
+    double user = (end->usage.ru_utime.tv_sec - start->usage.ru_utime.tv_sec) +
+                (end->usage.ru_utime.tv_usec - start->usage.ru_utime.tv_usec) / 1e6;
+    double system = (end->usage.ru_stime.tv_sec - start->usage.ru_stime.tv_sec) +
+                  (end->usage.ru_stime.tv_usec - start->usage.ru_stime.tv_usec) / 1e6;
+
+    double real = (end->real_time.tv_sec - start->real_time.tv_sec) +
+                (end->real_time.tv_nsec - start->real_time.tv_nsec) / 1e9;
+
+    printf("Real: %.3fs | User: %.3fs | System: %.3fs\n",
+           real, user, system);
+#endif
 }
 
 

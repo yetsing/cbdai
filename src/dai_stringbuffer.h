@@ -1,6 +1,6 @@
 #ifndef C759BE44_71CA_4041_B259_9DC171208F59
 #define C759BE44_71CA_4041_B259_9DC171208F59
-#include <stdlib.h>
+#include <stdint.h>
 
 typedef struct _DaiStringBuffer DaiStringBuffer;
 

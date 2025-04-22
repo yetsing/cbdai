@@ -1238,8 +1238,8 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->start_line,
                                             expr->start_column,
-                                            "too many arguments to call, got %zu",
-                                            expr->arguments_count);
+                                            "too many arguments to call, got %d",
+                                            (int)expr->arguments_count);
             }
             switch (expr->function->type) {
                 case DaiAstType_DotExpression: {

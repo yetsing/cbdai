@@ -6,11 +6,13 @@
 #include <unistd.h>
 
 #include "munit/munit.h"
+#include "cwalk.h"
 
 #include "dai_codecs.h"
 #include "dai_common.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
+#include "dai_windows.h"
 
 // #region tokenize 辅助函数
 
@@ -21,10 +23,9 @@ get_file_directory(char* path) {
         perror("realpath");
         assert(false);
     }
-    char* last_slash = strrchr(path, '/');
-    if (last_slash) {
-        *(last_slash + 1) = '\0';
-    }
+    size_t len = 0;
+    cwk_path_get_dirname(path, &len);
+    path[len] = '\0';
 }
 
 void

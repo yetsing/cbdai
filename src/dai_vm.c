@@ -207,7 +207,7 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
                 DaiValue result         = DaiObjClass_call(
                     (DaiObjClass*)AS_OBJ(callee), vm, argCount, vm->stack_top - argCount);
                 vm->stack_top = new_stack_top;
-                if (IS_ERROR(result)) {
+                if (DAI_IS_ERROR(result)) {
                     return AS_ERROR(result);
                 }
                 DaiVM_push(vm, result);
@@ -228,7 +228,7 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
                     func(vm, DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
                 DaiVM_resumeGC(vm);
                 vm->stack_top = vm->stack_top - argCount - 1;
-                if (IS_ERROR(result)) {
+                if (DAI_IS_ERROR(result)) {
                     return AS_ERROR(result);
                 }
                 DaiVM_push(vm, result);
@@ -244,7 +244,7 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
                 const BuiltinFn func  = AS_CFUNCTION(callee)->wrapper;
                 const DaiValue result = func(vm, callee, argCount, vm->stack_top - argCount);
                 vm->stack_top         = vm->stack_top - argCount - 1;
-                if (IS_ERROR(result)) {
+                if (DAI_IS_ERROR(result)) {
                     return AS_ERROR(result);
                 }
                 DaiVM_push(vm, result);
@@ -454,7 +454,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 if (func) {
                     DaiValue result = func(vm, receiver, DaiVM_peek(vm, 0));
-                    if (IS_ERROR(result)) {
+                    if (DAI_IS_ERROR(result)) {
                         return AS_ERROR(result);
                     }
                     vm->stack_top = vm->stack_top - 2;   // 弹出 index, object
@@ -475,7 +475,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 if (func) {
                     DaiValue result = func(vm, receiver, DaiVM_peek(vm, 0), DaiVM_peek(vm, 2));
                     vm->stack_top   = vm->stack_top - 3;   // 弹出 index, object, value
-                    if (IS_ERROR(result)) {
+                    if (DAI_IS_ERROR(result)) {
                         return AS_ERROR(result);
                     }
                 } else {
@@ -878,7 +878,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 if (func) {
                     DaiValue res = func(vm, receiver, name);
-                    if (IS_ERROR(res)) {
+                    if (DAI_IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
                     DaiVM_push(vm, res);
@@ -901,7 +901,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 if (func) {
                     DaiValue res = func(vm, receiver, name, value);
-                    if (IS_ERROR(res)) {
+                    if (DAI_IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
                 } else {
@@ -917,7 +917,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiObjString* name  = AS_STRING(chunk->constants.values[name_index]);
                 DaiValue receiver   = frame->slots[0];
                 DaiValue res = AS_OBJ(receiver)->operation->get_property_func(vm, receiver, name);
-                if (IS_ERROR(res)) {
+                if (DAI_IS_ERROR(res)) {
                     return AS_ERROR(res);
                 }
                 DaiVM_push(vm, res);
@@ -929,7 +929,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiValue receiver   = frame->slots[0];
                 DaiValue res        = AS_OBJ(receiver)->operation->set_property_func(
                     vm, receiver, name, DaiVM_pop(vm));
-                if (IS_ERROR(res)) {
+                if (DAI_IS_ERROR(res)) {
                     return AS_ERROR(res);
                 }
                 break;
@@ -966,7 +966,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 if (func) {
                     DaiValue res = func(vm, receiver, name);
-                    if (IS_ERROR(res)) {
+                    if (DAI_IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
                     DaiObjError* err = DaiVM_callValue(vm, res, argCount, receiver);
@@ -992,7 +992,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 GetMethodFn func    = AS_OBJ(receiver)->operation->get_method_func;
                 if (func) {
                     DaiValue res = func(vm, receiver, name);
-                    if (IS_ERROR(res)) {
+                    if (DAI_IS_ERROR(res)) {
                         return AS_ERROR(res);
                     }
                     DaiObjError* err = DaiVM_callValue(vm, res, argCount, receiver);
@@ -1017,7 +1017,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiValue receiver   = frame->slots[0];
                 DaiValue method;
                 DaiObj_get_method(vm, frame->function->superclass, receiver, name, &method);
-                if (IS_ERROR(method)) {
+                if (DAI_IS_ERROR(method)) {
                     return AS_ERROR(method);
                 }
                 DaiObjError* err = DaiVM_callValue(vm, method, argCount, receiver);
@@ -1098,25 +1098,25 @@ DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module) {
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, module->filename->chars);
         DaiSyntaxError_pprint(err, text);
-        goto ERROR;
+        goto DAI_LOAD_MODULE_ERROR;
     }
     err = dai_parse(&tlist, &program);
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, module->filename->chars);
         DaiSyntaxError_pprint(err, text);
-        goto ERROR;
+        goto DAI_LOAD_MODULE_ERROR;
     }
     err = dai_compile(&program, module, vm);
     if (err != NULL) {
         DaiCompileError_pprint(err, text);
-        goto ERROR;
+        goto DAI_LOAD_MODULE_ERROR;
     }
     DaiTokenList_reset(&tlist);
     DaiAstProgram_reset(&program);
     DaiObjMap_cset(vm->modules, OBJ_VAL(module->filename), OBJ_VAL(module));
     return DaiVM_runModule(vm, module);
 
-ERROR:
+DAI_LOAD_MODULE_ERROR:
     if (err != NULL) {
         DaiError_free(err);
     }

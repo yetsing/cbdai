@@ -204,7 +204,7 @@ daicall_execute(Dai* dai) {
         abort();
     }
     DaiValue ret = DaiVM_runCall2(&dai->vm, OBJ_VAL(dai->function), dai->argc);
-    if (IS_ERROR(ret)) {
+    if (DAI_IS_ERROR(ret)) {
         DaiVM_printError(&dai->vm, AS_ERROR(ret));
         abort();
     }

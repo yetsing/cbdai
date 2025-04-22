@@ -274,14 +274,14 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     if (IS_BUILTINFN(instance->klass->init_fn)) {
         const BuiltinFn func  = AS_BUILTINFN(instance->klass->init_fn)->function;
         const DaiValue result = func(vm, OBJ_VAL(instance), argc, argv);
-        if (IS_ERROR(result)) {
+        if (DAI_IS_ERROR(result)) {
             return result;
         }
     } else {
         // 设置此次调用的实例
         vm->stack_top[-argc - 1] = OBJ_VAL(instance);
         DaiValue res             = DaiVM_runCall2(vm, instance->klass->init_fn, argc);
-        if (IS_ERROR(res)) {
+        if (DAI_IS_ERROR(res)) {
             return res;
         }
     }

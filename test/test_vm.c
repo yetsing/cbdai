@@ -2,8 +2,18 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
+#include <assert.h>
+
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dirent.h>
+#include <sys/stat.h>
+#endif
 
 #include "munit/munit.h"
+#include "cwalk.h"
 
 #include "dai_compile.h"
 #include "dai_debug.h"
@@ -15,6 +25,8 @@
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
+#include "dai_windows.h"
+
 
 // 获取当前文件所在文件夹路径
 static void
@@ -23,10 +35,9 @@ get_file_directory(char* path) {
         perror("realpath");
         assert(false);
     }
-    char* last_slash = strrchr(path, '/');
-    if (last_slash) {
-        *(last_slash + 1) = '\0';
-    }
+    size_t len = 0;
+    cwk_path_get_dirname(path, &len);
+    path[len] = '\0';
 }
 
 static DaiObjError*
@@ -115,7 +126,7 @@ run_vm_tests(const DaiVMTestCase* tests, const size_t count) {
 #endif
         DaiVM vm;
         DaiVM_init(&vm);
-        if (IS_ERROR(tests[i].expected)) {
+        if (DAI_IS_ERROR(tests[i].expected)) {
             DaiObjError* got_err = interpret(&vm, tests[i].input, "<test-file>");
             munit_assert_not_null(got_err);
             dai_assert_value_equal(OBJ_VAL(got_err), tests[i].expected);
@@ -246,27 +257,63 @@ run_vm_test_files(const char* test_files[], const size_t count) {
     }
 }
 
-static void
-run_vm_test_directory(const char* directory) {
-    DIR* dir = opendir(directory);
-    if (dir == NULL) {
-        printf("could not open directory: %s\n", directory);
-        perror("opendir");
+static void run_vm_test_directory(const char* directory) {
+#ifdef _WIN32
+    /* Windows 实现 */
+    WIN32_FIND_DATA find_data;
+    char search_path[MAX_PATH];
+
+    // 构造搜索路径模式: "directory\\*.dai"
+    snprintf(search_path, sizeof(search_path), "%s\\*.dai", directory);
+
+    HANDLE hFind = FindFirstFileA(search_path, &find_data);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        DWORD err = GetLastError();
+        if (err != ERROR_FILE_NOT_FOUND) {
+            printf("Could not open directory: %s (Error %lu)\n", directory, err);
+        }
+        return;
     }
-    munit_assert_not_null(dir);
+
+    do {
+        if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            char path[MAX_PATH];
+            snprintf(path, sizeof(path), "%s\\%s", directory, find_data.cFileName);
+            run_vm_test_file_with_number(path);
+        }
+    } while (FindNextFileA(hFind, &find_data));
+
+    FindClose(hFind);
+
+#else
+    /* Linux/macOS 实现 */
+    DIR* dir = opendir(directory);
+    if (!dir) {
+        printf("Could not open directory: %s\n", directory);
+        perror("opendir");
+        return;
+    }
+
     struct dirent* entry;
-    while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_type == DT_REG) {
-            char* filename = entry->d_name;
-            if (strstr(filename, ".dai") != NULL) {
-                char path[PATH_MAX];
-                strcpy(path, directory);
-                strcat(path, filename);
+    while ((entry = readdir(dir)) {
+        // 跳过隐藏文件和目录
+        if (entry->d_name[0] == '.') continue;
+
+        // 组合完整路径
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", directory, entry->d_name);
+
+        // 精确判断文件类型
+        struct stat st;
+        if (stat(path, &st) == 0 && S_ISREG(st.st_mode)) {
+            if (strstr(entry->d_name, ".dai") != NULL) {
                 run_vm_test_file_with_number(path);
             }
         }
     }
+
     closedir(dir);
+#endif
 }
 
 static MunitResult

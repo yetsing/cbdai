@@ -12,6 +12,7 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 #include "dai_tokenize.h"
+#include "dai_windows.h"
 
 static const char* DaiTokenTypeStrings[] = {
     "DaiTokenType_illegal",     "DaiTokenType_eof",         "DaiTokenType_ident",

@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "./atstr.h"
+#include "dai_windows.h"
 
 const atstr_t atstr_nil = {.start = NULL, .length = 0};
 

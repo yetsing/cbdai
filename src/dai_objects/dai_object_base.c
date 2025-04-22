@@ -5,6 +5,7 @@
 
 #include "dai_memory.h"
 #include "dai_vm.h"
+#include "dai_windows.h"
 
 
 char*

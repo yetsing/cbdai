@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <limits.h>
 #include <math.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -18,6 +17,7 @@
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
+#include "dai_windows.h"
 
 
 // #region 内置函数

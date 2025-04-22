@@ -5,13 +5,24 @@
 #define AECB9C05_1769_47C9_99B4_8EB1E4235629
 
 #include <stdint.h>
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/resource.h>
 #include <sys/time.h>
-#include <time.h>
+#endif
 
 typedef struct {
+#ifdef _WIN32
+    FILETIME creation_time;
+    FILETIME exit_time;
+    FILETIME kernel_time;
+    FILETIME user_time;
+    LARGE_INTEGER perf_counter;
+#else
     struct rusage usage;
-    struct timespec tv;
+    struct timespec real_time;
+#endif
 } TimeRecord;
 
 void

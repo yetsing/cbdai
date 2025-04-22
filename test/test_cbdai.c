@@ -4,8 +4,10 @@
 #include <stdio.h>
 
 #include "munit/munit.h"
+#include "cwalk.h"
 
 #include "dai.h"
+#include "dai_windows.h"
 
 
 // 获取当前文件所在文件夹路径
@@ -15,10 +17,9 @@ get_file_directory(char* path) {
         perror("realpath");
         assert(false);
     }
-    char* last_slash = strrchr(path, '/');
-    if (last_slash) {
-        *(last_slash + 1) = '\0';
-    }
+    size_t len = 0;
+    cwk_path_get_dirname(path, &len);
+    path[len] = '\0';
 }
 
 static MunitResult
