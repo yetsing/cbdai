@@ -247,7 +247,12 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
     DaiObjClass_define_class_field(klass, STRING_NAME("__name__"), OBJ_VAL(klass->name), true);
     DaiObjClass_define_class_field(
         klass, STRING_NAME("__fields__"), OBJ_VAL(klass->define_field_names), true);
+#ifdef _WIN32
+    DaiTable_set(&klass->methods, name, OBJ_VAL(&builtin_init));
+    klass->init_fn = OBJ_VAL(&builtin_init);
+#else
     DaiObjClass_define_method(klass, STRING_NAME("__init__"), OBJ_VAL(&builtin_init));
+#endif
     // 定义内置实例属性
     DaiObjClass_define_field(klass, STRING_NAME("__class__"), OBJ_VAL(klass), true);
     return klass;

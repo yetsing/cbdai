@@ -11,12 +11,12 @@ include_directories(src/hashmap.c)
 add_compile_options(-Wno-unused-function -Werror -Wall)
 
 # 保存原全局设置
-set(original_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
+#set(original_BUILD_SHARED_LIBS ${BUILD_SHARED_LIBS})
 # 强制第三方库编译为静态库
 set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/cwalk)
 # 恢复全局设置
-set(BUILD_SHARED_LIBS ${original_BUILD_SHARED_LIBS})
+#set(BUILD_SHARED_LIBS ${original_BUILD_SHARED_LIBS})
 
 file(GLOB_RECURSE MAIN_SRC ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 file(GLOB_RECURSE DAI_SRC ${CMAKE_CURRENT_SOURCE_DIR}/dai/*.c)
@@ -65,7 +65,7 @@ if(WIN32)
 else()
     target_compile_options(dai PRIVATE -O3 -flto)
     endif()
-target_link_libraries(dai PRIVATE m cwalk SDL3::SDL3 SDL3_image::SDL3_image)
+target_link_libraries(dai PRIVATE m cwalk SDL3_image::SDL3_image SDL3::SDL3)
 
 if(WIN32)
     if(MSVC)

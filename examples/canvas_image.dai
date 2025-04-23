@@ -1,38 +1,56 @@
 // canvas_enum.dai 包含 canvas 的枚举值，包括键盘 code 和鼠标 button
 con canvas_enum = import("canvas_enum.dai");
 
+var loop = 0;
+var index = 0;
+
 fn draw() {
+    loop += 1;
+    if (loop % 30 == 0) {
+        index = (index + 1) % 4;
+    }
+
+    // canvas.clear() 清空 canvas 的内容
+    canvas.clear();
+
     var script_dir = Path(__file__).parent();
     var img_path = script_dir.joinpath("example.jpeg");
     // canvas.loadImage(path) 加载图片
     var img = canvas.loadImage(img_path.string());
     // ref: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/drawImage
-    // 参考浏览器的 canvas drawImage API ，有三种用法
-    // canvas.drawImage(image, dx, dy) 绘制图片
-    canvas.drawImage(img, 0, 0);
-
-    // canvas.drawImage(image, dx, dy, dWidth, dHeight) 绘制图片
-    // canvas.drawImage(img, 0, 0, img.width, img.height);
-
-    // canvas.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) 绘制图片
-    // canvas.drawImage(img, 0, 0, img.width, img.height, 0, 0, img.width / 2, img.height / 2);
-
-    // drawImageEx(image, srcrect, dstrect, angle, center, flip)
-    //   image 图片
-    //   srcrect 源矩形区域
-    //   dstrect 目标矩形区域
-    //   angle 旋转角度
-    //   center 旋转中心
-    //   flip 翻转方式， canvas_enum.FlipMode
-    // var srcrect = canvas.Rect(0, 0, img.width, img.height);
-    // var dstrect = canvas.Rect(0, 0, img.width, img.height);
-    // var angle = 45;
-    // var center = canvas.Point(img.width / 2, img.height / 2);
-    // var flip = canvas_enum.FlipMode.none;
-    // canvas.drawImageEx(img, srcrect, dstrect, angle, center, flip);
+    // 参考浏览器的 canvas drawImage API ，有三种传参
+    if (index == 0) {
+        // canvas.drawImage(image, dx, dy) 绘制图片
+        canvas.drawImage(img, 0, 0);
+    }
+    elif (index == 1) {
+        // canvas.drawImage(image, dx, dy, dWidth, dHeight) 绘制图片
+        canvas.drawImage(img, 50, 50, img.width, img.height);
+    }
+    elif (index == 2) {
+        // canvas.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) 绘制图片
+        canvas.drawImage(img, 50, 50, img.width, img.height, 100, 100, img.width, img.height);
+    }
+    elif (index == 3) {
+        // drawImageEx(image, srcrect, dstrect, angle, center, flip)
+        //   image 图片
+        //   srcrect 源矩形区域
+        //   dstrect 目标矩形区域
+        //   angle 旋转角度
+        //   center 旋转中心
+        //   flip 翻转方式， canvas_enum.FlipMode
+        var srcrect = canvas.Rect(0, 0, img.width, img.height);
+        var dstrect = canvas.Rect(0, 0, img.width, img.height);
+        var angle = 45;
+        var center = canvas.Point(img.width / 2, img.height / 2);
+        var flip = canvas_enum.FlipMode.none;
+        canvas.drawImageEx(img, srcrect, dstrect, angle, center, flip);
+    }
 
     // canvas.present() 展示 canvas 的内容
     canvas.present();
+
+    time.sleep(1/30.0);
 
     // example.jpeg 来源
     // <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
