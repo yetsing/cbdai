@@ -2,17 +2,17 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "munit/munit.h"
 #include "cwalk.h"
+#include "munit/munit.h"
 
+#include "dai_array.h"
+#include "dai_ast.h"
 #include "dai_common.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_windows.h"
-#include "dai_array.h"
-#include "dai_ast.h"
 
 
 // 获取当前文件所在文件夹路径

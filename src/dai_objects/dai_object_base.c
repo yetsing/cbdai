@@ -5,7 +5,7 @@
 
 #include "dai_memory.h"
 #include "dai_vm.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 
 char*
@@ -35,7 +35,7 @@ allocate_object(DaiVM* vm, size_t size, DaiObjType type) {
     object->operation = NULL;
     vm->objects       = object;
 #ifdef DEBUG_LOG_GC
-    dai_log("%p allocate %zu for %d\n", (void*)object, size, type);
+    dai_loggc("%p allocate %zu for %d\n", (void*)object, size, type);
 
 #endif
 

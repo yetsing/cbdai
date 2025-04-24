@@ -1,10 +1,10 @@
 #include "dai_object_struct.h"
 
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "dai_memory.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 static char*
 DaiObjStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {

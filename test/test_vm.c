@@ -1,19 +1,19 @@
+#include <assert.h>
 #include <dirent.h>
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 #ifdef _WIN32
-#include <windows.h>
+#    include <windows.h>
 #else
-#include <dirent.h>
-#include <sys/stat.h>
+#    include <dirent.h>
+#    include <sys/stat.h>
 #endif
 
-#include "munit/munit.h"
 #include "cwalk.h"
+#include "munit/munit.h"
 
 #include "dai_compile.h"
 #include "dai_debug.h"
@@ -25,7 +25,7 @@
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 
 // 获取当前文件所在文件夹路径
@@ -257,7 +257,8 @@ run_vm_test_files(const char* test_files[], const size_t count) {
     }
 }
 
-static void run_vm_test_directory(const char* directory) {
+static void
+run_vm_test_directory(const char* directory) {
 #ifdef _WIN32
     /* Windows 实现 */
     WIN32_FIND_DATA find_data;
@@ -295,7 +296,7 @@ static void run_vm_test_directory(const char* directory) {
     }
 
     struct dirent* entry;
-    while ((entry = readdir(dir)) {
+    while ((entry = readdir(dir))) {
         // 跳过隐藏文件和目录
         if (entry->d_name[0] == '.') continue;
 

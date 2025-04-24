@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "./atstr.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 const atstr_t atstr_nil = {.start = NULL, .length = 0};
 

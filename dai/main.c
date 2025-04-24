@@ -4,6 +4,6 @@
 #include "daicmd.h"
 
 int
-main(int argc,  char* argv[]) {
+main(int argc, char* argv[]) {
     return Daicmd_Main(argc, argv);
 }

@@ -7,7 +7,7 @@
 #include "dai_object.h"
 #include "dai_utils.h"
 #include "dai_vm.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 
 DaiObjError*

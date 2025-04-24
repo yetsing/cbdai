@@ -12,7 +12,7 @@
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 #include "dai_tokenize.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 static const char* DaiTokenTypeStrings[] = {
     "DaiTokenType_illegal",     "DaiTokenType_eof",         "DaiTokenType_ident",

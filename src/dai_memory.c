@@ -50,9 +50,11 @@ reallocate(void* pointer, size_t old_size, size_t new_size) {
 static void
 vm_free_object(DaiVM* vm, DaiObj* object) {
 #ifdef DEBUG_LOG_GC
-    printf("%p free type %d\n", (void*)object, object->type);
+    dai_loggc("%p free type %d\n", (void*)object, object->type);
 #endif
-    switch (object->type) {
+    DaiObjType tp = object->type;
+    object->type  = 0xFF;
+    switch (tp) {
         case DaiObjType_struct: {
             DaiObjStruct* obj = (DaiObjStruct*)object;
             DaiObjStruct_Free(vm, obj);
@@ -164,9 +166,7 @@ markObject(DaiVM* vm, DaiObj* object) {
         return;
     }
 #ifdef DEBUG_LOG_GC
-    printf("%p mark ", (void*)object);
-    dai_print_value(OBJ_VAL(object));
-    printf("\n");
+    dai_loggc("%p mark %s\n", (void*)object, dai_object_ts(OBJ_VAL(object)));
 #endif
     object->is_marked = true;
     if (vm->grayCapacity < vm->grayCount + 1) {
@@ -205,9 +205,7 @@ markTable(DaiVM* vm, DaiTable* table) {
 static void
 blackenObject(DaiVM* vm, DaiObj* object) {
 #ifdef DEBUG_LOG_GC
-    printf("%p blacken ", (void*)object);
-    dai_print_value(OBJ_VAL(object));
-    printf("\n");
+    dai_loggc("%p blacken %s\n", (void*)object, dai_object_ts(OBJ_VAL(object)));
 #endif
     switch (object->type) {
         case DaiObjType_struct: {
@@ -399,7 +397,7 @@ collectGarbage(DaiVM* vm) {
         return;
     }
 #ifdef DEBUG_LOG_GC
-    printf("-- gc begin\n");
+    dai_loggc("-- gc begin\n");
     size_t before = vm->bytesAllocated;
 #endif
     markRoots(vm);
@@ -410,12 +408,12 @@ collectGarbage(DaiVM* vm) {
     vm->nextGC = vm->bytesAllocated * GC_HEAP_GROW_FACTOR;
 
 #ifdef DEBUG_LOG_GC
-    printf("-- gc end\n");
-    printf("   collected %zu bytes (from %zu to %zu) next at %zu\n",
-           before - vm->bytesAllocated,
-           before,
-           vm->bytesAllocated,
-           vm->nextGC);
+    dai_loggc("-- gc end\n");
+    dai_loggc("   collected %zu bytes (from %zu to %zu) next at %zu\n",
+              before - vm->bytesAllocated,
+              before,
+              vm->bytesAllocated,
+              vm->nextGC);
 #endif
 }
 

@@ -1,6 +1,7 @@
 #include "dai_objects/dai_object_array.h"
 
 #include <stdarg.h>
+#include <stdio.h>
 
 #include "dai_memory.h"
 #include "dai_stringbuffer.h"

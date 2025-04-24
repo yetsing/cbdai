@@ -15,6 +15,7 @@
 #define unreachable() assert(false)
 #define dai_log(...) printf(__VA_ARGS__)
 #define dai_error(fmt, ...) fprintf(stderr, fmt " [%s:%d]", ##__VA_ARGS__, __FILE__, __LINE__)
+#define dai_loggc(fmt, ...) fprintf(stdout, fmt, ##__VA_ARGS__)
 
 // #define DEBUG_TRACE_EXECUTION
 // 反汇编展示变量名

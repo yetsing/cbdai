@@ -5,8 +5,8 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "munit/munit.h"
 #include "cwalk.h"
+#include "munit/munit.h"
 
 #include "dai_codecs.h"
 #include "dai_common.h"

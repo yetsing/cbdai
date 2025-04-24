@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "munit/munit.h"
 #include "cwalk.h"
+#include "munit/munit.h"
 
 #include "dai.h"
 #include "dai_windows.h"

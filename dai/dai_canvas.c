@@ -21,6 +21,7 @@ static DaiObjModule* canvas_module   = NULL;
 static const char* texture_name      = "canvas.Texture";
 static const char* rect_struct_name  = "canvas.Rect";
 static const char* point_struct_name = "canvas.Point";
+static bool init_done                = false;
 
 #define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
 #define CHECK_INIT()                                                       \
@@ -164,10 +165,22 @@ builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int ar
             vm, "canvas.init() expected integer arguments, but got %s", dai_value_ts(argv[0]));
         return OBJ_VAL(err);
     }
-    if (window != NULL) {
+    if (init_done || window != NULL) {
         DaiObjError* err = DaiObjError_Newf(vm, "canvas.init() already called");
         return OBJ_VAL(err);
     }
+    if (!SDL_SetAppMetadata("Dai Canvas", "0.0.1", "com.dai.canvas")) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not set app metadata! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not be initialized! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    init_done = true;
+
     int width  = AS_INTEGER(argv[0]);
     int height = AS_INTEGER(argv[1]);
 
@@ -846,18 +859,6 @@ create_canvas_module(DaiVM* vm) {
 
 int
 dai_canvas_init(DaiVM* vm) {
-    if (!SDL_SetAppMetadata("Dai Canvas", "0.0.1", "com.dai.canvas")) {
-        fprintf(stderr, "SDL could not set app metadata!\n");
-        return 1;
-    }
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        fprintf(stderr,
-                "SDL could not be initialized!\n"
-                "SDL_Error: %s\n",
-                SDL_GetError());
-        return 1;
-    }
-
     DaiObjModule* module = create_canvas_module(vm);
     DaiVM_addBuiltin(vm, module_name, OBJ_VAL(module));
     return 0;
@@ -865,6 +866,9 @@ dai_canvas_init(DaiVM* vm) {
 
 void
 dai_canvas_quit(DaiVM* vm) {
+    if (!init_done) {
+        return;
+    }
     if (renderer != NULL) {
         SDL_DestroyRenderer(renderer);
         renderer = NULL;

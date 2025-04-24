@@ -5,7 +5,7 @@
 
 #include "dai_error.h"
 #include "dai_malloc.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 static char*
 get_line_at(const char* s, int lineno) {

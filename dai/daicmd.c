@@ -16,8 +16,9 @@
 #include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_vm.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 #include "dairun.h"
-#include "dai_windows.h"
+
 
 __attribute__((unused)) static void
 sljust(char* dst, char* s, int n) {

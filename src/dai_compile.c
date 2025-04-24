@@ -164,7 +164,7 @@ typedef struct {
 #ifdef DISASSEMBLE_VARIABLE_NAME
 void
 DaiCompiler_addName(const DaiCompiler* compiler, const char* name, int back) {
-    DaiChunk* chunk = &(compiler->chunk);
+    DaiChunk* chunk = compiler->chunk;
     DaiChunk_addName(chunk, name, back);
 }
 #    define ADD_GLOBAL_NAME(compiler, name) DaiCompiler_addName((compiler), (name), 3)

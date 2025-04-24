@@ -10,21 +10,24 @@
 #ifdef _WIN32
 #    include <bcrypt.h>
 #    include <windows.h>
+
 #else
 #    include <fcntl.h>
+#    include <time.h>
 #    include <unistd.h>
 #endif
 
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
-void pin_time_record(TimeRecord* record) {
+void
+pin_time_record(TimeRecord* record) {
 #ifdef _WIN32
     /* 获取进程时间 */
     GetProcessTimes(GetCurrentProcess(),
-        &record->creation_time,
-        &record->exit_time,
-        &record->kernel_time,
-        &record->user_time);
+                    &record->creation_time,
+                    &record->exit_time,
+                    &record->kernel_time,
+                    &record->user_time);
 
     /* 获取高精度实时时钟 */
     QueryPerformanceCounter(&record->perf_counter);
@@ -36,43 +39,41 @@ void pin_time_record(TimeRecord* record) {
 }
 
 #ifdef _WIN32
-static double filetime_to_seconds(const FILETIME* ft) {
+static double
+filetime_to_seconds(const FILETIME* ft) {
     ULARGE_INTEGER uli;
-    uli.LowPart = ft->dwLowDateTime;
+    uli.LowPart  = ft->dwLowDateTime;
     uli.HighPart = ft->dwHighDateTime;
-    return uli.QuadPart / 1e7;  // 100ns单位转换为秒
+    return uli.QuadPart / 1e7;   // 100ns单位转换为秒
 }
 #endif
 
-void print_used_time(TimeRecord* start, TimeRecord* end) {
+void
+print_used_time(TimeRecord* start, TimeRecord* end) {
 #ifdef _WIN32
     /* 计算CPU时间 */
-    double user = filetime_to_seconds(&end->user_time) -
-                filetime_to_seconds(&start->user_time);
-    double kernel = filetime_to_seconds(&end->kernel_time) -
-                  filetime_to_seconds(&start->kernel_time);
+    double user = filetime_to_seconds(&end->user_time) - filetime_to_seconds(&start->user_time);
+    double kernel =
+        filetime_to_seconds(&end->kernel_time) - filetime_to_seconds(&start->kernel_time);
 
     /* 计算真实时间 */
     LARGE_INTEGER freq;
     QueryPerformanceFrequency(&freq);
-    double real_time = (double)(end->perf_counter.QuadPart -
-                       start->perf_counter.QuadPart) /
-                       freq.QuadPart;
+    double real_time =
+        (double)(end->perf_counter.QuadPart - start->perf_counter.QuadPart) / freq.QuadPart;
 
-    printf("Real: %.3fs | User: %.3fs | System: %.3fs\n",
-           real_time, user, kernel);
+    printf("Real: %.3fs | User: %.3fs | System: %.3fs\n", real_time, user, kernel);
 #else
     /* UNIX 系统计算 */
     double user = (end->usage.ru_utime.tv_sec - start->usage.ru_utime.tv_sec) +
-                (end->usage.ru_utime.tv_usec - start->usage.ru_utime.tv_usec) / 1e6;
+                  (end->usage.ru_utime.tv_usec - start->usage.ru_utime.tv_usec) / 1e6;
     double system = (end->usage.ru_stime.tv_sec - start->usage.ru_stime.tv_sec) +
-                  (end->usage.ru_stime.tv_usec - start->usage.ru_stime.tv_usec) / 1e6;
+                    (end->usage.ru_stime.tv_usec - start->usage.ru_stime.tv_usec) / 1e6;
 
     double real = (end->real_time.tv_sec - start->real_time.tv_sec) +
-                (end->real_time.tv_nsec - start->real_time.tv_nsec) / 1e9;
+                  (end->real_time.tv_nsec - start->real_time.tv_nsec) / 1e9;
 
-    printf("Real: %.3fs | User: %.3fs | System: %.3fs\n",
-           real, user, system);
+    printf("Real: %.3fs | User: %.3fs | System: %.3fs\n", real, user, system);
 #endif
 }
 

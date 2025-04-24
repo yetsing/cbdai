@@ -188,6 +188,9 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
     frame->globals         = function->module->globals;
     frame->max_local_count = function->max_local_count;
     vm->stack_top          = frame->slots + frame->max_local_count;   // 预分配局部变量空间
+    for (int i = function->arity + 1; i < function->max_local_count; i++) {
+        frame->slots[i] = UNDEFINED_VAL;
+    }
     return NULL;
 }
 

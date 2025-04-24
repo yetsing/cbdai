@@ -11,9 +11,8 @@
 
 #include "hashmap.h"
 
-#include "dai_objects/dai_object_function.h"
 #include "dai_memory.h"
-#include "dai_stringbuffer.h"
+#include "dai_objects/dai_object_function.h"
 #include "dai_table.h"
 #include "dai_value.h"
 #include "dai_vm.h"
@@ -277,8 +276,10 @@ DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
         return OBJ_VAL(err);
     }
     if (IS_BUILTINFN(instance->klass->init_fn)) {
+        DaiVM_pauseGC(vm);
         const BuiltinFn func  = AS_BUILTINFN(instance->klass->init_fn)->function;
         const DaiValue result = func(vm, OBJ_VAL(instance), argc, argv);
+        DaiVM_resumeGC(vm);
         if (DAI_IS_ERROR(result)) {
             return result;
         }
