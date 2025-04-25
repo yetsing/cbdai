@@ -15,6 +15,7 @@ typedef struct {
     int default_count;
     DaiObjModule* module;
     int max_local_count;
+    int max_stack_size;
 } DaiObjFunction;
 DaiObjFunction*
 DaiObjFunction_New(DaiVM* vm, DaiObjModule* module, const char* name, const char* filename);

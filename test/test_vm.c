@@ -248,6 +248,54 @@ run_vm_test_file_with_number(const char* filename) {
 }
 
 static void
+run_vm_test_file_expect_error(const char* filename, const char* expected) {
+#ifdef DAI_TEST_VERBOSE
+    printf("\n\n");
+    printf("==========================================\n");
+    printf("run file expect error: %s\n", filename);
+#endif
+    char* input = dai_string_from_file(filename);
+    if (input == NULL) {
+        printf("could not open file: %s\n", filename);
+    }
+    munit_assert_not_null(input);
+
+    DaiVM vm;
+    DaiVM_init(&vm);
+    DaiObjError* got_err = interpret(&vm, input, "<test-file>");
+    munit_assert_not_null(got_err);
+    munit_assert_string_equal(got_err->message, expected);
+    // 检查垃圾回收
+    {
+        collectGarbage(&vm);
+        const size_t before = vm.bytesAllocated;
+        collectGarbage(&vm);
+        const size_t after = vm.bytesAllocated;
+        munit_assert_size(before, ==, after);
+#ifdef DAI_TEST
+        test_mark(&vm);
+        // 检查所有的对象都被标记了
+        DaiObj* obj = vm.objects;
+        while (obj != NULL) {
+            if (!obj->is_marked) {
+                printf("unmarked object ");
+                dai_print_value(OBJ_VAL(obj));
+                printf("\n");
+            }
+            munit_assert_true(obj->is_marked);
+            obj = obj->next;
+        }
+#endif
+    }
+
+    DaiVM_reset(&vm);
+    dai_free(input);
+#ifdef DAI_TEST_VERBOSE
+    printf("==========================================\n");
+#endif
+}
+
+static void
 run_vm_test_files(const char* test_files[], const size_t count) {
     for (int i = 0; i < count; i++) {
         char resolved_path[PATH_MAX];
@@ -1910,6 +1958,10 @@ test_error(__attribute__((unused)) const MunitParameter params[],
             OBJ_VAL(DaiObjError_Newf(&vm, "division by zero")),
         },
         {
+            "var a = 1 % 0;",
+            OBJ_VAL(DaiObjError_Newf(&vm, "modulo by zero")),
+        },
+        {
             "var a = 1 / 0.0;",
             OBJ_VAL(DaiObjError_Newf(&vm, "division by zero")),
         },
@@ -2264,7 +2316,7 @@ test_error(__attribute__((unused)) const MunitParameter params[],
         },
         {
             "fn recursive() { recursive(); }; recursive();",
-            OBJ_VAL(DaiObjError_Newf(&vm, "maximum recursion depth exceeded")),
+            OBJ_VAL(DaiObjError_Newf(&vm, "maximum call depth exceeded")),
         },
         {
             "var a = 'string'; a(1);",
@@ -2420,6 +2472,26 @@ test_error(__attribute__((unused)) const MunitParameter params[],
     };
     run_vm_tests(tests, sizeof(tests) / sizeof(tests[0]));
     DaiVM_reset(&vm);
+
+    struct {
+        const char* filename;
+        const char* error_msg;
+    } file_tests[] = {
+        {
+            "codes/test_vm/test_exceed_call_stack.dai",
+            "maximum call depth exceeded",
+        },
+        {
+            "codes/test_vm/test_exceed_vm_stack.dai",
+            "vm stackoverflow",
+        },
+    };
+    for (int i = 0; i < sizeof(file_tests) / sizeof(file_tests[0]); i++) {
+        char resolved_path[PATH_MAX];
+        get_file_directory(resolved_path);
+        strcat(resolved_path, file_tests[i].filename);
+        run_vm_test_file_expect_error(resolved_path, file_tests[i].error_msg);
+    }
     return MUNIT_OK;
 }
 

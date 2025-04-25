@@ -8,11 +8,14 @@
 
 #include "dai_builtin.h"
 #include "dai_chunk.h"
+#include "dai_common.h"
 #include "dai_compile.h"
 #include "dai_error.h"
 #include "dai_malloc.h"
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_objects/dai_object_base.h"
+#include "dai_objects/dai_object_error.h"
 #include "dai_parse.h"
 #include "dai_symboltable.h"
 #include "dai_tokenize.h"
@@ -152,8 +155,7 @@ concatenate_string(DaiVM* vm, DaiValue v1, DaiValue v2) {
     chars[length] = '\0';
 
     DaiObjString* result = dai_take_string(vm, chars, length);
-    DaiVM_pop(vm);
-    DaiVM_pop(vm);
+    DaiVM_popN(vm, 2);
     DaiVM_push(vm, OBJ_VAL(result));
 }
 
@@ -167,7 +169,10 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
                                 argCount);
     }
     if (vm->frameCount == FRAMES_MAX) {
-        return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
+        return DaiObjError_Newf(vm, "maximum call depth exceeded");
+    }
+    if (vm->stack_top + function->max_stack_size > vm->stack_max) {
+        return DaiObjError_Newf(vm, "vm stackoverflow");
     }
     // push default values
     {
@@ -422,6 +427,9 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             case DaiOpMod: {
                 DaiValue b = DaiVM_pop(vm);
                 DaiValue a = DaiVM_pop(vm);
+                if (AS_INTEGER(b) == 0) {
+                    return DaiObjError_Newf(vm, "modulo by zero");
+                }
                 if (IS_INTEGER(a) && IS_INTEGER(b)) {
                     DaiVM_push(vm, INTEGER_VAL(AS_INTEGER(a) % AS_INTEGER(b)));
                 } else {
@@ -460,7 +468,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                     if (DAI_IS_ERROR(result)) {
                         return AS_ERROR(result);
                     }
-                    vm->stack_top = vm->stack_top - 2;   // 弹出 index, object
+                    DaiVM_popN(vm, 2);   // 弹出 index, object
                     DaiVM_push(vm, result);
                 } else {
                     return DaiObjError_Newf(
@@ -477,7 +485,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 if (func) {
                     DaiValue result = func(vm, receiver, DaiVM_peek(vm, 0), DaiVM_peek(vm, 2));
-                    vm->stack_top   = vm->stack_top - 3;   // 弹出 index, object, value
+                    DaiVM_popN(vm, 3);   // 弹出 index, object, value
                     if (DAI_IS_ERROR(result)) {
                         return AS_ERROR(result);
                     }
@@ -506,7 +514,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             case DaiOpArray: {
                 uint16_t length    = READ_UINT16();
                 DaiObjArray* array = DaiObjArray_New(vm, vm->stack_top - length, length);
-                vm->stack_top -= length;
+                DaiVM_popN(vm, length);
                 DaiVM_push(vm, OBJ_VAL(array));
                 break;
             }
@@ -517,7 +525,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 if (err != NULL) {
                     return err;
                 }
-                vm->stack_top -= length * 2;
+                DaiVM_popN(vm, length * 2);
                 DaiVM_push(vm, OBJ_VAL(map));
                 break;
             }
@@ -618,7 +626,6 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 DaiValue a = DaiVM_peek(vm, 0);
                 if (dai_value_is_truthy(a)) {
                     frame->ip += offset;
-                } else {
                 }
                 break;
             }
@@ -797,7 +804,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 DaiValue* defaults = VM_ALLOCATE(vm, DaiValue, default_count);
                 memcpy(defaults, vm->stack_top - default_count, default_count * sizeof(DaiValue));
-                vm->stack_top -= default_count;
+                DaiVM_popN(vm, default_count);
                 function->defaults      = defaults;
                 function->default_count = default_count;
                 break;
@@ -817,7 +824,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 DaiObjClosure* closure = DaiObjClosure_New(vm, AS_FUNCTION(constant));
                 closure->frees         = frees;
-                vm->stack_top -= free_var_count;
+                DaiVM_popN(vm, free_var_count);
                 DaiVM_push(vm, OBJ_VAL(closure));
                 break;
             }
@@ -937,12 +944,6 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 }
                 break;
             }
-            case DaiOpInherit: {
-                DaiObjClass* parent = AS_CLASS(DaiVM_pop(vm));
-                DaiObjClass* child  = AS_CLASS(DaiVM_peek(vm, 0));
-                DaiObjClass_inherit(child, parent);
-                break;
-            }
             case DaiOpGetSuperProperty: {
                 if (frame->function->superclass == NULL) {
                     return DaiObjError_Newf(vm, "no superclass found");
@@ -956,6 +957,12 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                         vm, "'super' object has not property '%s'", name->chars);
                 }
                 DaiVM_push(vm, OBJ_VAL(bound_method));
+                break;
+            }
+            case DaiOpInherit: {
+                DaiObjClass* parent = AS_CLASS(DaiVM_pop(vm));
+                DaiObjClass* child  = AS_CLASS(DaiVM_peek(vm, 0));
+                DaiObjClass_inherit(child, parent);
                 break;
             }
             case DaiOpCallMethod: {
@@ -1221,7 +1228,7 @@ static void
 DaiVM_push(DaiVM* vm, DaiValue value) {
     *vm->stack_top = value;
     vm->stack_top++;
-    assert(vm->stack_top <= vm->stack_max);
+    // assert(vm->stack_top <= vm->stack_max);
 }
 
 static DaiValue

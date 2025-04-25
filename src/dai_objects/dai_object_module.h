@@ -18,6 +18,7 @@ typedef struct {
     DaiValue* globals;
 
     int max_local_count;
+    int max_stack_size;
 
     DaiVM* vm;
 } DaiObjModule;

@@ -42,6 +42,7 @@ DaiObjFunction_New(DaiVM* vm, DaiObjModule* module, const char* name, const char
     function->default_count   = 0;
     function->module          = module;
     function->max_local_count = 0;
+    function->max_stack_size  = 0;
     return function;
 }
 

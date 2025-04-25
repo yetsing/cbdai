@@ -15,107 +15,147 @@
 static DaiOpCodeDefinition definitions[] = {
     [DaiOpConstant] =
         {
-            .name          = "DaiOpConstant",
-            .operand_bytes = 2,
+            .name              = "DaiOpConstant",
+            .operand_bytes     = 2,
+            .stack_size_change = 1,
         },
-    [DaiOpAdd]    = {.name = "DaiOpAdd", .operand_bytes = 0},
-    [DaiOpSub]    = {.name = "DaiOpSub", .operand_bytes = 0},
-    [DaiOpMul]    = {.name = "DaiOpMul", .operand_bytes = 0},
-    [DaiOpDiv]    = {.name = "DaiOpDiv", .operand_bytes = 0},
-    [DaiOpMod]    = {.name = "DaiOpMod", .operand_bytes = 0},
-    [DaiOpBinary] = {.name = "DaiOpBinary", .operand_bytes = 1},
+    [DaiOpAdd]    = {.name = "DaiOpAdd", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpSub]    = {.name = "DaiOpSub", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpMul]    = {.name = "DaiOpMul", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpDiv]    = {.name = "DaiOpDiv", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpMod]    = {.name = "DaiOpMod", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpBinary] = {.name = "DaiOpBinary", .operand_bytes = 1, .stack_size_change = -2 + 1},
 
-    [DaiOpSubscript]    = {.name = "DaiOpSubscript", .operand_bytes = 0},
-    [DaiOpSubscriptSet] = {.name = "DaiOpSubscriptSet", .operand_bytes = 0},
+    [DaiOpSubscript] = {.name = "DaiOpSubscript", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpSubscriptSet] = {.name              = "DaiOpSubscriptSet",
+                           .operand_bytes     = 0,
+                           .stack_size_change = -3},
 
-    [DaiOpTrue]      = {.name = "DaiOpTrue", .operand_bytes = 0},
-    [DaiOpFalse]     = {.name = "DaiOpFalse", .operand_bytes = 0},
-    [DaiOpNil]       = {.name = "DaiOpNil", .operand_bytes = 0},
-    [DaiOpUndefined] = {.name = "DaiOpUndefined", .operand_bytes = 0},
+    [DaiOpTrue]      = {.name = "DaiOpTrue", .operand_bytes = 0, .stack_size_change = 1},
+    [DaiOpFalse]     = {.name = "DaiOpFalse", .operand_bytes = 0, .stack_size_change = 1},
+    [DaiOpNil]       = {.name = "DaiOpNil", .operand_bytes = 0, .stack_size_change = 1},
+    [DaiOpUndefined] = {.name = "DaiOpUndefined", .operand_bytes = 0, .stack_size_change = 1},
     // 操作数: uint16 数组元素数量
-    [DaiOpArray] = {.name = "DaiOpArray", .operand_bytes = 2},
+    [DaiOpArray] = {.name              = "DaiOpArray",
+                    .operand_bytes     = 2,
+                    .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
     // 操作数: uint16 map 元素数量
-    [DaiOpMap] = {.name = "DaiOpMap", .operand_bytes = 2},
+    [DaiOpMap] = {.name              = "DaiOpMap",
+                  .operand_bytes     = 2,
+                  .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
 
-    [DaiOpEqual]            = {.name = "DaiOpEqual", .operand_bytes = 0},
-    [DaiOpNotEqual]         = {.name = "DaiOpNotEqual", .operand_bytes = 0},
-    [DaiOpGreaterThan]      = {.name = "DaiOpGreaterThan", .operand_bytes = 0},
-    [DaiOpGreaterEqualThan] = {.name = "DaiOpGreaterEqualThan", .operand_bytes = 0},
+    [DaiOpEqual]       = {.name = "DaiOpEqual", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpNotEqual]    = {.name = "DaiOpNotEqual", .operand_bytes = 0, .stack_size_change = -2 + 1},
+    [DaiOpGreaterThan] = {.name              = "DaiOpGreaterThan",
+                          .operand_bytes     = 0,
+                          .stack_size_change = -2 + 1},
+    [DaiOpGreaterEqualThan] = {.name              = "DaiOpGreaterEqualThan",
+                               .operand_bytes     = 0,
+                               .stack_size_change = -2 + 1},
 
-    [DaiOpNot] = {.name = "DaiOpNot", .operand_bytes = 0},
+    [DaiOpNot] = {.name = "DaiOpNot", .operand_bytes = 0, .stack_size_change = 0},
     // 操作数：uint16 跳转偏移量
-    [DaiOpAndJump] = {.name = "DaiOpAnd", .operand_bytes = 2},
+    [DaiOpAndJump] = {.name = "DaiOpAnd", .operand_bytes = 2, .stack_size_change = 0},
     // 操作数：uint16 跳转偏移量
-    [DaiOpOrJump] = {.name = "DaiOpOr", .operand_bytes = 2},
+    [DaiOpOrJump] = {.name = "DaiOpOr", .operand_bytes = 2, .stack_size_change = 0},
 
-    [DaiOpMinus]      = {.name = "DaiOpMinus", .operand_bytes = 0},
-    [DaiOpBang]       = {.name = "DaiOpBang", .operand_bytes = 0},
-    [DaiOpBitwiseNot] = {.name = "DaiOpBitwiseNot", .operand_bytes = 0},
+    [DaiOpMinus]      = {.name = "DaiOpMinus", .operand_bytes = 0, .stack_size_change = 0},
+    [DaiOpBang]       = {.name = "DaiOpBang", .operand_bytes = 0, .stack_size_change = 0},
+    [DaiOpBitwiseNot] = {.name = "DaiOpBitwiseNot", .operand_bytes = 0, .stack_size_change = 0},
 
-    [DaiOpJumpIfFalse] = {.name = "DaiOpJumpIfFalse", .operand_bytes = 2},
-    [DaiOpJump]        = {.name = "DaiOpJump", .operand_bytes = 2},
-    [DaiOpJumpBack]    = {.name = "DaiOpJumpBack", .operand_bytes = 2},
+    [DaiOpJumpIfFalse] = {.name = "DaiOpJumpIfFalse", .operand_bytes = 2, .stack_size_change = 0},
+    [DaiOpJump]        = {.name = "DaiOpJump", .operand_bytes = 2, .stack_size_change = 0},
+    [DaiOpJumpBack]    = {.name = "DaiOpJumpBack", .operand_bytes = 2, .stack_size_change = 0},
 
     // 操作数：uint8 迭代器的索引
-    [DaiOpIterInit] = {.name = "DaiOpIterInit", .operand_bytes = 1},
+    [DaiOpIterInit] = {.name = "DaiOpIterInit", .operand_bytes = 1, .stack_size_change = -1},
     // 操作数：uint8 迭代器的索引， uint16 循环末尾的偏移量
-    [DaiOpIterNext] = {.name = "DaiOpIterNext", .operand_bytes = 3},
+    [DaiOpIterNext] = {.name = "DaiOpIterNext", .operand_bytes = 3, .stack_size_change = 0},
 
 
-    [DaiOpPop] = {.name = "DaiOpPop", .operand_bytes = 0},
+    [DaiOpPop] = {.name = "DaiOpPop", .operand_bytes = 0, .stack_size_change = -1},
     // 操作数：弹出的个数
-    [DaiOpPopN] = {.name = "DaiOpPopN", .operand_bytes = 1},
+    [DaiOpPopN] = {.name              = "DaiOpPopN",
+                   .operand_bytes     = 1,
+                   .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
 
-    [DaiOpDefineGlobal] = {.name = "DaiOpDefineGlobal", .operand_bytes = 2},
-    [DaiOpGetGlobal]    = {.name = "DaiOpGetGlobal", .operand_bytes = 2},
-    [DaiOpSetGlobal]    = {.name = "DaiOpSetGlobal", .operand_bytes = 2},
+    [DaiOpDefineGlobal] = {.name              = "DaiOpDefineGlobal",
+                           .operand_bytes     = 2,
+                           .stack_size_change = -1},
+    [DaiOpGetGlobal]    = {.name = "DaiOpGetGlobal", .operand_bytes = 2, .stack_size_change = 1},
+    [DaiOpSetGlobal]    = {.name = "DaiOpSetGlobal", .operand_bytes = 2, .stack_size_change = -1},
 
-    [DaiOpCall]        = {.name = "DaiOpCall", .operand_bytes = 1},   // 操作数是函数调用参数个数
-    [DaiOpReturnValue] = {.name = "DaiOpReturnValue", .operand_bytes = 0},
-    [DaiOpReturn]      = {.name = "DaiOpReturn", .operand_bytes = 0},
+    [DaiOpCall]        = {.name          = "DaiOpCall",
+                          .operand_bytes = 1,
+                          .stack_size_change =
+                              STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},   // 操作数是函数调用参数个数
+    [DaiOpReturnValue] = {.name = "DaiOpReturnValue", .operand_bytes = 0, .stack_size_change = 0},
+    [DaiOpReturn]      = {.name = "DaiOpReturn", .operand_bytes = 0, .stack_size_change = 0},
 
-    [DaiOpSetLocal] = {.name = "DaiOpSetLocal", .operand_bytes = 1},
-    [DaiOpGetLocal] = {.name = "DaiOpGetLocal", .operand_bytes = 1},
+    [DaiOpSetLocal] = {.name = "DaiOpSetLocal", .operand_bytes = 1, .stack_size_change = -1},
+    [DaiOpGetLocal] = {.name = "DaiOpGetLocal", .operand_bytes = 1, .stack_size_change = 1},
 
-    [DaiOpGetBuiltin] = {.name = "DaiOpGetBuiltin", .operand_bytes = 1},
+    [DaiOpGetBuiltin] = {.name = "DaiOpGetBuiltin", .operand_bytes = 1, .stack_size_change = 1},
 
     // 操作数：uint8 函数默认值的个数
-    [DaiOpSetFunctionDefault] = {.name = "DaiOpSetFunctionDefault", .operand_bytes = 1},
+    [DaiOpSetFunctionDefault] = {.name              = "DaiOpSetFunctionDefault",
+                                 .operand_bytes     = 1,
+                                 .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
 
     // 操作数: uint16 函数常量的索引，uint8 自由变量个数
-    [DaiOpClosure] = {.name = "DaiOpClosure", .operand_bytes = 3},
+    [DaiOpClosure] = {.name              = "DaiOpClosure",
+                      .operand_bytes     = 3,
+                      .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
 
-    [DaiOpGetFree] = {.name = "DaiOpGetFree", .operand_bytes = 1},
+    [DaiOpGetFree] = {.name = "DaiOpGetFree", .operand_bytes = 1, .stack_size_change = 1},
 
     // 操作数：类名的常量索引
-    [DaiOpClass] = {.name = "DaiOpClass", .operand_bytes = 2},
+    [DaiOpClass] = {.name = "DaiOpClass", .operand_bytes = 2, .stack_size_change = 1},
     // 操作数：uint16 属性名的常量索引，uint8 是否 const
-    [DaiOpDefineField] = {.name = "DaiOpDefineField", .operand_bytes = 3},
+    [DaiOpDefineField] = {.name = "DaiOpDefineField", .operand_bytes = 3, .stack_size_change = -1},
     // 操作数：属性名的常量索引
-    [DaiOpDefineMethod] = {.name = "DaiOpDefineMethod", .operand_bytes = 2},
+    [DaiOpDefineMethod] = {.name              = "DaiOpDefineMethod",
+                           .operand_bytes     = 2,
+                           .stack_size_change = -1},
     // 操作数：uint16 属性名的常量索引，uint8 是否 const
-    [DaiOpDefineClassField] = {.name = "DaiOpDefineClassField", .operand_bytes = 3},
+    [DaiOpDefineClassField] = {.name              = "DaiOpDefineClassField",
+                               .operand_bytes     = 3,
+                               .stack_size_change = -1},
     // 操作数：属性名的常量索引
-    [DaiOpDefineClassMethod] = {.name = "DaiOpDefineClassMethod", .operand_bytes = 2},
+    [DaiOpDefineClassMethod] = {.name              = "DaiOpDefineClassMethod",
+                                .operand_bytes     = 2,
+                                .stack_size_change = -1},
     // 操作数：属性名的常量索引
-    [DaiOpGetProperty] = {.name = "DaiOpGetProperty", .operand_bytes = 2},
+    [DaiOpGetProperty] = {.name = "DaiOpGetProperty", .operand_bytes = 2, .stack_size_change = 0},
     // 操作数：属性名的常量索引
-    [DaiOpSetProperty] = {.name = "DaiOpSetProperty", .operand_bytes = 2},
+    [DaiOpSetProperty] = {.name = "DaiOpSetProperty", .operand_bytes = 2, .stack_size_change = -2},
     // 操作数：属性名的常量索引
-    [DaiOpGetSelfProperty] = {.name = "DaiOpGetSelfProperty", .operand_bytes = 2},
+    [DaiOpGetSelfProperty] = {.name              = "DaiOpGetSelfProperty",
+                              .operand_bytes     = 2,
+                              .stack_size_change = 1},
     // 操作数：属性名的常量索引
-    [DaiOpSetSelfProperty] = {.name = "DaiOpSetSelfProperty", .operand_bytes = 2},
+    [DaiOpSetSelfProperty] = {.name              = "DaiOpSetSelfProperty",
+                              .operand_bytes     = 2,
+                              .stack_size_change = -1},
     // 操作数：属性名的常量索引
-    [DaiOpGetSuperProperty] = {.name = "DaiOpGetSuperProperty", .operand_bytes = 2},
-    [DaiOpInherit]          = {.name = "DaiOpInherit", .operand_bytes = 0},
-    // 操作数：方法名的常量索引、参数个数
-    [DaiOpCallMethod] = {.name = "DaiOpCallMethod", .operand_bytes = 3},
-    // 操作数：方法名的常量索引
-    [DaiOpCallSelfMethod] = {.name = "DaiOpCallSelfMethod", .operand_bytes = 2},
-    // 操作数：方法名的常量索引
-    [DaiOpCallSuperMethod] = {.name = "DaiOpCallSuperMethod", .operand_bytes = 2},
+    [DaiOpGetSuperProperty] = {.name              = "DaiOpGetSuperProperty",
+                               .operand_bytes     = 2,
+                               .stack_size_change = 1},
+    [DaiOpInherit]          = {.name = "DaiOpInherit", .operand_bytes = 0, .stack_size_change = -1},
+    // 操作数：uint16 方法名的常量索引、uint8 参数个数
+    [DaiOpCallMethod] = {.name              = "DaiOpCallMethod",
+                         .operand_bytes     = 3,
+                         .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
+    // 操作数：uint16 方法名的常量索引、uint8 参数个数
+    [DaiOpCallSelfMethod] = {.name              = "DaiOpCallSelfMethod",
+                             .operand_bytes     = 3,
+                             .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
+    // 操作数：uint16 方法名的常量索引、uint8 参数个数
+    [DaiOpCallSuperMethod] = {.name              = "DaiOpCallSuperMethod",
+                              .operand_bytes     = 3,
+                              .stack_size_change = STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND},
 
-    [DaiOpEnd] = {.name = "DaiOpEnd", .operand_bytes = 0},
+    [DaiOpEnd] = {.name = "DaiOpEnd", .operand_bytes = 0, .stack_size_change = 0},
 };
 
 const char*

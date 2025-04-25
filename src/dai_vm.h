@@ -6,7 +6,6 @@
 
 #include "dai_builtin.h"
 #include "dai_chunk.h"
-#include "dai_common.h"
 #include "dai_object.h"
 #include "dai_symboltable.h"
 #include "dai_table.h"

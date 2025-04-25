@@ -31,9 +31,13 @@ typedef enum {
 const char*
 DaiBinaryOpTypeToString(DaiBinaryOpType op);
 
+// 栈大小变化由操作数决定
+#define STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND 0xFFFF
+
 typedef struct {
     const char* name;
-    int operand_bytes;   // 操作数的字节数
+    int operand_bytes;       // 操作数的字节数
+    int stack_size_change;   // 字节码执行之后，栈大小的变化
 } DaiOpCodeDefinition;
 
 typedef enum __attribute__((__packed__)) {

@@ -8,6 +8,7 @@
 #include "dai_ast/dai_astexpression.h"
 #include "dai_ast/dai_asttype.h"
 #include "dai_chunk.h"
+#include "dai_common.h"
 #include "dai_compile.h"
 #include "dai_error.h"
 #include "dai_memory.h"
@@ -105,6 +106,73 @@ IntArray_show(const IntArray* array) {
 }
 
 // #endregion
+
+// 计算执行字节码需要的最大栈空间
+static int
+calculate_max_stack_size(DaiChunk* chunk) {
+    int max_stack_size = 0;
+    int stack_size     = 0;
+    for (int offset = 0; offset < chunk->count;) {
+        const DaiOpCode instruction         = chunk->code[offset];
+        const DaiOpCodeDefinition* code_def = dai_opcode_lookup(instruction);
+        int stack_size_change               = code_def->stack_size_change;
+        if (stack_size_change == STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND) {
+            switch (instruction) {
+                case DaiOpArray: {
+                    uint16_t count    = DaiChunk_readu16(chunk, offset + 1);
+                    stack_size_change = -count;
+                    break;
+                }
+                case DaiOpMap: {
+                    uint16_t count    = DaiChunk_readu16(chunk, offset + 1);
+                    stack_size_change = -(2 * count);
+                    break;
+                }
+                case DaiOpPopN: {
+                    uint8_t count     = DaiChunk_read(chunk, offset + 1);
+                    stack_size_change = -count;
+                    break;
+                }
+                case DaiOpCall: {
+                    uint8_t count = DaiChunk_read(chunk, offset + 1);
+                    // 算上调用的函数本身，会弹栈 count + 1
+                    stack_size_change = -count - 1;
+                    break;
+                }
+                case DaiOpSetFunctionDefault: {
+                    uint8_t count     = DaiChunk_read(chunk, offset + 1);
+                    stack_size_change = -count;
+                    break;
+                }
+                case DaiOpClosure: {
+                    uint8_t count = DaiChunk_read(chunk, offset + 3);
+                    // 弹出 count 个自由变量，压入一个 closure 对象
+                    stack_size_change = -count + 1;
+                    break;
+                }
+                case DaiOpCallMethod:
+                case DaiOpCallSelfMethod:
+                case DaiOpCallSuperMethod: {
+                    uint8_t count = DaiChunk_read(chunk, offset + 3);
+                    // 算上调用的实例本身，会弹栈 count + 1
+                    stack_size_change = -count - 1;
+                    break;
+                }
+                default: {
+                    dai_error("unexpected op %s\n", code_def->name);
+                    unreachable();
+                }
+            }
+        }
+        offset += (code_def->operand_bytes + 1);
+        if (stack_size_change < 0) {
+            max_stack_size = MAX(max_stack_size, stack_size);
+        }
+        stack_size = stack_size + stack_size_change;
+    }
+    max_stack_size = MAX(max_stack_size, stack_size);
+    return max_stack_size;
+}
 
 // #region DaiCompiler
 typedef enum {
@@ -412,7 +480,10 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
         }
         DaiCompiler_emit1(compiler, DaiOpSetFunctionDefault, DaiArray_length(defaults), start_line);
     }
+    // 局部变量是预先分配在栈上的，同样需要占用栈空间
     function->max_local_count = subcompiler.max_local_count;
+    function->max_stack_size =
+        function->max_local_count + calculate_max_stack_size(&function->chunk);
     return NULL;
 }
 
@@ -1639,12 +1710,13 @@ dai_compile(DaiAstProgram* program, DaiObjModule* module, DaiVM* vm) {
     DaiCompileError* err = NULL;
     err                  = DaiCompiler_extractSymbol(&compiler, (DaiAstBase*)program);
     if (err != NULL) {
-        DaiCompiler_reset(&compiler);
         goto END;
     }
     err = DaiCompiler_compile(&compiler, (DaiAstBase*)program);
-    DaiObjModule_afterCompile(module, globalSymbolTable);
+    // 局部变量是预先分配在栈上的，同样需要占用栈空间
     module->max_local_count = compiler.max_local_count;
+    module->max_stack_size  = module->max_local_count + calculate_max_stack_size(&module->chunk);
+    DaiObjModule_afterCompile(module, globalSymbolTable);
     DaiCompiler_emit(&compiler, DaiOpEnd, 0);
 
 END:

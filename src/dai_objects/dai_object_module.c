@@ -109,6 +109,7 @@ DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
     // DaiSymbolTable_setOuter(module->globalSymbolTable, vm->builtinSymbolTable);
     module->compiled        = false;
     module->max_local_count = 0;
+    module->max_stack_size  = 0;
 
     module->vm = vm;
 
