@@ -46,6 +46,19 @@ DaiVM_resetStack(DaiVM* vm) {
     vm->stack_top  = vm->stack;
     vm->frameCount = 0;
     vm->stack_max  = vm->stack + STACK_MAX;
+
+    // dummy frame
+    // 确保始终有一个 frame
+    // 原因是为了兼容 cbdai/dai.c:dai_execute 执行函数时，
+    // 让他有一个父 frame ，在 return 的时候可以返回到父 frame
+    CallFrame* frame       = &vm->frames[vm->frameCount++];
+    frame->function        = NULL;
+    frame->closure         = NULL;
+    frame->chunk           = NULL;
+    frame->ip              = NULL;
+    frame->slots           = vm->stack_top;
+    frame->globals         = NULL;
+    frame->max_local_count = 0;
 }
 
 void
@@ -69,19 +82,6 @@ DaiVM_init(DaiVM* vm) {
     vm->state = VMState_pending;
     DaiTable_init(&vm->strings);
     vm->builtinSymbolTable = DaiSymbolTable_New();
-
-    // dummy frame
-    // 确保始终有一个 frame
-    // 原因是为了兼容 cbdai/dai.c:dai_execute 执行函数时，
-    // 让他有一个父 frame ，在 return 的时候可以返回到父 frame
-    CallFrame* frame       = &vm->frames[vm->frameCount++];
-    frame->function        = NULL;
-    frame->closure         = NULL;
-    frame->chunk           = NULL;
-    frame->ip              = NULL;
-    frame->slots           = vm->stack_top;
-    frame->globals         = NULL;
-    frame->max_local_count = 0;
 
     DaiObjError* err = DaiObjMap_New(vm, NULL, 0, &vm->modules);
     if (err != NULL) {
@@ -1123,7 +1123,6 @@ DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module) {
     }
     DaiTokenList_reset(&tlist);
     DaiAstProgram_reset(&program);
-    DaiObjMap_cset(vm->modules, OBJ_VAL(module->filename), OBJ_VAL(module));
     return DaiVM_runModule(vm, module);
 
 DAI_LOAD_MODULE_ERROR:
@@ -1132,7 +1131,7 @@ DAI_LOAD_MODULE_ERROR:
     }
     DaiTokenList_reset(&tlist);
     DaiAstProgram_reset(&program);
-    abort();
+    return DaiObjError_Newf(vm, "load module error");
 }
 
 DaiValue
@@ -1173,6 +1172,7 @@ DaiVM_runCall2(DaiVM* vm, DaiValue callee, int argCount) {
 void
 DaiVM_printError(DaiVM* vm, DaiObjError* err) {
     dai_log("Traceback:\n");
+    // i=0 是个假帧，所以从 1 开始
     for (int i = 1; i < vm->frameCount; ++i) {
         CallFrame* frame = &vm->frames[i];
         DaiChunk* chunk  = frame->chunk;
@@ -1200,6 +1200,7 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
 void
 DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input) {
     dai_log("Traceback:\n");
+    // i=0 是个假帧，所以从 1 开始
     for (int i = 1; i < vm->frameCount; ++i) {
         CallFrame* frame = &vm->frames[i];
         DaiChunk* chunk  = frame->chunk;

@@ -5,7 +5,9 @@
 
 #include "dai_common.h"
 #include "dai_memory.h"
+#include "dai_objects/dai_object_base.h"
 #include "dai_objects/dai_object_error.h"
+#include "dai_objects/dai_object_map.h"
 
 // #region DaiPropertyOffset
 typedef struct {
@@ -133,6 +135,18 @@ DaiObjModule_New(DaiVM* vm, const char* name, const char* filename) {
     DaiObjModule_add_global(module, "__file__", OBJ_VAL(module->filename));
     return module;
 }
+DaiObjModule*
+DaiObjModule_NewWithGlobals(DaiVM* vm, const char* name, const char* filename, DaiObjMap* globals) {
+    assert(globals != NULL);
+    DaiObjModule* module = DaiObjModule_New(vm, name, filename);
+    size_t i             = 0;
+    DaiValue key, value;
+    while (DaiObjMap_iter(globals, &i, &key, &value)) {
+        assert(IS_STRING(key));
+        DaiObjModule_add_global1(module, AS_STRING(key), value);
+    }
+    return module;
+}
 
 void
 DaiObjModule_Free(DaiVM* vm, DaiObjModule* module) {
@@ -224,12 +238,6 @@ DaiObjModule_set_global(DaiObjModule* module, const char* name, DaiValue value) 
     if (offset == NULL) {
         return false;
     }
-    if (strcmp(name, "SceneTitle") == 0) {
-        printf("DaiObjModule_set_global SceneTitle %d\n", offset->offset);
-        printf("    ");
-        dai_print_value(value);
-        printf("\n");
-    }
     module->globals[offset->offset] = value;
     return true;
 }
@@ -256,26 +264,58 @@ DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value) 
         dai_error("DaiObjModule_New: Out of memory\n");
         abort();
     }
-    if (strcmp(name, "SceneTitle") == 0) {
-        printf("DaiObjModule_add_global SceneTitle %zu\n", count);
-        printf("    ");
-        dai_print_value(value);
-        printf("\n");
+    module->globals[count] = value;
+    return true;
+}
+
+bool
+DaiObjModule_add_global1(DaiObjModule* module, DaiObjString* name, DaiValue value) {
+    assert(!(module->compiled));
+    size_t count = hashmap_count(module->global_map);
+    if (count >= GLOBAL_MAX) {
+        dai_error("DaiObjModule_add_global: Too many globals\n");
+        abort();
+    }
+    DaiPropertyOffset offset = {
+        .property = name,
+        .offset   = count,
+    };
+    // 先检查是否已经存在
+    const void* res = hashmap_get(module->global_map, &offset);
+    if (res != NULL) {
+        return false;
+    }
+    if (hashmap_set(module->global_map, &offset) == NULL && hashmap_oom(module->global_map)) {
+        dai_error("DaiObjModule_New: Out of memory\n");
+        abort();
     }
     module->globals[count] = value;
     return true;
 }
 
 bool
-DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiValue* key, DaiValue* value) {
+DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiObjString** key, DaiValue* value) {
     void* item;
     if (hashmap_iter(module->global_map, i, &item)) {
         DaiPropertyOffset offset = *(DaiPropertyOffset*)item;
-        *key                     = OBJ_VAL(offset.property);
+        *key                     = offset.property;
         *value                   = module->globals[offset.offset];
         return true;
     }
     return false;
+}
+
+// copy from module.globals to globals
+void
+DaiObjModule_copyto(DaiObjModule* module, DaiObjMap* globals) {
+    void* item;
+    size_t i = 0;
+    while (hashmap_iter(module->global_map, &i, &item)) {
+        DaiPropertyOffset offset = *(DaiPropertyOffset*)item;
+        DaiObjString* key        = offset.property;
+        DaiValue value           = module->globals[offset.offset];
+        DaiObjMap_cset(globals, OBJ_VAL(key), value);
+    }
 }
 
 void

@@ -33,8 +33,7 @@ sljust(char* dst, char* s, int n) {
 
 int
 daicmd_repl() {
-    const char* filename = "<stdin>";
-    char line[2048]      = {0};
+    char line[2048] = {0};
 
     const char* help = "Commands:\n"
                        "  ;time <code> - measure the time of running <code>\n"
@@ -46,13 +45,16 @@ daicmd_repl() {
 
     printf("> ");
     // 初始化
-    DaiError* err = NULL;
-    DaiTokenList tlist;
-    DaiTokenList_init(&tlist);
-    DaiAstProgram program;
-    DaiAstProgram_init(&program);
     DaiVM vm;
     DaiVM_init(&vm);
+    DaiObjMap* globals;
+    DaiObjError* map_err = DaiObjMap_New(&vm, NULL, 0, &globals);
+    if (map_err != NULL) {
+        DaiVM_printError2(&vm, map_err, "");
+        DaiVM_resetStack(&vm);
+        DaiVM_reset(&vm);
+        return 1;
+    }
     // 时间记录
     TimeRecord start_time, end_time;
     bool enable_time = false;
@@ -104,25 +106,7 @@ daicmd_repl() {
             pin_time_record(&start_time);
         }
         // 执行代码
-        err = dai_tokenize_string(input, &tlist);
-        if (err != NULL) {
-            DaiSyntaxError_setFilename(err, filename);
-            DaiSyntaxError_pprint(err, input);
-            goto end;
-        }
-        err = dai_parse(&tlist, &program);
-        if (err != NULL) {
-            DaiSyntaxError_setFilename(err, filename);
-            DaiSyntaxError_pprint(err, input);
-            goto end;
-        }
-        DaiObjModule* module = DaiObjModule_New(&vm, strdup("__main__"), strdup(filename));
-        err                  = dai_compile(&program, module, &vm);
-        if (err != NULL) {
-            DaiCompileError_pprint(err, input);
-            goto end;
-        }
-        DaiObjError* runtime_err = DaiVM_runModule(&vm, module);
+        DaiObjError* runtime_err = Daiexec_String(&vm, input, globals);
         if (runtime_err != NULL) {
             DaiVM_printError2(&vm, runtime_err, input);
             DaiVM_resetStack(&vm);
@@ -134,14 +118,9 @@ daicmd_repl() {
         }
 
         dai_print_value(DaiVM_lastPopedStackElem(&vm));
-        printf("\n");
 
     end:
-        if (err != NULL) {
-            DaiError_free(err);
-        }
-        DaiTokenList_reset(&tlist);
-        DaiAstProgram_reset(&program);
+        printf("\n");
         printf("> ");
 
         // 检测 EOF 退出

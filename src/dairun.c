@@ -13,7 +13,11 @@
 DaiObjError*
 Dairun_FileWithModule(DaiVM* vm, const char* filename, DaiObjModule* module) {
     char* filepath = realpath(filename, NULL);
-    char* text     = dai_string_from_file(filepath);
+    if (filepath == NULL) {
+        perror("realpath");
+        return DaiObjError_Newf(vm, "realpath error %s", filename);
+    }
+    char* text = dai_string_from_file(filepath);
     if (text == NULL) {
         free(filepath);
         perror("open file error");
@@ -29,4 +33,15 @@ DaiObjError*
 Dairun_File(DaiVM* vm, const char* filename) {
     DaiObjModule* module = DaiObjModule_New(vm, strdup("__main__"), strdup(filename));
     return Dairun_FileWithModule(vm, filename, module);
+}
+
+DaiObjError*
+Daiexec_String(DaiVM* vm, const char* text, DaiObjMap* globals) {
+    DaiObjModule* module =
+        DaiObjModule_NewWithGlobals(vm, strdup("__main__"), strdup("<string>"), globals);
+    DaiObjError* err = DaiVM_loadModule(vm, text, module);
+    if (err == NULL) {
+        DaiObjModule_copyto(module, globals);
+    }
+    return err;
 }

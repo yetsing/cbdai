@@ -1,6 +1,7 @@
 """
 裁剪 coverage output
 """
+
 import sys
 import typing
 
@@ -40,12 +41,14 @@ exclude_keywords = [
     "src/dai_parser/dai_parseIdentifier.h",
 ]
 
+
 def is_excluded(line):
     return False
     for keyword in exclude_keywords:
         if keyword in line:
             return True
     return False
+
 
 def sort_key_fn(item: typing.Tuple[int, str]) -> typing.Tuple:
     index, line = item
@@ -55,6 +58,7 @@ def sort_key_fn(item: typing.Tuple[int, str]) -> typing.Tuple:
     else:
         return "999"
 
+
 def main():
     filename = sys.argv[1]
     with open(filename, "r", encoding="utf-8") as f:
@@ -63,11 +67,10 @@ def main():
             if is_excluded(line):
                 continue
             lines.append(line)
-    
-    
+
     order_lines = [(i, line) for i, line in enumerate(lines)]
     start = 2
-    end = len(lines)-2
+    end = len(lines) - 2
     item_lines = lines[start:end]
     item_lines.sort(key=sort_key_fn, reverse=True)
     with open(filename, "w", encoding="utf-8") as f:

@@ -3,7 +3,6 @@ import pathlib
 script_dir = pathlib.Path(__file__).absolute().parent
 
 
-
 def generate_c():
     items = []
     text = (script_dir / "SDL_keycode.txt").read_text()
@@ -42,9 +41,9 @@ def generate_dai():
         if not line.startswith("#define"):
             continue
         parts = line.strip().split()
-        name = parts[1][len("SDLK_"):]
+        name = parts[1][len("SDLK_") :]
         value = parts[2][:-1]  # 移除末尾的 u
-        name = 'key_' + underscore_to_lower_camelcase(name)
+        name = "key_" + underscore_to_lower_camelcase(name)
         s = f"    class con {name} = {value};"
         items.append(s)
     dai_template = f"""

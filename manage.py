@@ -7,12 +7,14 @@ import shutil
 import subprocess
 import sys
 
+
 @dataclasses.dataclass
 class Global:
     cmake_command: str = ""
     ninja_command: str = ""
     llvm_binpath: str = "/usr/bin"
     os_name: str = platform.system().lower()
+
 
 g = Global()
 
@@ -43,7 +45,9 @@ def cp_compile_commands_json():
 
 
 def clean():
-    subprocess.check_call([g.cmake_command, "--build", "cmake-build-debug", "--target", "clean"])
+    subprocess.check_call(
+        [g.cmake_command, "--build", "cmake-build-debug", "--target", "clean"]
+    )
 
 
 def compile(target, *args):
@@ -54,12 +58,17 @@ def compile(target, *args):
         "-DCMAKE_EXPORT_COMPILE_COMMANDS=1",
         "-DCMAKE_BUILD_TYPE=Debug",
         f"-DCMAKE_MAKE_PROGRAM={g.ninja_command}",
-        "-G", "Ninja",
-        "-S", ".",
-        "-B", "cmake-build-debug"
+        "-G",
+        "Ninja",
+        "-S",
+        ".",
+        "-B",
+        "cmake-build-debug",
     ]
     subprocess.check_call(cmake_args)
-    subprocess.check_call([g.cmake_command, "--build", "cmake-build-debug", "--target", target, "-j", "9"])
+    subprocess.check_call(
+        [g.cmake_command, "--build", "cmake-build-debug", "--target", target, "-j", "9"]
+    )
 
 
 def test(*args):
@@ -82,11 +91,15 @@ def test(*args):
     subprocess.check_call(["./cmake-build-debug/test", *program_params])
     subprocess.check_call(["time", "./cmake-build-debug/test", *program_params])
 
-    print("############## DEBUG GC #######################################################")
+    print(
+        "############## DEBUG GC #######################################################"
+    )
     compile("test", "-DDAI_DEBUG_GC=ON")
     subprocess.check_call(["./cmake-build-debug/test", *program_params])
 
-    print("############## Sanitizer Test #################################################")
+    print(
+        "############## Sanitizer Test #################################################"
+    )
     compile("santest")
     subprocess.check_call(["./cmake-build-debug/santest", *program_params])
 
@@ -103,49 +116,95 @@ def show_ast(*args):
 
 def benchmark(*args):
     compile("dai")
-    subprocess.check_call(["/usr/bin/time", "-v", "./cmake-build-debug/Debug/dai", *args])
+    subprocess.check_call(
+        ["/usr/bin/time", "-v", "./cmake-build-debug/Debug/dai", *args]
+    )
 
 
 def benchmark_profile(*args):
     # todo
     compile("dai")
     subprocess.check_call(["./cmake-build-debug/Debug/dai", *args])
-    subprocess.check_call(["gprof", "./cmake-build-debug/Debug/dai", "gmon.out", ">benchmark.txt"])
+    subprocess.check_call(
+        ["gprof", "./cmake-build-debug/Debug/dai", "gmon.out", ">benchmark.txt"]
+    )
 
 
 def mem():
     compile("test")
-    subprocess.check_call([
-        "valgrind", "--tool=memcheck", "--leak-check=full", "--show-leak-kinds=all",
-        "--trace-children=yes", "./cmake-build-debug/test", "--no-fork"
-    ])
+    subprocess.check_call(
+        [
+            "valgrind",
+            "--tool=memcheck",
+            "--leak-check=full",
+            "--show-leak-kinds=all",
+            "--trace-children=yes",
+            "./cmake-build-debug/test",
+            "--no-fork",
+        ]
+    )
 
 
 def memrepl():
-    compile("repl")
-    subprocess.check_call([
-        "valgrind", "--tool=memcheck", "--leak-check=full", "--show-leak-kinds=all",
-        "--trace-children=yes", "./cmake-build-debug/repl"
-    ])
+    compile("dai")
+    subprocess.check_call(
+        [
+            "valgrind",
+            "--tool=memcheck",
+            "--leak-check=full",
+            "--show-leak-kinds=all",
+            "--trace-children=yes",
+            "./cmake-build-debug/Debug/dai",
+        ]
+    )
 
 
 def coverage(*args):
     compile("coverage", f"-DCMAKE_C_COMPILER={g.llvm_binpath}/clang")
-    subprocess.check_call(["LLVM_PROFILE_FILE=coverage.profraw", "./cmake-build-debug/coverage", "--no-fork"])
-    subprocess.check_call([f"{g.llvm_binpath}/llvm-profdata", "merge", "-sparse", "coverage.profraw", "-o", "coverage.profdata"])
+    subprocess.check_call(
+        [
+            "LLVM_PROFILE_FILE=coverage.profraw",
+            "./cmake-build-debug/coverage",
+            "--no-fork",
+        ]
+    )
+    subprocess.check_call(
+        [
+            f"{g.llvm_binpath}/llvm-profdata",
+            "merge",
+            "-sparse",
+            "coverage.profraw",
+            "-o",
+            "coverage.profdata",
+        ]
+    )
 
     if args:
-        output = subprocess.check_output([
-            f"{g.llvm_binpath}/llvm-cov", "show", "-show-expansions", "-show-branches=count",
-            "-instr-profile=coverage.profdata", "./cmake-build-debug/coverage", *args, ">coverage.txt"
-        ], text=True)
+        output = subprocess.check_output(
+            [
+                f"{g.llvm_binpath}/llvm-cov",
+                "show",
+                "-show-expansions",
+                "-show-branches=count",
+                "-instr-profile=coverage.profdata",
+                "./cmake-build-debug/coverage",
+                *args,
+                ">coverage.txt",
+            ],
+            text=True,
+        )
     else:
-        output = subprocess.check_output([
-            f"{g.llvm_binpath}/llvm-cov", "report", "./cmake-build-debug/coverage",
-            "-instr-profile=coverage.profdata", ">coverage.txt"
-        ], text=True)
+        output = subprocess.check_output(
+            [
+                f"{g.llvm_binpath}/llvm-cov",
+                "report",
+                "./cmake-build-debug/coverage",
+                "-instr-profile=coverage.profdata",
+                ">coverage.txt",
+            ],
+            text=True,
+        )
     pathlib.Path("coverage.txt").write_text(output)
-
 
 
 def fmt():
@@ -155,10 +214,13 @@ def fmt():
         sys.exit(1)
 
     patterns = [
-        "test/*.c", "test/*.h",
+        "test/*.c",
+        "test/*.h",
         "src/atstr/*",
-        "src/dai_*.c", "src/dai_*.h",
-        "src/dai_ast/*.c", "src/dai_ast/*.h"
+        "src/dai_*.c",
+        "src/dai_*.h",
+        "src/dai_ast/*.c",
+        "src/dai_ast/*.h",
     ]
     paths = []
     # glob with patterns

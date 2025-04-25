@@ -5,6 +5,7 @@
 
 #include "dai_chunk.h"
 #include "dai_objects/dai_object_base.h"
+#include "dai_objects/dai_object_map.h"
 #include "dai_symboltable.h"
 
 typedef struct {
@@ -24,6 +25,8 @@ typedef struct {
 } DaiObjModule;
 DaiObjModule*
 DaiObjModule_New(DaiVM* vm, const char* name, const char* filename);
+DaiObjModule*
+DaiObjModule_NewWithGlobals(DaiVM* vm, const char* name, const char* filename, DaiObjMap* globals);
 void
 DaiObjModule_Free(DaiVM* vm, DaiObjModule* module);
 void
@@ -37,7 +40,12 @@ DaiObjModule_set_global(DaiObjModule* module, const char* name, DaiValue value);
 bool
 DaiObjModule_add_global(DaiObjModule* module, const char* name, DaiValue value);
 bool
-DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiValue* key, DaiValue* value);
+DaiObjModule_add_global1(DaiObjModule* module, DaiObjString* name, DaiValue value);
+bool
+DaiObjModule_iter(DaiObjModule* module, size_t* i, DaiObjString** key, DaiValue* value);
+// copy from module.globals to globals
+void
+DaiObjModule_copyto(DaiObjModule* module, DaiObjMap* globals);
 void
 builtin_module_setup(DaiObjModule* module);
 

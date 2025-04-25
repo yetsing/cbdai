@@ -11,7 +11,6 @@
 #include "dai_object.h"
 #include "dai_value.h"
 #include "dai_vm.h"
-#include "dai_windows.h"
 
 static SDL_Window* window            = NULL;
 static SDL_Renderer* renderer        = NULL;

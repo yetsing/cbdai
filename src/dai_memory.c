@@ -221,12 +221,11 @@ blackenObject(DaiVM* vm, DaiObj* object) {
             markObject(vm, (DaiObj*)module->name);
             markObject(vm, (DaiObj*)module->filename);
             markArray(vm, &module->chunk.constants);
-            DaiValue key, value;
+            DaiObjString* key;
+            DaiValue value;
             size_t i = 0;
             while (DaiObjModule_iter(module, &i, &key, &value)) {
-                if (IS_OBJ(key)) {
-                    markObject(vm, AS_OBJ(key));
-                }
+                markObject(vm, (DaiObj*)key);
                 if (IS_OBJ(value)) {
                     markObject(vm, AS_OBJ(value));
                 }
