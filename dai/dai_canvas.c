@@ -9,18 +9,24 @@
 #include <SDL3_image/SDL_image.h>
 
 #include "dai_object.h"
+#include "dai_objects/dai_object_base.h"
+#include "dai_objects/dai_object_error.h"
+#include "dai_objects/dai_object_string.h"
+#include "dai_objects/dai_object_struct.h"
 #include "dai_value.h"
 #include "dai_vm.h"
 
-static SDL_Window* window            = NULL;
-static SDL_Renderer* renderer        = NULL;
-static const char* module_name       = "canvas";
-static bool is_running               = false;
-static DaiObjModule* canvas_module   = NULL;
-static const char* texture_name      = "canvas.Texture";
-static const char* rect_struct_name  = "canvas.Rect";
-static const char* point_struct_name = "canvas.Point";
-static bool init_done                = false;
+static SDL_Window* window                     = NULL;
+static SDL_Renderer* renderer                 = NULL;
+static const char* module_name                = "canvas";
+static bool is_running                        = false;
+static DaiObjModule* canvas_module            = NULL;
+static const char* texture_name               = "canvas.Texture";
+static const char* rect_struct_name           = "canvas.Rect";
+static const char* point_struct_name          = "canvas.Point";
+static const char* keyboard_event_struct_name = "canvas.KeyboardEvent";
+static const char* mouse_event_struct_name    = "canvas.MouseEvent";
+static bool init_done                         = false;
 
 #define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
 #define CHECK_INIT()                                                       \
@@ -37,15 +43,100 @@ typedef struct {
     int callback_count;
 } EventCallbacks;
 
-static DaiObjClass* keyboard_event_class = NULL;
-static DaiObjClass* mouse_event_class    = NULL;
-
-
 static DaiObjTuple* keydown_callbacks     = NULL;
 static DaiObjTuple* keyup_callbacks       = NULL;
 static DaiObjTuple* mousedown_callbacks   = NULL;
 static DaiObjTuple* mouseup_callbacks     = NULL;
 static DaiObjTuple* mousemotion_callbacks = NULL;
+
+typedef struct {
+    DAI_OBJ_STRUCT_BASE
+    int64_t code;
+    bool alt_key;
+    bool ctrl_key;
+    bool shift_key;
+    bool meta_key;
+    bool repeat;
+    const char* key;
+} KeyboardEventStruct;
+static DaiValue
+KeyboardEventStruct_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    KeyboardEventStruct* kb = (KeyboardEventStruct*)AS_STRUCT(receiver);
+    char* cname             = name->chars;
+    if (strcmp(cname, "code") == 0) {
+        return INTEGER_VAL(kb->code);
+    }
+    if (strcmp(cname, "key") == 0) {
+        DaiObjString* k = dai_copy_string_intern(vm, kb->key, strlen(kb->key));
+        return OBJ_VAL(k);
+    }
+    if (strcmp(cname, "altKey") == 0) {
+        return BOOL_VAL(kb->alt_key);
+    }
+    if (strcmp(cname, "ctrlKey") == 0) {
+        return BOOL_VAL(kb->ctrl_key);
+    }
+    if (strcmp(cname, "shiftKey") == 0) {
+        return BOOL_VAL(kb->shift_key);
+    }
+    if (strcmp(cname, "metaKey") == 0) {
+        return BOOL_VAL(kb->meta_key);
+    }
+    if (strcmp(cname, "repeat") == 0) {
+        return BOOL_VAL(kb->repeat);
+    }
+    DaiObjError* err = DaiObjError_Newf(vm, "'KeyboardEvent' has not property '%s'", cname);
+    return OBJ_VAL(err);
+}
+
+static struct DaiObjOperation keyboard_event_operation = {
+    .get_property_func  = KeyboardEventStruct_get_property,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
+    .string_func        = dai_default_string_func,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+    .get_method_func    = NULL,
+};
+
+typedef struct {
+    DAI_OBJ_STRUCT_BASE
+    float x;
+    float y;
+    int button;
+} MouseEventStruct;
+static DaiValue
+MouseEventStruct_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    MouseEventStruct* event = (MouseEventStruct*)AS_STRUCT(receiver);
+    char* cname             = name->chars;
+    if (strcmp(cname, "x") == 0) {
+        return FLOAT_VAL(event->x);
+    }
+    if (strcmp(cname, "y") == 0) {
+        return FLOAT_VAL(event->y);
+    }
+    if (strcmp(cname, "button") == 0) {
+        return INTEGER_VAL(event->button);
+    }
+    DaiObjError* err = DaiObjError_Newf(vm, "'MouseEvent' has not property '%s'", cname);
+    return OBJ_VAL(err);
+}
+
+static struct DaiObjOperation mouse_event_operation = {
+    .get_property_func  = MouseEventStruct_get_property,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
+    .string_func        = dai_default_string_func,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+    .get_method_func    = NULL,
+};
 
 static DaiValue
 convert_sdl_event(DaiVM* vm, SDL_Event event) {
@@ -54,35 +145,45 @@ convert_sdl_event(DaiVM* vm, SDL_Event event) {
         case SDL_EVENT_KEY_UP: {
             // code altKey ctrlKey shiftKey metaKey repeat key
             const char* key_name = SDL_GetKeyName(event.key.key);
-            DaiValue value[]     = {
-                INTEGER_VAL(event.key.key),
-                BOOL_VAL((event.key.mod & SDL_KMOD_ALT) != 0),
-                BOOL_VAL((event.key.mod & SDL_KMOD_CTRL) != 0),
-                BOOL_VAL((event.key.mod & SDL_KMOD_SHIFT) != 0),
-                BOOL_VAL((event.key.mod & SDL_KMOD_GUI) != 0),
-                BOOL_VAL(event.key.repeat),
-                OBJ_VAL(STRING_NAME(key_name)),
-            };
-            return DaiObjClass_call(keyboard_event_class, vm, 7, value);
+            KeyboardEventStruct* kb =
+                (KeyboardEventStruct*)DaiObjStruct_New(vm,
+                                                       keyboard_event_struct_name,
+                                                       &keyboard_event_operation,
+                                                       sizeof(KeyboardEventStruct),
+                                                       NULL);
+            kb->code      = event.key.key;
+            kb->alt_key   = (event.key.mod & SDL_KMOD_ALT) != 0;
+            kb->ctrl_key  = (event.key.mod & SDL_KMOD_CTRL) != 0;
+            kb->shift_key = (event.key.mod & SDL_KMOD_SHIFT) != 0;
+            kb->meta_key  = (event.key.mod & SDL_KMOD_GUI) != 0;
+            kb->repeat    = event.key.repeat;
+            kb->key       = key_name;
+            return OBJ_VAL(kb);
         }
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP: {
             // x y button
-            DaiValue value[] = {
-                FLOAT_VAL(event.button.x),
-                FLOAT_VAL(event.button.y),
-                INTEGER_VAL(event.button.button),
-            };
-            return DaiObjClass_call(mouse_event_class, vm, 3, value);
+            MouseEventStruct* m = (MouseEventStruct*)DaiObjStruct_New(vm,
+                                                                      mouse_event_struct_name,
+                                                                      &mouse_event_operation,
+                                                                      sizeof(MouseEventStruct),
+                                                                      NULL);
+            m->x                = event.button.x;
+            m->y                = event.button.y;
+            m->button           = event.button.button;
+            return OBJ_VAL(m);
         }
         case SDL_EVENT_MOUSE_MOTION: {
             // x y button
-            DaiValue value[] = {
-                FLOAT_VAL(event.motion.x),
-                FLOAT_VAL(event.motion.y),
-                INTEGER_VAL(event.motion.state),
-            };
-            return DaiObjClass_call(mouse_event_class, vm, 3, value);
+            MouseEventStruct* m = (MouseEventStruct*)DaiObjStruct_New(vm,
+                                                                      mouse_event_struct_name,
+                                                                      &mouse_event_operation,
+                                                                      sizeof(MouseEventStruct),
+                                                                      NULL);
+            m->x                = event.button.x;
+            m->y                = event.button.y;
+            m->button           = event.button.button;
+            return OBJ_VAL(m);
         }
         default: return NIL_VAL;
     }
@@ -819,26 +920,6 @@ create_canvas_module(DaiVM* vm) {
     for (int i = 0; canvas_funcs[i].name != NULL; i++) {
         DaiObjModule_add_global(module, canvas_funcs[i].name, OBJ_VAL(&canvas_funcs[i]));
     }
-
-    // create keyboard event class
-    keyboard_event_class = DaiObjClass_New(vm, STRING_NAME("KeyboardEvent"));
-    DaiObjClass_define_field(
-        keyboard_event_class, STRING_NAME("code"), INTEGER_VAL(SDLK_UNKNOWN), true);
-    DaiObjClass_define_field(keyboard_event_class, STRING_NAME("altKey"), dai_false, true);
-    DaiObjClass_define_field(keyboard_event_class, STRING_NAME("ctrlKey"), dai_false, true);
-    DaiObjClass_define_field(keyboard_event_class, STRING_NAME("shiftKey"), dai_false, true);
-    DaiObjClass_define_field(keyboard_event_class, STRING_NAME("metaKey"), dai_false, true);
-    DaiObjClass_define_field(keyboard_event_class, STRING_NAME("repeat"), dai_false, true);
-    DaiObjClass_define_field(
-        keyboard_event_class, STRING_NAME("key"), INTEGER_VAL(SDLK_UNKNOWN), true);
-    DaiObjModule_add_global(module, "KeyboardEvent", OBJ_VAL(keyboard_event_class));
-
-    // create mouse event class
-    mouse_event_class = DaiObjClass_New(vm, STRING_NAME("MouseEvent"));
-    DaiObjClass_define_field(mouse_event_class, STRING_NAME("x"), INTEGER_VAL(0), true);
-    DaiObjClass_define_field(mouse_event_class, STRING_NAME("y"), INTEGER_VAL(0), true);
-    DaiObjClass_define_field(mouse_event_class, STRING_NAME("button"), INTEGER_VAL(0), true);
-    DaiObjModule_add_global(module, "MouseEvent", OBJ_VAL(mouse_event_class));
 
     // 让模块引用事件回调，以防止被垃圾回收
     // reference event callbacks

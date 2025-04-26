@@ -267,7 +267,7 @@ DaiObjClass_Free(DaiVM* vm, DaiObjClass* klass) {
 }
 
 DaiValue
-DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
+DaiObjClass_new_instance_within_vm(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv) {
     DaiObjInstance* instance = DaiObjInstance_New(vm, klass);
     int define_field_count   = DaiObjTuple_length(klass->define_field_names);
     if (argc > define_field_count) {

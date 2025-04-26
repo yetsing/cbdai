@@ -212,7 +212,7 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
                 // 记录调用完成后的栈顶位置
                 // 因为 DaiObjClass_call 里面可能会改变 stack_top 位置，所以需要在调用前记录下来
                 DaiValue* new_stack_top = vm->stack_top - argCount - 1;
-                DaiValue result         = DaiObjClass_call(
+                DaiValue result         = DaiObjClass_new_instance_within_vm(
                     (DaiObjClass*)AS_OBJ(callee), vm, argCount, vm->stack_top - argCount);
                 vm->stack_top = new_stack_top;
                 if (DAI_IS_ERROR(result)) {

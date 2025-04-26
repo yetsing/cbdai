@@ -142,7 +142,7 @@ static DaiObjBuiltinFunction DaiObjMapBuiltins[] = {
 };
 
 static DaiValue
-DaiObjMap_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+DaiObjMap_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     const char* cname = name->chars;
     switch (cname[0]) {
         case 'l': {
@@ -176,8 +176,7 @@ DaiObjMap_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
             break;
         }
     }
-    DaiObjError* err = DaiObjError_Newf(
-        vm, "'map' object has not property '%s'", name->chars);
+    DaiObjError* err = DaiObjError_Newf(vm, "'map' object has not property '%s'", name->chars);
     return OBJ_VAL(err);
 }
 
@@ -275,7 +274,7 @@ DaiObjMap_iter_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver) {
 }
 
 static struct DaiObjOperation map_operation = {
-    .get_property_func  = DaiObjMap_get_property,
+    .get_property_func  = NULL,
     .set_property_func  = NULL,
     .subscript_get_func = DaiObjMap_subscript_get,
     .subscript_set_func = DaiObjMap_subscript_set,
@@ -284,7 +283,7 @@ static struct DaiObjOperation map_operation = {
     .hash_func          = NULL,
     .iter_init_func     = DaiObjMap_iter_init,
     .iter_next_func     = NULL,
-    .get_method_func    = DaiObjMap_get_property,
+    .get_method_func    = DaiObjMap_get_method,
 };
 
 int

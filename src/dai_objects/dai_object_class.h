@@ -40,7 +40,7 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name);
 void
 DaiObjClass_Free(DaiVM* vm, DaiObjClass* klass);
 DaiValue
-DaiObjClass_call(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv);
+DaiObjClass_new_instance_within_vm(DaiObjClass* klass, DaiVM* vm, int argc, DaiValue* argv);
 void
 DaiObjClass_define_class_field(DaiObjClass* klass, DaiObjString* name, DaiValue value,
                                bool is_const);
@@ -84,4 +84,4 @@ void
 DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString* name,
                   DaiValue* method);
 
-#endif //DAI_OBJECT_CLASS_H
+#endif   // DAI_OBJECT_CLASS_H

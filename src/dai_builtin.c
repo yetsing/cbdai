@@ -14,11 +14,312 @@
 #include "cwalk.h"
 
 #include "dai_object.h"
+#include "dai_objects/dai_object_base.h"
+#include "dai_objects/dai_object_error.h"
+#include "dai_objects/dai_object_string.h"
+#include "dai_objects/dai_object_struct.h"
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
 #include "dai_windows.h"   // IWYU pragma: keep
 
+
+// #region 内置对象 Path
+
+static char* path_name = "Path";
+static struct DaiObjOperation path_struct_operation;
+
+typedef struct {
+    DAI_OBJ_STRUCT_BASE
+    char* path;
+} PathStruct;
+
+static void
+PathStruct_free(DaiObjStruct* st) {
+    PathStruct* path = (PathStruct*)st;
+    if (path->path != NULL) {
+        free(path->path);
+        path->path = NULL;
+    }
+}
+
+static DaiValue
+PathStruct_New(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err = DaiObjError_Newf(vm, "Path() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "Path() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    PathStruct* path = (PathStruct*)DaiObjStruct_New(
+        vm, path_name, &path_struct_operation, sizeof(PathStruct), PathStruct_free);
+    path->path = strdup(AS_STRING(argv[0])->chars);
+    return OBJ_VAL(path);
+}
+
+static DaiValue
+builtin_path_read_text(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.read_text() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    char* text       = dai_string_from_file(path->path);
+    if (text == NULL) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.read_text() failed: %s(%s)", path->path, strerror(errno));
+        return OBJ_VAL(err);
+    }
+    return OBJ_VAL(dai_take_string(vm, text, strlen(text)));
+}
+
+static DaiValue
+builtin_path_write_text(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.write_text() expected 1 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    if (!IS_STRING(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "Path.write_text() expected string arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    const char* text = AS_STRING(argv[0])->chars;
+    FILE* fp         = fopen(path->path, "w");
+    if (fp == NULL) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.write_text() failed: %s(%s)", path->path, strerror(errno));
+        return OBJ_VAL(err);
+    }
+    size_t len = strlen(text);
+    size_t n   = fwrite(text, sizeof(char), len, fp);
+    fclose(fp);
+    if (n != len) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.write_text() failed: %s(%s)", path->path, strerror(errno));
+        return OBJ_VAL(err);
+    }
+    return INTEGER_VAL(n);
+}
+
+static DaiValue
+built_path_exists(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.exists() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    return BOOL_VAL(access(path->path, F_OK) == 0);
+}
+
+static DaiValue
+built_path_unlink(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    bool missing_ok = false;
+    if (argc > 1) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.unlink() expected 0 or 1 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (argc == 1) {
+        if (!IS_BOOL(argv[0])) {
+            DaiObjError* err = DaiObjError_Newf(
+                vm, "Path.unlink() expected bool arguments, but got %s", dai_value_ts(argv[0]));
+            return OBJ_VAL(err);
+        }
+        missing_ok = AS_BOOL(argv[0]);
+    }
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    if (unlink(path->path) == -1) {
+        if (errno == ENOENT && missing_ok) {
+            return NIL_VAL;
+        }
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.unlink() failed: %s(%s)", path->path, strerror(errno));
+        return OBJ_VAL(err);
+    }
+    return NIL_VAL;
+}
+
+static DaiValue
+builtin_path_str(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.__str__() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    return OBJ_VAL(dai_copy_string(vm, path->path, strlen(path->path)));
+}
+
+static DaiValue
+builtin_path_is_absolute(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.is_absolute() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    return BOOL_VAL(cwk_path_is_absolute(path->path));
+}
+
+static DaiValue
+builtin_path_absolute(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.absolute() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    if (cwk_path_is_absolute(path->path)) {
+        return receiver;
+    }
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        DaiObjError* err = DaiObjError_Newf(vm, "Path.absolute() failed: %s", strerror(errno));
+        return OBJ_VAL(err);
+    }
+    char path_buf[PATH_MAX];
+    cwk_path_get_absolute(cwd, path->path, path_buf, sizeof(path_buf));
+    DaiValue abs_path = OBJ_VAL(dai_copy_string(vm, path_buf, strlen(path_buf)));
+    return PathStruct_New(vm, receiver, 1, &abs_path);
+}
+
+static DaiValue
+builtin_path_joinpath(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc == 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.joinpath() expected 1 or more arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    char path_buf[PATH_MAX];
+    char path_res[PATH_MAX];
+    strlcpy(path_res, path->path, sizeof(path_res));
+    for (int i = 0; i < argc; i++) {
+        if (!IS_STRING(argv[i])) {
+            DaiObjError* err = DaiObjError_Newf(
+                vm, "Path.joinpath() expected string arguments, but got %s", dai_value_ts(argv[i]));
+            return OBJ_VAL(err);
+        }
+        const char* arg = AS_STRING(argv[i])->chars;
+        cwk_path_join(path_res, arg, path_buf, sizeof(path_buf));
+        strcpy(path_res, path_buf);
+    }
+    DaiValue joined_path = OBJ_VAL(dai_copy_string(vm, path_res, strlen(path_res)));
+    return PathStruct_New(vm, receiver, 1, &joined_path);
+}
+
+static DaiValue
+builtin_path_parent(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "Path.parent() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    PathStruct* path = (PathStruct*)AS_STRUCT(receiver);
+    size_t length;
+    cwk_path_get_dirname(path->path, &length);
+    DaiValue parent_path =
+        OBJ_VAL(dai_copy_string(vm, path->path, length));   // 这里的 path 是一个 string 对象
+    return PathStruct_New(vm, receiver, 1, &parent_path);
+}
+
+
+static DaiObjBuiltinFunction builtin_path_methods[] = {
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "read_text",
+        .function = builtin_path_read_text,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "write_text",
+        .function = builtin_path_write_text,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "exists",
+        .function = built_path_exists,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "unlink",
+        .function = built_path_unlink,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "string",
+        .function = builtin_path_str,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "is_absolute",
+        .function = builtin_path_is_absolute,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "absolute",
+        .function = builtin_path_absolute,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "joinpath",
+        .function = builtin_path_joinpath,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "parent",
+        .function = builtin_path_parent,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name = NULL,
+    },
+};
+static char*
+PathStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
+    PathStruct* path = (PathStruct*)AS_INSTANCE(value);
+    if (path->path == NULL) {
+        return NULL;
+    }
+    char* str = strdup(path->path);
+    return str;
+}
+static DaiValue
+PathStruct_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    for (int i = 0; builtin_path_methods[i].name != NULL; i++) {
+        if (strcmp(name->chars, builtin_path_methods[i].name) == 0) {
+            return OBJ_VAL(&builtin_path_methods[i]);
+        }
+    }
+    DaiObjError* err = DaiObjError_Newf(vm, "'Path' object has not property '%s'", name->chars);
+    return OBJ_VAL(err);
+}
+
+static struct DaiObjOperation path_struct_operation = {
+    .get_property_func  = NULL,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
+    .string_func        = PathStruct_String,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+    .get_method_func    = PathStruct_get_method,
+};
+
+// #endregion
 
 // #region 内置函数
 static DaiValue
@@ -282,6 +583,11 @@ static DaiObjBuiltinFunction builtin_funcs[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "int",
         .function = builtin_int,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "Path",
+        .function = PathStruct_New,
     },
     {
         .name = NULL,
@@ -627,293 +933,6 @@ builtin_os_module(DaiVM* vm) {
 
 // #endregion
 
-// #region 内置类 Path
-
-static int path_field_index = 0;
-#define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
-
-static DaiValue
-builtin_path_read_text(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.read_text() expected no arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    char* text = dai_string_from_file(path->chars);
-    if (text == NULL) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.read_text() failed: %s(%s)", path->chars, strerror(errno));
-        return OBJ_VAL(err);
-    }
-    return OBJ_VAL(dai_take_string(vm, text, strlen(text)));
-}
-
-static DaiValue
-builtin_path_write_text(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 1) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.write_text() expected 1 argument, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    if (!IS_STRING(argv[0])) {
-        DaiObjError* err = DaiObjError_Newf(
-            vm, "Path.write_text() expected string arguments, but got %s", dai_value_ts(argv[0]));
-        return OBJ_VAL(err);
-    }
-    const char* text = AS_STRING(argv[0])->chars;
-    FILE* fp         = fopen(path->chars, "w");
-    if (fp == NULL) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.write_text() failed: %s(%s)", path->chars, strerror(errno));
-        return OBJ_VAL(err);
-    }
-    size_t len = strlen(text);
-    size_t n   = fwrite(text, sizeof(char), len, fp);
-    fclose(fp);
-    if (n != len) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.write_text() failed: %s(%s)", path->chars, strerror(errno));
-        return OBJ_VAL(err);
-    }
-    return INTEGER_VAL(n);
-}
-
-static DaiValue
-builtin_path_init(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 1) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.__init__() expected 1 argument, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    if (!IS_STRING(argv[0])) {
-        DaiObjError* err = DaiObjError_Newf(
-            vm, "Path.__init__() expected string arguments, but got %s", dai_value_ts(argv[0]));
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* path           = AS_INSTANCE(receiver);
-    path->fields[path_field_index] = argv[0];
-    return receiver;
-}
-
-static DaiValue
-built_path_exists(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.exists() expected no arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    return BOOL_VAL(access(path->chars, F_OK) == 0);
-}
-
-static DaiValue
-built_path_unlink(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    bool missing_ok = false;
-    if (argc > 1) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.unlink() expected 0 or 1 arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    if (argc == 1) {
-        if (!IS_BOOL(argv[0])) {
-            DaiObjError* err = DaiObjError_Newf(
-                vm, "Path.unlink() expected bool arguments, but got %s", dai_value_ts(argv[0]));
-            return OBJ_VAL(err);
-        }
-        missing_ok = AS_BOOL(argv[0]);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    if (unlink(path->chars) == -1) {
-        if (errno == ENOENT && missing_ok) {
-            return NIL_VAL;
-        }
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.unlink() failed: %s(%s)", path->chars, strerror(errno));
-        return OBJ_VAL(err);
-    }
-    return NIL_VAL;
-}
-
-static DaiValue
-builtin_path_str(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.__str__() expected no arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    return OBJ_VAL(path);
-}
-
-static DaiValue
-builtin_path_is_absolute(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.is_absolute() expected no arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    return BOOL_VAL(cwk_path_is_absolute(path->chars));
-}
-
-static DaiValue
-builtin_path_absolute(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.absolute() expected no arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    if (cwk_path_is_absolute(path->chars)) {
-        return receiver;
-    }
-    char cwd[PATH_MAX];
-    if (getcwd(cwd, sizeof(cwd)) == NULL) {
-        DaiObjError* err = DaiObjError_Newf(vm, "Path.absolute() failed: %s", strerror(errno));
-        return OBJ_VAL(err);
-    }
-    char path_buf[PATH_MAX];
-    cwk_path_get_absolute(cwd, path->chars, path_buf, sizeof(path_buf));
-    DaiValue abs_path            = OBJ_VAL(dai_copy_string_intern(vm, path_buf, strlen(path_buf)));
-    DaiObjInstance* new_instance = DaiObjInstance_Copy(vm, instance);
-    new_instance->fields[path_field_index] = abs_path;
-    return OBJ_VAL(new_instance);
-}
-
-static DaiValue
-builtin_path_joinpath(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc == 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.joinpath() expected 1 or more arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    char path_buf[PATH_MAX];
-    char path_res[PATH_MAX];
-    strcpy(path_res, path->chars);
-    for (int i = 0; i < argc; i++) {
-        if (!IS_STRING(argv[i])) {
-            DaiObjError* err = DaiObjError_Newf(
-                vm, "Path.joinpath() expected string arguments, but got %s", dai_value_ts(argv[i]));
-            return OBJ_VAL(err);
-        }
-        const char* arg = AS_STRING(argv[i])->chars;
-        cwk_path_join(path_res, arg, path_buf, sizeof(path_buf));
-        strcpy(path_res, path_buf);
-    }
-    DaiValue joined_path = OBJ_VAL(dai_copy_string_intern(vm, path_res, strlen(path_res)));
-    return DaiObjClass_call(instance->klass, vm, 1, &joined_path);
-}
-
-static DaiValue
-builtin_path_parent(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "Path.parent() expected no arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    DaiObjInstance* instance = AS_INSTANCE(receiver);
-    DaiObjString* path =
-        AS_STRING(instance->fields[path_field_index]);   // 这里的 path 是一个 string 对象
-    size_t length;
-    cwk_path_get_dirname(path->chars, &length);
-    DaiValue parent_path = OBJ_VAL(
-        dai_copy_string_intern(vm, path->chars, length));   // 这里的 path 是一个 string 对象
-    return DaiObjClass_call(instance->klass, vm, 1, &parent_path);
-}
-
-
-static DaiObjBuiltinFunction builtin_path_methods[] = {
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "__init__",
-        .function = builtin_path_init,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "read_text",
-        .function = builtin_path_read_text,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "write_text",
-        .function = builtin_path_write_text,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "exists",
-        .function = built_path_exists,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "unlink",
-        .function = built_path_unlink,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "string",
-        .function = builtin_path_str,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "is_absolute",
-        .function = builtin_path_is_absolute,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "absolute",
-        .function = builtin_path_absolute,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "joinpath",
-        .function = builtin_path_joinpath,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "parent",
-        .function = builtin_path_parent,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name = NULL,
-    },
-};
-
-static DaiObjClass*
-builtin_path_class(DaiVM* vm) {
-    DaiObjClass* path_class = DaiObjClass_New(vm, STRING_NAME("Path"));
-    path_field_index =
-        DaiObjClass_define_field(path_class, STRING_NAME("_path"), UNDEFINED_VAL, true);
-
-    for (int i = 0; builtin_path_methods[i].name != NULL; i++) {
-        DaiObjClass_define_method(path_class,
-                                  STRING_NAME(builtin_path_methods[i].name),
-                                  OBJ_VAL(&builtin_path_methods[i]));
-    }
-    return path_class;
-}
-
-// #endregion
-
 const char* builtin_names[BUILTIN_OBJECT_MAX_COUNT]               = {};
 static DaiBuiltinObject builtin_objects[BUILTIN_OBJECT_MAX_COUNT] = {};
 
@@ -944,11 +963,6 @@ init_builtin_objects(DaiVM* vm, int* count) {
     builtin_names[i]         = "os";
     builtin_objects[i].name  = "os";
     builtin_objects[i].value = OBJ_VAL(builtin_os_module(vm));
-    i++;
-
-    builtin_names[i]         = "Path";
-    builtin_objects[i].name  = "Path";
-    builtin_objects[i].value = OBJ_VAL(builtin_path_class(vm));
     i++;
 
     *count = i;

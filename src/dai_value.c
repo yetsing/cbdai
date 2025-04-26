@@ -53,7 +53,10 @@ dai_value_equal_with_limit(DaiValue a, DaiValue b, int* limit) {
         case DaiValueType_int: return AS_INTEGER(a) == AS_INTEGER(b);
         case DaiValueType_float: return float_equals(AS_FLOAT(a), AS_FLOAT(b));
         case DaiValueType_bool: return AS_BOOL(a) == AS_BOOL(b);
-        case DaiValueType_obj: return AS_OBJ(a)->operation->equal_func(a, b, limit);
+        case DaiValueType_obj: {
+            EqualFn equal_func = AS_OBJ(a)->operation->equal_func;
+            return equal_func && equal_func(a, b, limit);
+        }
         default: return 0;
     }
 }

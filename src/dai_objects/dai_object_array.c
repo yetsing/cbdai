@@ -404,7 +404,7 @@ static DaiObjBuiltinFunction DaiObjArrayBuiltins[] = {
 };
 
 static DaiValue
-DaiObjArray_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+DaiObjArray_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
     const char* cname = name->chars;
     switch (cname[0]) {
         case 'a': {
@@ -563,7 +563,7 @@ DaiObjArray_iter_init(__attribute__((unused)) DaiVM* vm, DaiValue receiver) {
 }
 
 static struct DaiObjOperation array_operation = {
-    .get_property_func  = DaiObjArray_get_property,
+    .get_property_func  = NULL,
     .set_property_func  = NULL,
     .subscript_get_func = DaiObjArray_subscript_get,
     .subscript_set_func = DaiObjArray_subscript_set,
@@ -572,7 +572,7 @@ static struct DaiObjOperation array_operation = {
     .hash_func          = NULL,
     .iter_init_func     = DaiObjArray_iter_init,
     .iter_next_func     = NULL,
-    .get_method_func    = DaiObjArray_get_property,
+    .get_method_func    = DaiObjArray_get_method,
 };
 
 DaiObjArray*
