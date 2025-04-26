@@ -5,6 +5,7 @@
 
 #include "dai_error.h"
 #include "dai_malloc.h"
+#include "dai_utils.h"
 #include "dai_windows.h"   // IWYU pragma: keep
 
 static char*
@@ -26,26 +27,18 @@ get_line_at(const char* s, int lineno) {
     }
 }
 
-typedef struct _DaiError {
-    const char* name;   // 静态字符串，不用释放
-    char* msg;
-    char* filename;
-    int lineno;
-    int column;
-} DaiError;
-
 static DaiError*
 DaiError_New(const char* name, char* msg, const char* filename, int lineno, int column) {
     assert(msg != NULL);
     DaiError* err = dai_malloc(sizeof(DaiError));
-    err->msg      = strdup(msg);
-    err->filename = NULL;
-    if (filename != NULL) {
-        err->filename = strdup(filename);
-    }
-    err->lineno = lineno;
-    err->column = column;
-    err->name   = name;
+
+    err->msg = strdup(msg);
+    err->pos = (DaiFilePos){
+        .filename = filename,
+        .lineno   = lineno,
+        .column   = column,
+    };
+    err->name = name;
     return err;
 }
 
@@ -63,24 +56,18 @@ DaiError_Newf(const char* name, const char* filename, int lineno, int column, co
     char* msg = dai_malloc(len + 1);
     vsnprintf(msg, len + 1, fmt, arg);
 
-    DaiError* err = dai_malloc(sizeof(DaiError));
-    err->msg      = msg;
-    err->filename = NULL;
-    if (filename != NULL) {
-        err->filename = strdup(filename);
-    }
-    err->lineno = lineno;
-    err->column = column;
-    err->name   = name;
+    DaiError* err     = dai_malloc(sizeof(DaiError));
+    err->msg          = msg;
+    err->pos.filename = filename;
+    err->pos.lineno   = lineno;
+    err->pos.column   = column;
+    err->name         = name;
     return err;
 }
 
 void
 DaiError_setFilename(DaiError* err, const char* filename) {
-    if (err->filename != NULL) {
-        dai_free(err->filename);
-    }
-    err->filename = strdup(filename);
+    err->pos.filename = filename;
 }
 
 DaiSyntaxError*
@@ -119,26 +106,25 @@ DaiError_string(DaiError* error) {
              "%s: %s in %s:%d:%d",
              error->name,
              error->msg,
-             error->filename,
-             error->lineno,
-             error->column);
+             error->pos.filename,
+             error->pos.lineno,
+             error->pos.column);
     return buf;
 }
 
 void
 DaiError_free(DaiError* err) {
     dai_free(err->msg);
-    dai_free(err->filename);
     dai_free(err);
 }
 void
 DaiError_pprint(DaiError* err, const char* code) {
-    char* line = get_line_at(code, err->lineno);
+    char* line = get_line_at(code, err->pos.lineno);
     printf("  File \"%s\", line %d\n    %s\n    %*s^--- here\n%s: %s\n",
-           err->filename,
-           err->lineno,
+           err->pos.filename,
+           err->pos.lineno,
            line,
-           err->column - 1,
+           err->pos.column - 1,
            "",
            err->name,
            err->msg);

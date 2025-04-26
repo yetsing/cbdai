@@ -262,7 +262,7 @@ def dis(*args):
     subprocess.check_call(["./cmake-build-debug/Debug/dai", "dis", *args])
 
 
-if __name__ == "__main__":
+def main():
     find_cmake()
     find_ninja()
 
@@ -293,3 +293,7 @@ if __name__ == "__main__":
     else:
         print(f"Unknown command: {command}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -476,7 +476,7 @@ builtin_import(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     }
     char abs_path[PATH_MAX];
     const char* path             = AS_STRING(argv[0])->chars;
-    const char* current_filename = DaiVM_getCurrentFilename(vm);
+    const char* current_filename = DaiVM_getCurrentFilePos(vm).filename;
     size_t length;
     cwk_path_get_dirname(current_filename, &length);
     const char* current_dir = strndup(current_filename, length);

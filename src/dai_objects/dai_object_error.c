@@ -5,8 +5,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "dai_common.h"
 #include "dai_memory.h"
 #include "dai_objects/dai_object_base.h"
+
+const char*
+DaiErrorKind_string(DaiErrorKind kind) {
+    switch (kind) {
+        case DaiError_syntax: return "SyntaxError";
+        case DaiError_compile: return "CompileError";
+        case DaiError_runtime: return "Error";
+        default: unreachable();
+    }
+}
 
 static char*
 DaiObjError_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
@@ -37,5 +48,19 @@ DaiObjError_Newf(DaiVM* vm, const char* format, ...) {
     va_start(args, format);
     vsnprintf(error->message, sizeof(error->message), format, args);
     va_end(args);
+    error->kind = DaiError_runtime;
+    return error;
+}
+
+DaiObjError*
+DaiObjError_From(DaiVM* vm, DaiError* err) {
+    DaiObjError* error   = ALLOCATE_OBJ(vm, DaiObjError, DaiObjType_error);
+    error->obj.operation = &error_operation;
+    strlcpy(error->message, err->msg, sizeof(error->message));
+    error->pos  = err->pos;
+    error->kind = DaiError_syntax;
+    if (strcmp(err->name, "CompileError") == 0) {
+        error->kind = DaiError_compile;
+    }
     return error;
 }

@@ -9,6 +9,7 @@
 #include "dai_object.h"
 #include "dai_symboltable.h"
 #include "dai_table.h"
+#include "dai_utils.h"
 #include "dai_value.h"
 
 #define FRAMES_MAX 65
@@ -102,10 +103,8 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err);
 // input 用来传入源代码（不在文件中的，比如 repl 中输入的代码）
 void
 DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input);
-void
-DaiVM_setTempRef(DaiVM* vm, DaiValue value);
-const char*
-DaiVM_getCurrentFilename(const DaiVM* vm);
+DaiFilePos
+DaiVM_getCurrentFilePos(const DaiVM* vm);
 void
 DaiVM_pauseGC(DaiVM* vm);
 void

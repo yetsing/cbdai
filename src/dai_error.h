@@ -1,7 +1,13 @@
 #ifndef A3530368_FF1B_4382_89C3_A117897BF660
 #define A3530368_FF1B_4382_89C3_A117897BF660
 
-typedef struct _DaiError DaiError;
+#include "dai_utils.h"
+
+typedef struct {
+    const char* name;   // 静态字符串，不用释放
+    char* msg;
+    DaiFilePos pos;
+} DaiError;
 
 void
 DaiError_setFilename(DaiError* err, const char* filename);

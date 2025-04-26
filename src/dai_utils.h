@@ -66,4 +66,11 @@ DaiRawArray_reset(DaiRawArray* array);
 void
 DaiRawArray_append(DaiRawArray* array, const void* element);
 
+typedef struct {
+    const char* filename;   // 只是一个引用，不管理其内存
+    // lineno column 从 1 开始计数
+    int lineno;
+    int column;
+} DaiFilePos;
+
 #endif /* AECB9C05_1769_47C9_99B4_8EB1E4235629 */

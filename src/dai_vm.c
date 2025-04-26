@@ -1103,22 +1103,23 @@ DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module) {
     DaiAstProgram program;
     DaiAstProgram_init(&program);
 
-    DaiError* err = NULL;
-    err           = dai_tokenize_string(text, &tlist);
+    DaiError* err     = NULL;
+    DaiObjError* oerr = NULL;
+    err               = dai_tokenize_string(text, &tlist);
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, module->filename->chars);
-        DaiSyntaxError_pprint(err, text);
+        // DaiSyntaxError_pprint(err, text);
         goto DAI_LOAD_MODULE_ERROR;
     }
     err = dai_parse(&tlist, &program);
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, module->filename->chars);
-        DaiSyntaxError_pprint(err, text);
+        // DaiSyntaxError_pprint(err, text);
         goto DAI_LOAD_MODULE_ERROR;
     }
     err = dai_compile(&program, module, vm);
     if (err != NULL) {
-        DaiCompileError_pprint(err, text);
+        // DaiCompileError_pprint(err, text);
         goto DAI_LOAD_MODULE_ERROR;
     }
     DaiTokenList_reset(&tlist);
@@ -1126,12 +1127,11 @@ DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module) {
     return DaiVM_runModule(vm, module);
 
 DAI_LOAD_MODULE_ERROR:
-    if (err != NULL) {
-        DaiError_free(err);
-    }
+    oerr = DaiObjError_From(vm, err);
+    DaiError_free(err);
     DaiTokenList_reset(&tlist);
     DaiAstProgram_reset(&program);
-    return DaiObjError_Newf(vm, "load module error");
+    return oerr;
 }
 
 DaiValue
@@ -1194,7 +1194,23 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err) {
             dai_free(line);
         }
     }
-    dai_log("Error: %s\n", err->message);
+    if (err->kind == DaiError_syntax || err->kind == DaiError_compile) {
+        dai_log("  File \"%s\", line %d\n", err->pos.filename, err->pos.lineno);
+        char* line = dai_line_from_file(err->pos.filename, err->pos.lineno);
+        if (line != NULL) {
+            int column = err->pos.column;
+            // remove prefix space
+            char* tmp = line;
+            while (tmp[0] == ' ') {
+                tmp++;
+                column--;
+            }
+            printf("    %s\n", tmp);
+            printf("    %*s^--- here\n", column - 1, "");
+            dai_free(line);
+        }
+    }
+    dai_log("%s: %s\n", DaiErrorKind_string(err->kind), err->message);
 }
 
 void
@@ -1222,7 +1238,23 @@ DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input) {
             dai_free(line);
         }
     }
-    dai_log("Error: %s\n", err->message);
+    if (err->kind == DaiError_syntax || err->kind == DaiError_compile) {
+        dai_log("  File \"%s\", line %d\n", err->pos.filename, err->pos.lineno);
+        char* line = dai_get_line(input, err->pos.lineno);
+        if (line != NULL) {
+            int column = err->pos.column;
+            // remove prefix space
+            char* tmp = line;
+            while (tmp[0] == ' ') {
+                tmp++;
+                column--;
+            }
+            printf("    %s\n", tmp);
+            printf("    %*s^--- here\n", column - 1, "");
+            dai_free(line);
+        }
+    }
+    dai_log("%s: %s\n", DaiErrorKind_string(err->kind), err->message);
 }
 
 static void
@@ -1243,16 +1275,15 @@ DaiVM_popN(DaiVM* vm, int n) {
     vm->stack_top -= n;
 }
 
-void
-DaiVM_setTempRef(DaiVM* vm, DaiValue value) {
-    vm->temp_ref = value;
-}
-
-const char*
-DaiVM_getCurrentFilename(const DaiVM* vm) {
+DaiFilePos
+DaiVM_getCurrentFilePos(const DaiVM* vm) {
     const CallFrame* frame = CURRENT_FRAME;
-    assert(frame->chunk != NULL);
-    return frame->chunk->filename;
+    DaiChunk* chunk        = frame->chunk;
+    return (DaiFilePos){
+        .filename = chunk->filename,
+        .lineno   = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code - 1)),
+        .column   = -1,
+    };
 }
 
 void
