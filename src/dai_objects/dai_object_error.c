@@ -8,6 +8,7 @@
 #include "dai_common.h"
 #include "dai_memory.h"
 #include "dai_objects/dai_object_base.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 const char*
 DaiErrorKind_string(DaiErrorKind kind) {

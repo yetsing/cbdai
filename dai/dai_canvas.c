@@ -15,6 +15,7 @@
 #include "dai_objects/dai_object_struct.h"
 #include "dai_value.h"
 #include "dai_vm.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 static SDL_Window* window                     = NULL;
 static SDL_Renderer* renderer                 = NULL;
