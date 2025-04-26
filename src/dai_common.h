@@ -6,10 +6,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#ifdef __GNUC__
-#    define unlikely(x) __builtin_expect(!!(x), 0)
+// code from munit.h
+#if defined(__GNUC__)
+#    define DAI_LIKELY(expr) (__builtin_expect((expr), 1))
+#    define DAI_UNLIKELY(expr) (__builtin_expect((expr), 0))
+#    define DAI_UNUSED __attribute__((__unused__))
 #else
-#    define unlikely(x) (x)
+#    define DAI_LIKELY(expr) (expr)
+#    define DAI_UNLIKELY(expr) (expr)
+#    define DAI_UNUSED
 #endif
 
 #define unreachable() assert(false)

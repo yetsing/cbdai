@@ -12,6 +12,6 @@ typedef struct {
 } DaiAstInfixExpression;
 
 DaiAstInfixExpression*
-DaiAstInfixExpression_New(const char* operator, DaiAstExpression * left);
+DaiAstInfixExpression_New(const DaiToken* tk, DaiAstExpression* left);
 
 #endif /* EC5FB07F_776C_42AF_B3EB_4BD2AEB76E03 */

@@ -9,10 +9,10 @@
 #include "munit/munit.h"
 
 #include "dai_codecs.h"
-#include "dai_common.h"
+#include "dai_common.h"   // IWYU pragma: keep
 #include "dai_tokenize.h"
 #include "dai_utils.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 // #region tokenize 辅助函数
 
@@ -39,19 +39,13 @@ log_data_hex(const unsigned char* data, size_t length) {
     printf("\n");
 }
 
-static DaiTokenList*
-dai_tokenize_file(const char* filename) {
-    DaiTokenList* list = DaiTokenList_New();
-    char* s            = dai_string_from_file(filename);
-    munit_assert_not_null(s);
-    DaiSyntaxError* err = dai_tokenize_string(s, list);
-    if (err) {
-        DaiSyntaxError_setFilename(err, filename);
-        DaiSyntaxError_pprint(err, s);
+static void
+dai_assert_string_equaln(const char* want, const char* got, size_t length) {
+    munit_assert_size(strlen(want), ==, length);
+    if (strncmp(want, got, length) != 0) {
+        printf("\"%s\" != \"%.*s\"\n", want, (int)length, got);
     }
-    munit_assert_null(err);
-    free(s);
-    return list;
+    munit_assert_true(strncmp(want, got, length) == 0);
 }
 
 // #endregion
@@ -290,11 +284,11 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_for, "for", 36, 1, 36, 4},
         {DaiTokenType_in, "in", 36, 5, 36, 7},
 
-        {DaiTokenType_str, "\"\r\n\t\"\'\"", 37, 1, 37, 13},
+        {DaiTokenType_str, "\"\\r\\n\\t\\\"\\'\"", 37, 1, 37, 13},
 
-        {DaiTokenType_str, "\"\\z\"", 38, 1, 38, 5},
+        {DaiTokenType_str, "\"\\\"\"", 38, 1, 38, 5},
 
-        {DaiTokenType_str, "\"\x1b\xc3\xbf\"", 39, 1, 39, 11},
+        {DaiTokenType_str, "\"\\x1b\\xff\"", 39, 1, 39, 11},
 
         {DaiTokenType_con, "con", 40, 1, 40, 4},
 
@@ -317,17 +311,17 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         const DaiToken* tok   = DaiTokenList_next(&list);
         munit_assert_string_equal(DaiTokenType_string(expect.type), DaiTokenType_string(tok->type));
         munit_assert_int(expect.type, ==, tok->type);
-        if (strcmp(expect.literal, tok->literal) != 0) {
-            log_data_hex((const unsigned char*)expect.literal, strlen(expect.literal));
-            log_data_hex((const unsigned char*)tok->literal, strlen(tok->literal));
+        if (strncmp(expect.s, tok->s, tok->length) != 0) {
+            log_data_hex((const unsigned char*)expect.s, strlen(expect.s));
+            log_data_hex((const unsigned char*)tok->s, tok->length);
         }
-        munit_assert_string_equal(expect.literal, tok->literal);
+        dai_assert_string_equaln(expect.s, tok->s, tok->length);
         munit_assert_int(expect.start_line, ==, tok->start_line);
         munit_assert_int(expect.start_column, ==, tok->start_column);
         if (expect.end_line == 0) {
             munit_assert_int(tok->start_line, ==, tok->end_line);
             munit_assert_int(
-                tok->start_column + dai_utf8_strlen(tok->literal), ==, tok->end_column);
+                tok->start_column + dai_utf8_strlen2(tok->s, tok->length), ==, tok->end_column);
 
         } else {
             munit_assert_int(expect.end_line, ==, tok->end_line);
@@ -360,18 +354,28 @@ test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_assign, "=", 2, 14},
         {DaiTokenType_eof, "", 2, 17},
     };
-    DaiTokenList* list = dai_tokenize_file(filename);
+    DaiTokenList* list = DaiTokenList_New();
+    char* s            = dai_string_from_file(filename);
+    munit_assert_not_null(s);
+    DaiSyntaxError* err = dai_tokenize_string(s, list);
+    if (err) {
+        DaiSyntaxError_setFilename(err, filename);
+        DaiSyntaxError_pprint(err, s);
+    }
+    munit_assert_null(err);
     munit_assert_size(sizeof(tests) / sizeof(tests[0]), ==, DaiTokenList_length(list));
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
         DaiToken expect = tests[i];
         DaiToken* tok   = DaiTokenList_next(list);
         munit_assert_int(expect.type, ==, tok->type);
-        munit_assert_string_equal(expect.literal, tok->literal);
+        dai_assert_string_equaln(expect.s, tok->s, tok->length);
         munit_assert_int(expect.start_line, ==, tok->start_line);
         munit_assert_int(expect.start_column, ==, tok->start_column);
         munit_assert_int(tok->start_line, ==, tok->end_line);
-        munit_assert_int(tok->start_column + dai_utf8_strlen(tok->literal), ==, tok->end_column);
+        munit_assert_int(
+            tok->start_column + dai_utf8_strlen2(tok->s, tok->length), ==, tok->end_column);
     }
+    free(s);
     DaiTokenList_free(list);
     unlink(filename);
 
@@ -434,14 +438,14 @@ test_tokenize_integer(__attribute__((unused)) const MunitParameter params[],
             printf("input: \"%s\"\n", input);
             for (int j = 0; j < DaiTokenList_length(&list); j++) {
                 const DaiToken* tok = DaiTokenList_next(&list);
-                printf("token: \"%s\"\n", tok->literal);
+                printf("token: \"%.*s\"\n", (int)tok->length, tok->s);
             }
         }
         munit_assert_int(2, ==, DaiTokenList_length(&list));
         {
             DaiToken* tok = DaiTokenList_next(&list);
             munit_assert_int(DaiTokenType_int, ==, tok->type);
-            munit_assert_string_equal(input, tok->literal);
+            dai_assert_string_equaln(input, tok->s, tok->length);
         }
         {
             DaiToken* tok = DaiTokenList_next(&list);
@@ -507,14 +511,14 @@ test_tokenize_float(__attribute__((unused)) const MunitParameter params[],
             printf("input: \"%s\"\n", input);
             for (int j = 0; j < DaiTokenList_length(&list); j++) {
                 const DaiToken* tok = DaiTokenList_next(&list);
-                printf("token: \"%s\"\n", tok->literal);
+                printf("token: \"%.*s\"\n", (int)tok->length, tok->s);
             }
         }
         munit_assert_int(2, ==, DaiTokenList_length(&list));
         {
             DaiToken* tok = DaiTokenList_next(&list);
             munit_assert_int(DaiTokenType_float, ==, tok->type);
-            munit_assert_string_equal(input, tok->literal);
+            dai_assert_string_equaln(input, tok->s, tok->length);
         }
         {
             DaiToken* tok = DaiTokenList_next(&list);

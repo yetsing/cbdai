@@ -99,3 +99,16 @@ dai_utf8_strlen(const char* s) {
     }
     return len;
 }
+
+size_t
+dai_utf8_strlen2(const char* s, size_t length) {
+    size_t len      = 0;
+    dai_rune_t rune = 0;
+    const char* end = s + length;
+    while (s < end) {
+        int count_of_bytes = dai_utf8_decode(s, &rune);
+        s += count_of_bytes;
+        len++;
+    }
+    return len;
+}

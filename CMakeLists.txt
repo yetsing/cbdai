@@ -65,6 +65,7 @@ if(WIN32)
 else()
     target_compile_options(dai PRIVATE -O3 -flto)
     endif()
+set(SDL_STATIC ON)
 target_link_libraries(dai PRIVATE m cwalk SDL3_image::SDL3_image SDL3::SDL3)
 
 if(WIN32)

@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "cwalk.h"
+#include "dai_error.h"
 #include "munit/munit.h"
 
 #include "dai_array.h"
@@ -148,39 +149,18 @@ check_infix_expression(DaiAstExpression* expr, void* left, ExpectedValueType lef
 
 static void
 parse_helper(const char* input, DaiAstProgram* program) {
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiSyntaxError* err = dai_tokenize_string(input, tlist);
+    DaiSyntaxError* err = dai_parse(input, "<test>", program);
     if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
-    munit_assert_null(err);
-    err = dai_parse(tlist, program);
-    if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<test>");
-        DaiSyntaxError_pprint(err, input);
-    }
-    munit_assert_null(err);
-    DaiTokenList_free(tlist);
 }
 
 static DaiSyntaxError*
 parse_error(const char* input) {
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiSyntaxError* err = dai_tokenize_string(input, tlist);
-    if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<test>");
-        DaiSyntaxError_pprint(err, input);
-    }
-    munit_assert_null(err);
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
-    err                    = dai_parse(tlist, program);
-    if (err) {
-        DaiSyntaxError_setFilename(err, "<test>");
-    }
-    DaiTokenList_free(tlist);
+    DaiSyntaxError* err    = dai_parse(input, "<test>", program);
     program->free_fn((DaiAstBase*)program, true);
     return err;
 }
@@ -1034,8 +1014,16 @@ test_string_literal_parsing(__attribute__((unused)) const MunitParameter params[
     struct {
         const char* input;
         const char* expected;
+        int end_column;
     } tests[] = {
-        {"\"hello world\";", "\"hello world\""},
+        {"\"hello world\";", "\"hello world\"", 14},
+        {"\"hello\\nworld\";", "\"hello\nworld\"", 15},
+        {"\"hello \\\\ \\n \\t \\r \\\" \\' world\";", "\"hello \\ \n \t \r \" ' world\"", 32},
+        {"'\\x31';", "'1'", 7},
+        {"'\\x31\\x32';", "'12'", 11},
+        {"'\\x31\\x32\\x33';", "'123'", 15},
+        {"'\\x31\\x32\\x33\\x34';", "'1234'", 19},
+        {"'\\x80';", "'\xc2\x80'", 7},
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
         DaiAstProgram prog;
@@ -1050,7 +1038,7 @@ test_string_literal_parsing(__attribute__((unused)) const MunitParameter params[
         munit_assert_string_equal(((DaiAstStringLiteral*)expr)->value, tests[i].expected);
         munit_assert_int(expr->start_line, ==, 1);
         munit_assert_int(expr->start_line, ==, expr->end_line);
-        munit_assert_int(expr->start_column + strlen(tests[i].expected), ==, expr->end_column);
+        munit_assert_int(tests[i].end_column, ==, expr->end_column);
         program->free_fn((DaiAstBase*)program, true);
     }
     return MUNIT_OK;

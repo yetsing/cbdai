@@ -8,11 +8,14 @@
 #include <stddef.h>
 
 #include "dai_ast/dai_aststatement.h"
+#include "dai_tokenize.h"
+
 typedef struct {
     DAI_AST_BASE_HEAD
     size_t size;
     size_t length;
     DaiAstStatement** statements;
+    DaiTokenList* tlist;
 } DaiAstProgram;
 
 void

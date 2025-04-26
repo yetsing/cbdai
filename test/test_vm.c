@@ -1,3 +1,4 @@
+#include "dai_error.h"
 #include <assert.h>
 #include <dirent.h>
 #include <limits.h>
@@ -21,7 +22,6 @@
 #include "dai_memory.h"
 #include "dai_object.h"
 #include "dai_parse.h"
-#include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
@@ -42,21 +42,10 @@ get_file_directory(char* path) {
 
 static DaiObjError*
 interpret(DaiVM* vm, const char* input, const char* filename) {
-    // 词法分析
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiError* err       = dai_tokenize_string(input, tlist);
-    if (err) {
-        DaiSyntaxError_setFilename(err, filename);
-        DaiSyntaxError_pprint(err, input);
-    }
-    munit_assert_null(err);
-    // 语法分析
     DaiAstProgram program;
     DaiAstProgram_init(&program);
-    err = dai_parse(tlist, &program);
-    DaiTokenList_free(tlist);
+    DaiSyntaxError* err = dai_parse(input, filename, &program);
     if (err) {
-        DaiSyntaxError_setFilename(err, filename);
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
@@ -74,21 +63,10 @@ interpret(DaiVM* vm, const char* input, const char* filename) {
 
 static void
 interpret2(DaiVM* vm, const char* input, const char* filename) {
-    // 词法分析
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiError* err       = dai_tokenize_string(input, tlist);
-    if (err) {
-        DaiSyntaxError_setFilename(err, filename);
-        DaiSyntaxError_pprint(err, input);
-    }
-    munit_assert_null(err);
-    // 语法分析
     DaiAstProgram program;
     DaiAstProgram_init(&program);
-    err = dai_parse(tlist, &program);
-    DaiTokenList_free(tlist);
+    DaiSyntaxError* err = dai_parse(input, filename, &program);
     if (err) {
-        DaiSyntaxError_setFilename(err, filename);
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);

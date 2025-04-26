@@ -7,6 +7,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdio.h>
 
 #include "dai_error.h"
 
@@ -96,12 +97,14 @@ DaiTokenType_string(const DaiTokenType type);
 
 typedef struct {
     DaiTokenType type;
-    char* literal;
+    // s + length 表示了在源文本上的一段字符串
+    const char* s;
     // 从 1 开始的行和列
     int start_line;
     int start_column;
     int end_line;
     int end_column;
+    size_t length;
 } DaiToken;
 
 // #region DaiTokenList 结构体及其方法，保存词法分析的结果和错误，提供方法读取
@@ -124,6 +127,10 @@ DaiToken*
 DaiTokenList_next(DaiTokenList* list);
 size_t
 DaiTokenList_length(const DaiTokenList* list);
+size_t
+DaiTokenList_current_index(const DaiTokenList* list);
+DaiToken*
+DaiTokenList_get(const DaiTokenList* list, size_t index);
 
 // #endregion
 

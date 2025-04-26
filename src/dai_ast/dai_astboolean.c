@@ -48,7 +48,7 @@ DaiAstBoolean_New(DaiToken* token) {
         boolean->free_fn    = DaiAstBoolean_free;
         boolean->literal_fn = DaiAstBoolean_literal;
     }
-    boolean->value        = strcmp(token->literal, "true") == 0;
+    boolean->value        = strncmp(token->s, "true", token->length) == 0;
     boolean->start_line   = token->start_line;
     boolean->start_column = token->start_column;
     boolean->end_line     = token->end_line;

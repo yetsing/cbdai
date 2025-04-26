@@ -7,7 +7,8 @@
 #include "dai_array.h"
 #include "dai_assert.h"
 #include "dai_ast.h"
-#include "dai_common.h"
+#include "dai_common.h"   // IWYU pragma: keep
+#include "dai_error.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
@@ -558,8 +559,9 @@ Parser_parseInteger(Parser* p) {
               "not an integer: %s",
               DaiTokenType_string(p->cur_token->type));
     // 确定进制
-    int base      = 10;
-    char* literal = p->cur_token->literal;
+    int base                = 10;
+    const char* literal     = p->cur_token->s;
+    const char* literal_end = literal + p->cur_token->length;
     if (strlen(literal) >= 3 && literal[0] == '0') {
         switch (literal[1]) {
             case 'x':
@@ -581,9 +583,9 @@ Parser_parseInteger(Parser* p) {
     }
     // 去除字面量中的下划线
     char pure[256];
-    char* curr      = literal;
-    char* pure_curr = pure;
-    while (*curr != '\0') {
+    const char* curr = literal;
+    char* pure_curr  = pure;
+    while (curr < literal_end) {
         if (*curr == '_') {
             curr++;
         } else {
@@ -597,7 +599,8 @@ Parser_parseInteger(Parser* p) {
     const int64_t n = strtoll(pure, &end, base);
     if (errno == ERANGE) {
         char buf[256];
-        snprintf(buf, sizeof(buf), "Out of range \"%s\"", p->cur_token->literal);
+        snprintf(
+            buf, sizeof(buf), "Out of range \"%.*s\"", (int)p->cur_token->length, p->cur_token->s);
         int line        = p->cur_token->start_line;
         int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New(buf, line, column);
@@ -626,9 +629,10 @@ Parser_parseFloat(Parser* p) {
 
     // 去除字面量中的下划线
     char numbuf[256];
-    char* numbuf_curr = numbuf;
-    char* curr        = p->cur_token->literal;
-    while (*curr != '\0') {
+    char* numbuf_curr       = numbuf;
+    const char* curr        = p->cur_token->s;
+    const char* literal_end = p->cur_token->s + p->cur_token->length;
+    while (curr < literal_end) {
         if (*curr == '_') {
             curr++;
         } else {
@@ -642,7 +646,8 @@ Parser_parseFloat(Parser* p) {
     const double f = strtod(numbuf, &end);
     if (errno == ERANGE) {
         char buf[256];
-        snprintf(buf, sizeof(buf), "Out of range \"%s\"", p->cur_token->literal);
+        snprintf(
+            buf, sizeof(buf), "Out of range \"%.*s\"", (int)p->cur_token->length, p->cur_token->s);
         int line        = p->cur_token->start_line;
         int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New(buf, line, column);
@@ -652,9 +657,10 @@ Parser_parseFloat(Parser* p) {
         char buf[256];
         snprintf(buf,
                  sizeof(buf),
-                 "Invalid character \"%c\" in number \"%s\"",
+                 "Invalid character \"%c\" in number \"%.*s\"",
                  *end,
-                 p->cur_token->literal);
+                 (int)p->cur_token->length,
+                 p->cur_token->s);
         int line        = p->cur_token->start_line;
         int column      = p->cur_token->start_column;
         p->syntax_error = DaiSyntaxError_New(buf, line, column);
@@ -920,7 +926,7 @@ Parser_parsePrefixExpression(Parser* p) {
 static DaiAstExpression*
 Parser_parseInfixExpression(Parser* p, DaiAstExpression* left) {
     // 创建中缀表达式节点，此时 cur_token 是操作符
-    DaiAstInfixExpression* expr = DaiAstInfixExpression_New(p->cur_token->literal, left);
+    DaiAstInfixExpression* expr = DaiAstInfixExpression_New(p->cur_token, left);
     // 获取当前操作的优先级
     Precedence precedence = Parser_curPrecedence(p);
     Parser_nextToken(p);
@@ -1098,7 +1104,7 @@ Parser_parseClassMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    dai_move(p->cur_token->literal, func->name);
+    func->name = strndup(p->cur_token->s, p->cur_token->length);
 
     // 解析函数参数
     if (!Parser_expectPeek(p, DaiTokenType_lparen)) {
@@ -1238,7 +1244,7 @@ Parser_parseMethodStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    dai_move(p->cur_token->literal, func->name);
+    func->name = strndup(p->cur_token->s, p->cur_token->length);
 
     // 解析函数参数
     if (!Parser_expectPeek(p, DaiTokenType_lparen)) {
@@ -1400,7 +1406,7 @@ Parser_parseFunctionStatement(Parser* p) {
         func->free_fn((DaiAstBase*)func, true);
         return NULL;
     }
-    dai_move(p->cur_token->literal, func->name);
+    func->name = strndup(p->cur_token->s, p->cur_token->length);
 
     // 解析函数参数
     if (!Parser_expectPeek(p, DaiTokenType_lparen)) {
@@ -1923,12 +1929,24 @@ Parser_parseProgram(Parser* p, DaiAstProgram* program) {
 // #endregion
 
 DaiSyntaxError*
-dai_parse(DaiTokenList* tlist, DaiAstProgram* program) {
+dai_parse(const char* text, const char* filename, DaiAstProgram* program) {
+    DaiSyntaxError* err = NULL;
+    assert(program->tlist == NULL);
+    DaiTokenList* tlist = DaiTokenList_New();
+    program->tlist      = tlist;
+    err                 = dai_tokenize_string(text, tlist);
+    if (err != NULL) {
+        DaiSyntaxError_setFilename(err, filename);
+        return err;
+    }
     // 创建解析器
     Parser* parser = Parser_New(tlist);
     // 解析 token 列表，构建 ast
-    DaiSyntaxError* err = Parser_parseProgram(parser, program);
+    err = Parser_parseProgram(parser, program);
     // 释放解析器
     Parser_free(parser);
+    if (err != NULL) {
+        DaiSyntaxError_setFilename(err, filename);
+    }
     return err;
 }

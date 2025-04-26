@@ -10,7 +10,6 @@
 
 #include "dai_codecs.h"
 #include "dai_malloc.h"
-#include "dai_stringbuffer.h"
 #include "dai_tokenize.h"
 #include "dai_windows.h"   // IWYU pragma: keep
 
@@ -87,7 +86,7 @@ void
 Token_autoConvert(DaiToken* t) {
     assert(t->type == DaiTokenType_auto);
     for (size_t i = 0; i < sizeof(autos) / sizeof(autos[0]); i++) {
-        if (strcmp(t->literal, autos[i].literal) == 0) {
+        if (t->length == strlen(autos[i].s) && strncmp(t->s, autos[i].s, t->length) == 0) {
             t->type = autos[i].type;
             break;
         }
@@ -119,14 +118,19 @@ DaiTokenList_length(const DaiTokenList* list) {
     return list->length;
 }
 
+size_t
+DaiTokenList_current_index(const DaiTokenList* list) {
+    return list->index - 1;
+}
+
+DaiToken*
+DaiTokenList_get(const DaiTokenList* list, size_t index) {
+    assert(index >= 0 && index < list->length);
+    return &list->tokens[index];
+}
+
 void
 DaiTokenList_reset(DaiTokenList* list) {
-    // 释放 token.literal
-    for (int i = 0; i < list->length; ++i) {
-        if (list->tokens[i].literal != NULL) {
-            dai_free(list->tokens[i].literal);
-        }
-    }
     dai_free(list->tokens);
     DaiTokenList_init(list);
 }
@@ -141,11 +145,6 @@ DaiTokenList_New() {
 void
 DaiTokenList_free(DaiTokenList* list) {
     // 释放 token.literal
-    for (int i = 0; i < list->length; ++i) {
-        if (list->tokens[i].literal != NULL) {
-            dai_free(list->tokens[i].literal);
-        }
-    }
     dai_free(list->tokens);
     dai_free(list);
 }
@@ -267,30 +266,10 @@ Tokenizer_buildToken(Tokenizer* tker, DaiTokenType type) {
         tker->tokens_size *= 2;
         tker->tokens = dai_realloc(tker->tokens, sizeof(DaiToken) * tker->tokens_size);
     }
-    DaiToken* tok   = &(tker->tokens[tker->tokens_offset]);
-    tok->type       = type;
-    tok->literal    = strndup(tker->s + tker->mark_position, tker->position - tker->mark_position);
-    tok->start_line = tker->mark_line;
-    tok->start_column = tker->mark_column;
-    tok->end_line     = tker->line;
-    tok->end_column   = tker->column;
-    tker->tokens_offset++;
-    if (tok->type == DaiTokenType_auto) {
-        Token_autoConvert(tok);
-    }
-    return tok;
-}
-
-DaiToken*
-Tokenizer_buildToken2(Tokenizer* tker, DaiTokenType type, char* literal) {
-    assert(tker->position >= tker->mark_position);
-    if (tker->tokens_offset >= tker->tokens_size) {
-        tker->tokens_size *= 2;
-        tker->tokens = dai_realloc(tker->tokens, sizeof(DaiToken) * tker->tokens_size);
-    }
     DaiToken* tok     = &(tker->tokens[tker->tokens_offset]);
     tok->type         = type;
-    tok->literal      = literal;
+    tok->s            = tker->s + tker->mark_position;
+    tok->length       = tker->position - tker->mark_position;
     tok->start_line   = tker->mark_line;
     tok->start_column = tker->mark_column;
     tok->end_line     = tker->line;
@@ -481,9 +460,9 @@ is_letter(const dai_rune_t c) {
 }
 
 static DaiTokenType
-lookup_ident(const char* ident) {
+lookup_ident(const char* ident, size_t length) {
     for (int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {
-        if (strcmp(ident, keywords[i].literal) == 0) {
+        if (length == strlen(keywords[i].s) && strncmp(ident, keywords[i].s, length) == 0) {
             return keywords[i].type;
         }
     }
@@ -576,7 +555,7 @@ Tokenizer_readIdentifier(Tokenizer* tker) {
         Tokenizer_readChar(tker);
     }
     DaiToken* tok = Tokenizer_buildToken(tker, DaiTokenType_ident);
-    tok->type     = lookup_ident(tok->literal);
+    tok->type     = lookup_ident(tok->s, tok->length);
     return tok;
 }
 
@@ -595,48 +574,24 @@ Tokenizer_readComment(Tokenizer* tker) {
 // `` 之间的多行字符串
 static DaiToken*
 Tokenizer_readString(Tokenizer* tker, const dai_rune_t quote) {
-    bool multiline      = quote == '`';
-    DaiStringBuffer* sb = DaiStringBuffer_New();
-    DaiStringBuffer_writen(sb, Tokenizer_ch_at(tker), tker->byte_of_ch);
+    bool multiline = quote == '`';
     Tokenizer_readChar(tker);
     while (tker->ch != quote && tker->ch != 0 && (tker->ch != '\n' || multiline)) {
-        // TODO 处理转义字符
         switch (tker->ch) {
             case '\\': {
                 Tokenizer_readChar(tker);
                 switch (tker->ch) {
-                    case '\\':
-                        Tokenizer_readChar(tker);
-                        DaiStringBuffer_writen(sb, "\\", 1);
-                        break;
-                    case 'n':
-                        Tokenizer_readChar(tker);
-                        DaiStringBuffer_writen(sb, "\n", 1);
-                        break;
-                    case 't':
-                        Tokenizer_readChar(tker);
-                        DaiStringBuffer_writen(sb, "\t", 1);
-                        break;
-                    case 'r':
-                        Tokenizer_readChar(tker);
-                        DaiStringBuffer_writen(sb, "\r", 1);
-                        break;
-                    case '"':
-                        Tokenizer_readChar(tker);
-                        DaiStringBuffer_writen(sb, "\"", 1);
-                        break;
-                    case '\'':
-                        Tokenizer_readChar(tker);
-                        DaiStringBuffer_writen(sb, "\'", 1);
-                        break;
+                    case '\\': Tokenizer_readChar(tker); break;
+                    case 'n': Tokenizer_readChar(tker); break;
+                    case 't': Tokenizer_readChar(tker); break;
+                    case 'r': Tokenizer_readChar(tker); break;
+                    case '"': Tokenizer_readChar(tker); break;
+                    case '\'': Tokenizer_readChar(tker); break;
                     case 'x': {
                         // \xXX 十六进制转义
-                        char seq[3] = {0, 0, 0};
                         for (int i = 0; i < 2; i++) {
                             Tokenizer_readChar(tker);
-                            seq[i] = (char)(tker->ch & 0xFF);
                             if (!is_hexdigit(tker->ch)) {
-                                DaiStringBuffer_free(sb);
                                 tker->has_error_msg = true;
                                 snprintf(tker->error_msg,
                                          sizeof(tker->error_msg),
@@ -646,37 +601,36 @@ Tokenizer_readString(Tokenizer* tker, const dai_rune_t quote) {
                             }
                         }
                         Tokenizer_readChar(tker);
-                        unsigned char value = (unsigned char)strtol(seq, NULL, 16);
-                        if (value <= 0x7F) {
-                            // 1-byte UTF-8
-                            DaiStringBuffer_writec(sb, (char)value);
-                        } else {
-                            // 2-byte UTF-8
-                            DaiStringBuffer_writec(sb, (char)(0xC0 | (value >> 6)));
-                            DaiStringBuffer_writec(sb, (char)(0x80 | (value & 0x3F)));
-                        }
                         break;
                     }
-                    default: DaiStringBuffer_writen(sb, "\\", 1); break;
+                    case 0: {
+                        goto LOOP_END;
+                    }
+                    default: {
+                        tker->has_error_msg = true;
+                        snprintf(tker->error_msg,
+                                 sizeof(tker->error_msg),
+                                 "invalid escape %d",
+                                 tker->ch);
+                        Tokenizer_mark(tker);
+                        return Tokenizer_buildToken(tker, DaiTokenType_illegal);
+                        break;
+                    }
                 }
                 break;
             }
-            default:
-                DaiStringBuffer_writen(sb, Tokenizer_ch_at(tker), tker->byte_of_ch);
-                Tokenizer_readChar(tker);
-                break;
+            default: Tokenizer_readChar(tker); break;
         }
     }
+LOOP_END:
     if (tker->ch != quote) {
-        DaiStringBuffer_free(sb);
         tker->has_error_msg = true;
         snprintf(tker->error_msg, sizeof(tker->error_msg), "unclosed string literal");
         Tokenizer_mark(tker);
         return Tokenizer_buildToken(tker, DaiTokenType_illegal);
     } else {
-        DaiStringBuffer_writen(sb, Tokenizer_ch_at(tker), tker->byte_of_ch);
         Tokenizer_readChar(tker);
-        return Tokenizer_buildToken2(tker, DaiTokenType_str, DaiStringBuffer_getAndFree(sb, NULL));
+        return Tokenizer_buildToken(tker, DaiTokenType_str);
     }
 }
 
@@ -821,8 +775,9 @@ Tokenizer_run(Tokenizer* tker, DaiTokenList* tlist) {
                 if (!tker->has_error_msg) {
                     snprintf(tker->error_msg,
                              sizeof(tker->error_msg),
-                             "illegal character '%s'",
-                             tok->literal);
+                             "illegal character '%.*s'",
+                             (int)tok->length,
+                             tok->s);
                 }
                 {
                     dai_move(tker->tokens, tlist->tokens);

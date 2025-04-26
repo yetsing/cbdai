@@ -52,6 +52,9 @@ DaiAstProgram_free(DaiAstBase* base, bool recursive) {
         }
     }
     dai_free(prog->statements);
+    if (prog->tlist != NULL) {
+        DaiTokenList_free(prog->tlist);
+    }
     // program 本身会放在栈上，所以不需要释放
     // dai_free(prog);
     // 重新初始化一遍，防止意外使用
@@ -66,6 +69,7 @@ DaiAstProgram_init(DaiAstProgram* program) {
     program->length     = 0;
     program->size       = 0;
     program->statements = NULL;
+    program->tlist      = NULL;
 }
 
 void
@@ -75,6 +79,9 @@ DaiAstProgram_reset(DaiAstProgram* program) {
         statements[i]->free_fn((DaiAstBase*)statements[i], true);
     }
     dai_free(program->statements);
+    if (program->tlist != NULL) {
+        DaiTokenList_free(program->tlist);
+    }
     DaiAstProgram_init(program);
 }
 

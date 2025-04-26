@@ -1,4 +1,5 @@
-#include "assert.h"
+#include <assert.h>
+#include <string.h>
 
 #include "dai_ast/dai_astcommon.h"
 #include "dai_astclassstatement.h"
@@ -61,7 +62,7 @@ DaiAstClassStatement_New(DaiToken* name) {
         klass->string_fn = DaiAstClassStatement_string;
         klass->free_fn   = DaiAstClassStatement_free;
     }
-    dai_move(name->literal, klass->name);
+    klass->name   = strndup(name->s, name->length);
     klass->parent = NULL;
     klass->body   = NULL;
     return klass;

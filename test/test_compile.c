@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "dai_chunk.h"
+#include "dai_error.h"
 #include "dai_value.h"
 #include "munit/munit.h"
 
@@ -8,24 +9,15 @@
 #include "dai_debug.h"
 #include "dai_object.h"
 #include "dai_parse.h"
-#include "dai_tokenize.h"
 
 void
 dai_assert_value_equal(DaiValue actual, DaiValue expected);
 
 static void
 compile_helper(const char* input, DaiObjModule* module, DaiVM* vm) {
-    // 词法分析
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiError* err       = dai_tokenize_string(input, tlist);
-    if (err) {
-        DaiSyntaxError_setFilename(err, "<test>");
-        DaiSyntaxError_pprint(err, input);
-    }
-    munit_assert_null(err);
     DaiAstProgram program;
     DaiAstProgram_init(&program);
-    err = dai_parse(tlist, &program);
+    DaiSyntaxError* err = dai_parse(input, "<test>", &program);
     if (err) {
         DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
@@ -36,7 +28,6 @@ compile_helper(const char* input, DaiObjModule* module, DaiVM* vm) {
         // printf(s);
         // free(s);
     }
-    DaiTokenList_free(tlist);
     err = dai_compile(&program, module, vm);
     if (err) {
         DaiCompileError_pprint(err, input);
@@ -47,23 +38,14 @@ compile_helper(const char* input, DaiObjModule* module, DaiVM* vm) {
 
 static DaiCompileError*
 compile_error_helper(const char* input, DaiObjModule* module, DaiVM* vm) {
-    // 词法分析
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiError* err       = dai_tokenize_string(input, tlist);
-    if (err) {
-        DaiSyntaxError_setFilename(err, "<test>");
-        DaiSyntaxError_pprint(err, input);
-    }
-    munit_assert_null(err);
     DaiAstProgram program;
     DaiAstProgram_init(&program);
-    err = dai_parse(tlist, &program);
+    DaiSyntaxError* err = dai_parse(input, "<test>", &program);
     if (err) {
         DaiSyntaxError_setFilename(err, "<test>");
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
-    DaiTokenList_free(tlist);
     err = dai_compile(&program, module, vm);
     DaiAstProgram_reset(&program);
     return err;

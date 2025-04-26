@@ -68,7 +68,7 @@ DaiAstPrefixExpression_New(const DaiToken* operator, DaiAstExpression * right) {
         expr->literal_fn = DaiAstPrefixExpression_literal;
     }
     const DaiToken* token = operator;
-    expr->operator= strdup(token->literal);
+    expr->operator= strndup(token->s, token->length);
     expr->right        = right;
     expr->start_line   = token->start_line;
     expr->start_column = token->start_column;

@@ -51,7 +51,7 @@ DaiAstIntegerLiteral_New(DaiToken* token) {
         num->literal_fn = DaiAstIntegerLiteral_literal;
     }
     num->value        = -1;
-    num->literal      = strdup(token->literal);
+    num->literal      = strndup(token->s, token->length);
     num->start_line   = token->start_line;
     num->start_column = token->start_column;
     num->end_line     = token->end_line;

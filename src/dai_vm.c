@@ -1098,38 +1098,25 @@ DaiVM_getModule(DaiVM* vm, const char* filename) {
 DaiObjError*
 DaiVM_loadModule(DaiVM* vm, const char* text, DaiObjModule* module) {
     vm->state = VMState_pending;
-    DaiTokenList tlist;
-    DaiTokenList_init(&tlist);
     DaiAstProgram program;
     DaiAstProgram_init(&program);
 
     DaiError* err     = NULL;
     DaiObjError* oerr = NULL;
-    err               = dai_tokenize_string(text, &tlist);
+    err               = dai_parse(text, module->filename->chars, &program);
     if (err != NULL) {
-        DaiSyntaxError_setFilename(err, module->filename->chars);
-        // DaiSyntaxError_pprint(err, text);
-        goto DAI_LOAD_MODULE_ERROR;
-    }
-    err = dai_parse(&tlist, &program);
-    if (err != NULL) {
-        DaiSyntaxError_setFilename(err, module->filename->chars);
-        // DaiSyntaxError_pprint(err, text);
         goto DAI_LOAD_MODULE_ERROR;
     }
     err = dai_compile(&program, module, vm);
     if (err != NULL) {
-        // DaiCompileError_pprint(err, text);
         goto DAI_LOAD_MODULE_ERROR;
     }
-    DaiTokenList_reset(&tlist);
     DaiAstProgram_reset(&program);
     return DaiVM_runModule(vm, module);
 
 DAI_LOAD_MODULE_ERROR:
     oerr = DaiObjError_From(vm, err);
     DaiError_free(err);
-    DaiTokenList_reset(&tlist);
     DaiAstProgram_reset(&program);
     return oerr;
 }

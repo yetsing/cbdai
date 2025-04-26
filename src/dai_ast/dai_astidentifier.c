@@ -50,7 +50,7 @@ DaiAstIdentifier_New(DaiToken* token) {
         id->free_fn    = DaiAstIdentifier_free;
         id->literal_fn = DaiAstIdentifier_literal;
     }
-    id->value        = strdup(token->literal);
+    id->value        = strndup(token->s, token->length);
     id->start_line   = token->start_line;
     id->start_column = token->start_column;
     id->end_line     = token->end_line;

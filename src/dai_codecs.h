@@ -20,5 +20,7 @@ dai_utf8_decode(const char* str, dai_rune_t* rune);
 // UTF-8 字符串长度
 size_t
 dai_utf8_strlen(const char* s);
+size_t
+dai_utf8_strlen2(const char* s, size_t length);
 
 #endif /* DF6BFBC7_4DD0_476A_BEF4_B43D16139DF3 */

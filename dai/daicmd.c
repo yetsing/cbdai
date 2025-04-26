@@ -10,10 +10,10 @@
 #include "dai_canvas.h"
 #include "dai_compile.h"
 #include "dai_debug.h"
+#include "dai_error.h"
 #include "dai_malloc.h"
 #include "dai_object.h"
 #include "dai_parse.h"
-#include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_vm.h"
 #include "dai_windows.h"   // IWYU pragma: keep
@@ -133,25 +133,6 @@ daicmd_repl() {
     return 0;
 }
 
-static int
-parse_helper(const char* input, DaiAstProgram* program) {
-    DaiTokenList* tlist = DaiTokenList_New();
-    DaiSyntaxError* err = dai_tokenize_string(input, tlist);
-    if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
-        DaiSyntaxError_pprint(err, input);
-        return -1;
-    }
-    err = dai_parse(tlist, program);
-    if (err != NULL) {
-        DaiSyntaxError_setFilename(err, "<stdin>");
-        DaiSyntaxError_pprint(err, input);
-        return -1;
-    }
-    DaiTokenList_free(tlist);
-    return 0;
-}
-
 int
 daicmd_ast(int argc, char* argv[]) {
     if (argc != 3) {
@@ -168,11 +149,12 @@ daicmd_ast(int argc, char* argv[]) {
     DaiAstProgram prog;
     DaiAstProgram_init(&prog);
     DaiAstProgram* program = &prog;
-    if (parse_helper(input, program) < 0) {
+    DaiSyntaxError* err    = dai_parse(input, filename, program);
+    if (err != NULL) {
+        DaiSyntaxError_pprint(err, input);
         free(input);
         return 1;
     }
-
     {
         char* s = program->string_fn((DaiAstBase*)program, true);
         printf("%s\n", s);
@@ -190,9 +172,9 @@ daicmd_dis(int argc, char* argv[]) {
     }
     const char* filename = argv[2];
     char* filepath       = realpath(filename, NULL);
-    char* text           = dai_string_from_file(filename);
+    char* text           = dai_string_from_file(filepath);
     if (text == NULL) {
-        free(filepath);
+        dai_free(filepath);
         perror("Error: cannot read file");
         return 1;
     }
@@ -200,8 +182,6 @@ daicmd_dis(int argc, char* argv[]) {
     bool has_error = false;
     {
         DaiError* err = NULL;
-        DaiTokenList tlist;
-        DaiTokenList_init(&tlist);
         DaiAstProgram program;
         DaiAstProgram_init(&program);
         DaiVM vm;
@@ -212,15 +192,9 @@ daicmd_dis(int argc, char* argv[]) {
             goto end;
         }
 
-        err = dai_tokenize_string(text, &tlist);
+        err = dai_parse(text, filepath, &program);
         if (err != NULL) {
-            DaiSyntaxError_setFilename(err, filename);
-            DaiSyntaxError_pprint(err, text);
-            goto end;
-        }
-        err = dai_parse(&tlist, &program);
-        if (err != NULL) {
-            DaiSyntaxError_setFilename(err, filename);
+            DaiSyntaxError_setFilename(err, filepath);
             DaiSyntaxError_pprint(err, text);
             goto end;
         }
@@ -251,7 +225,6 @@ daicmd_dis(int argc, char* argv[]) {
             DaiError_free(err);
             has_error = true;
         }
-        DaiTokenList_reset(&tlist);
         DaiAstProgram_reset(&program);
         DaiVM_reset(&vm);
     }
