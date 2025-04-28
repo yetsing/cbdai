@@ -15,7 +15,7 @@ typedef struct {
     size_t size;
     size_t length;
     DaiAstStatement** statements;
-    DaiTokenList* tlist;
+    DaiTokenList tlist;
 } DaiAstProgram;
 
 void

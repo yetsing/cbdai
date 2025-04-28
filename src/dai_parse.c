@@ -1931,16 +1931,13 @@ Parser_parseProgram(Parser* p, DaiAstProgram* program) {
 DaiSyntaxError*
 dai_parse(const char* text, const char* filename, DaiAstProgram* program) {
     DaiSyntaxError* err = NULL;
-    assert(program->tlist == NULL);
-    DaiTokenList* tlist = DaiTokenList_New();
-    program->tlist      = tlist;
-    err                 = dai_tokenize_string(text, tlist);
+    err                 = dai_tokenize_string(text, &program->tlist);
     if (err != NULL) {
         DaiSyntaxError_setFilename(err, filename);
         return err;
     }
     // 创建解析器
-    Parser* parser = Parser_New(tlist);
+    Parser* parser = Parser_New(&program->tlist);
     // 解析 token 列表，构建 ast
     err = Parser_parseProgram(parser, program);
     // 释放解析器

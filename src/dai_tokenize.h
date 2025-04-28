@@ -1,16 +1,12 @@
-//
-// Created by  on 2024/5/28.
-//
-
 #ifndef CBDAI_TOKENIZE_H
 #define CBDAI_TOKENIZE_H
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdio.h>
 
 #include "dai_error.h"
 
+// Token 类型
 typedef enum {
     DaiTokenType_illegal = 0,   // "illegal"
     DaiTokenType_eof,           // "eof"
@@ -92,9 +88,12 @@ typedef enum {
     DaiTokenType_end,
 } DaiTokenType;
 
+// 返回 Token 类型的字符串表示
 __attribute__((unused)) const char*
 DaiTokenType_string(const DaiTokenType type);
 
+// Token 结构体，表示一个词法单元
+// 词法单元的类型，字符串，起始行列，结束行列，长度
 typedef struct {
     DaiTokenType type;
     // s + length 表示了在源文本上的一段字符串
@@ -107,28 +106,29 @@ typedef struct {
     size_t length;
 } DaiToken;
 
-// #region DaiTokenList 结构体及其方法，保存词法分析的结果和错误，提供方法读取
-typedef struct _DaiTokenList {
+// #region DaiTokenList 结构体及其方法，保存词法分析的结果，提供方法读取
+// DaiTokenList 结构体，表示一个 Token 列表
+typedef struct {
     size_t index;
     size_t length;
     DaiToken* tokens;
 } DaiTokenList;
-
-DaiTokenList*
-DaiTokenList_New();
-void
-DaiTokenList_free(DaiTokenList* list);
+// 初始化 DaiTokenList 结构体
 void
 DaiTokenList_init(DaiTokenList* list);
+// 重置 DaiTokenList 结构体，释放内存
 void
 DaiTokenList_reset(DaiTokenList* list);
 // 返回当前 token 并将读取位置加一
 DaiToken*
 DaiTokenList_next(DaiTokenList* list);
+// 返回 token 列表的长度
 size_t
 DaiTokenList_length(const DaiTokenList* list);
+// 返回当前 token 的索引
 size_t
 DaiTokenList_current_index(const DaiTokenList* list);
+// 返回指定索引的 token
 DaiToken*
 DaiTokenList_get(const DaiTokenList* list, size_t index);
 

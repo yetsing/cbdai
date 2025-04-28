@@ -354,19 +354,20 @@ test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
         {DaiTokenType_assign, "=", 2, 14},
         {DaiTokenType_eof, "", 2, 17},
     };
-    DaiTokenList* list = DaiTokenList_New();
-    char* s            = dai_string_from_file(filename);
+    DaiTokenList list;
+    DaiTokenList_init(&list);
+    char* s = dai_string_from_file(filename);
     munit_assert_not_null(s);
-    DaiSyntaxError* err = dai_tokenize_string(s, list);
+    DaiSyntaxError* err = dai_tokenize_string(s, &list);
     if (err) {
         DaiSyntaxError_setFilename(err, filename);
         DaiSyntaxError_pprint(err, s);
     }
     munit_assert_null(err);
-    munit_assert_size(sizeof(tests) / sizeof(tests[0]), ==, DaiTokenList_length(list));
+    munit_assert_size(sizeof(tests) / sizeof(tests[0]), ==, DaiTokenList_length(&list));
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
         DaiToken expect = tests[i];
-        DaiToken* tok   = DaiTokenList_next(list);
+        DaiToken* tok   = DaiTokenList_next(&list);
         munit_assert_int(expect.type, ==, tok->type);
         dai_assert_string_equaln(expect.s, tok->s, tok->length);
         munit_assert_int(expect.start_line, ==, tok->start_line);
@@ -376,7 +377,7 @@ test_tokenize_file(__attribute__((unused)) const MunitParameter params[],
             tok->start_column + dai_utf8_strlen2(tok->s, tok->length), ==, tok->end_column);
     }
     free(s);
-    DaiTokenList_free(list);
+    DaiTokenList_reset(&list);
     unlink(filename);
 
     return MUNIT_OK;
