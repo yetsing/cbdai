@@ -6,14 +6,14 @@
 #    include <stdlib.h>
 #    include <string.h>
 
+// code from musl https://www.musl-libc.org/
 char*
-strndup(const char* src, size_t size) {
-    size_t len = strnlen(src, size);
-    len        = len < size ? len : size;
-    char* dst  = malloc(len + 1);
-    if (!dst) return NULL;
-    memcpy(dst, src, len);
-    dst[len] = '\0';
-    return dst;
+strndup(const char* s, size_t n) {
+    size_t l = strnlen(s, n);
+    char* d  = malloc(l + 1);
+    if (!d) return NULL;
+    memcpy(d, s, l);
+    d[l] = 0;
+    return d;
 }
 #endif
