@@ -1,5 +1,7 @@
 #ifndef CBDAI_DAI_STRINGBUFFER_H
 #define CBDAI_DAI_STRINGBUFFER_H
+
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct _DaiStringBuffer DaiStringBuffer;

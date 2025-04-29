@@ -7,7 +7,7 @@
 #include "dai_chunk.h"
 
 void
-DaiChunk_disassemble(DaiChunk* chunk, const char* name);
+DaiChunk_disassemble(DaiChunk* chunk, const char* name, int indent);
 
 int
 DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset);

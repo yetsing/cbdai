@@ -32,13 +32,13 @@ dai_assert_value_equal(DaiValue actual, DaiValue expected) {
             DaiChunk* expected_chunk = &AS_FUNCTION(expected)->chunk;
             DaiChunk* actual_chunk   = &AS_FUNCTION(actual)->chunk;
             if (expected_chunk->count != actual_chunk->count) {
-                DaiChunk_disassemble(actual_chunk, "actual");
+                DaiChunk_disassemble(actual_chunk, "actual", 2);
                 printf("expected function: %s\n", DaiObjFunction_name(AS_FUNCTION(expected)));
             }
             munit_assert_int(expected_chunk->count, ==, actual_chunk->count);
             for (int i = 0; i < expected_chunk->count; i++) {
                 if (expected_chunk->code[i] != actual_chunk->code[i]) {
-                    DaiChunk_disassemble(actual_chunk, "actual");
+                    DaiChunk_disassemble(actual_chunk, "actual", 2);
                     printf("chunk different at %d\n", i);
                     printf("expected function: %s\n", DaiObjFunction_name(AS_FUNCTION(expected)));
                 }

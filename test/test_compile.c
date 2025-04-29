@@ -91,12 +91,12 @@ run_compiler_tests(const DaiCompilerTestCase* tests, const size_t count) {
         compile_helper(tests[i].input, module, &vm);
         DaiChunk chunk = module->chunk;
         if (chunk.count != tests[i].expected_count) {
-            DaiChunk_disassemble(&chunk, "test actual");
+            DaiChunk_disassemble(&chunk, "test actual", 2);
         }
         munit_assert_int(chunk.count, ==, tests[i].expected_count);
         for (int j = 0; j < chunk.count; j++) {
             if (chunk.code[j] != tests[i].expected_codes[j]) {
-                DaiChunk_disassemble(&chunk, "test");
+                DaiChunk_disassemble(&chunk, "test", 2);
             }
             if (chunk.code[j] != tests[i].expected_codes[j]) {
                 printf("unexpected at %d\n", j);

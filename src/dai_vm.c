@@ -359,7 +359,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             dai_log("<EMPTY>");
         }
         dai_log("\n");
-        DaiChunk_disassembleInstruction(chunk, (int)(frame->ip - chunk->code));
+        DaiChunk_disassembleInstruction(chunk, (int)(frame->ip - chunk->code), 0);
 #endif
         DaiOpCode op = READ_BYTE();
         switch (op) {

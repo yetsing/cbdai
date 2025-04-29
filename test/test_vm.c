@@ -81,7 +81,7 @@ interpret2(DaiVM* vm, const char* input, const char* filename) {
     // 运行
     DaiObjError* runtime_err = DaiVM_runModule(vm, module);
     if (runtime_err) {
-        DaiChunk_disassemble(&module->chunk, module->name->chars);
+        DaiChunk_disassemble(&module->chunk, module->name->chars, 2);
         DaiVM_printError2(vm, runtime_err, input);
         munit_assert_null(runtime_err);
     }

@@ -9,11 +9,20 @@
 #include "dai_debug.h"
 
 void
-DaiChunk_disassemble(DaiChunk* chunk, const char* name) {
+DaiChunk_disassemble(DaiChunk* chunk, const char* name, int indent) {
+    if (indent > 0) {
+        printf("%*s", indent, " ");
+    }
     printf("== %s ==\n", name);
 
     for (int offset = 0; offset < chunk->count;) {
+        if (indent > 0) {
+            printf("%*s", indent, " ");
+        }
         offset = DaiChunk_disassembleInstruction(chunk, offset);
+    }
+    if (indent > 0) {
+        printf("%*s", indent, " ");
     }
     printf("== end %s ==\n\n", name);
 }

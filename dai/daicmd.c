@@ -204,7 +204,11 @@ daicmd_dis(int argc, char* argv[]) {
             DaiCompileError_pprint(err, text);
             goto end;
         }
-        DaiChunk_disassemble(&module->chunk, module->name->chars);
+        dai_log("Module '%s' in %s:\n", module->name->chars, module->filename->chars);
+        dai_log("    max_stack_size=%d, max_local_count=%d\n",
+                module->max_stack_size,
+                module->max_local_count);
+        DaiChunk_disassemble(&module->chunk, module->name->chars, 8);
         DaiValueArray constants = module->chunk.constants;
         for (int i = 0; i < constants.count; i++) {
             DaiObjFunction* func = NULL;
@@ -214,7 +218,11 @@ daicmd_dis(int argc, char* argv[]) {
                 func = AS_FUNCTION(constants.values[i]);
             }
             if (func != NULL) {
-                DaiChunk_disassemble(&func->chunk, func->name->chars);
+                dai_log("Function '%s' in %s:\n", func->name->chars, func->module->filename->chars);
+                dai_log("    max_stack_size=%d, max_local_count=%d\n",
+                        module->max_stack_size,
+                        module->max_local_count);
+                DaiChunk_disassemble(&func->chunk, func->name->chars, 8);
             }
         }
 
