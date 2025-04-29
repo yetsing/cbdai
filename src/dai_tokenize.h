@@ -110,6 +110,7 @@ typedef struct {
 // DaiTokenList 结构体，表示一个 Token 列表
 typedef struct {
     size_t index;
+    size_t size;
     size_t length;
     DaiToken* tokens;
 } DaiTokenList;

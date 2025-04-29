@@ -13,6 +13,7 @@
 #include "dai_tokenize.h"
 #include "dai_windows.h"   // IWYU pragma: keep
 
+// #region DaiToken 辅助变量和函数
 // Token 类型字符串数组
 static const char* DaiTokenTypeStrings[] = {
     "DaiTokenType_illegal",     "DaiTokenType_eof",         "DaiTokenType_ident",
@@ -71,6 +72,18 @@ static DaiToken autos[] = {
     {DaiTokenType_mul_assign, "*="},  {DaiTokenType_div_assign, "/="},
 };
 
+// DaiTokenType_auto 类型转换
+void
+Token_autoConvert(DaiToken* t) {
+    assert(t->type == DaiTokenType_auto);
+    for (size_t i = 0; i < sizeof(autos) / sizeof(autos[0]); i++) {
+        if (t->length == strlen(autos[i].s) && strncmp(t->s, autos[i].s, t->length) == 0) {
+            t->type = autos[i].type;
+            break;
+        }
+    }
+}
+
 // 关键字 Token
 static DaiToken keywords[] = {
     {DaiTokenType_function, "fn"}, {DaiTokenType_var, "var"},
@@ -86,17 +99,18 @@ static DaiToken keywords[] = {
     {DaiTokenType_not, "not"},
 };
 
-// DaiTokenType_auto 类型转换
-void
-Token_autoConvert(DaiToken* t) {
-    assert(t->type == DaiTokenType_auto);
-    for (size_t i = 0; i < sizeof(autos) / sizeof(autos[0]); i++) {
-        if (t->length == strlen(autos[i].s) && strncmp(t->s, autos[i].s, t->length) == 0) {
-            t->type = autos[i].type;
-            break;
+// 查询关键字类型
+static DaiTokenType
+lookup_ident(const char* ident, size_t length) {
+    for (int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {
+        if (length == strlen(keywords[i].s) && strncmp(ident, keywords[i].s, length) == 0) {
+            return keywords[i].type;
         }
     }
+    return DaiTokenType_ident;
 }
+
+// #endregion
 
 // #region DaiTokenList 结构体及其方法
 
@@ -105,6 +119,7 @@ void
 DaiTokenList_init(DaiTokenList* list) {
     list->index  = 0;
     list->length = 0;
+    list->size   = 0;
     list->tokens = NULL;
 }
 
@@ -145,6 +160,26 @@ DaiTokenList_get(const DaiTokenList* list, size_t index) {
     return &list->tokens[index];
 }
 
+// 扩展 token 列表的大小
+static void
+DaiTokenList_grow(DaiTokenList* list, size_t size) {
+    list->size   = size;
+    list->tokens = dai_realloc(list->tokens, sizeof(DaiToken) * list->size);
+}
+
+static DaiToken*
+DaiTokenList_new_token(DaiTokenList* list) {
+    if (list->length >= list->size) {
+        // 因为 Tokenizer_new 可能会初始化一个比较大的 token 列表，所以这里不需要通常的倍数增长
+        // 32 是拍脑袋定的一个数值
+        size_t new_size = list->size + 32;
+        DaiTokenList_grow(list, new_size);
+    }
+    DaiToken* tok = &(list->tokens[list->length]);
+    list->length++;
+    return tok;
+}
+
 // #endregion
 
 // #region Tokenizer 分词器，进行词法分析
@@ -163,19 +198,21 @@ typedef struct {
     int line;     // 当前行
     int column;   // 当前列
 
+    // Tokenizer_run 会创建通用的错误消息，有时需要一些特定的错误消息，更好地表达错误原因
+    // 这些错误消息不好从深层的分析函数中返回，所以在这里记录一下
     bool has_error_msg;    // 是否以构建错误消息
     char error_msg[128];   // 错误消息
 
-    size_t tokens_offset;   // 当前 token 数组的偏移量
-    size_t tokens_size;     // token 数组的大小
-    DaiToken* tokens;       // token 数组
+    DaiTokenList* tlist;   // token 列表，只是一个引用，不管理内存
 } Tokenizer;
+
+// #region Tokenizer 辅助方法
 
 // 读取下一个字符
 // 读取字符时会更新行和列信息
 // 如果读取到文件末尾，则将 ch 设置为 0
 // 如果读取到无效的 utf8 编码，则设置 has_error_msg 为 true，并设置 error_msg
-void
+static void
 Tokenizer_read_char(Tokenizer* tker) {
     if (tker->ch == '\n') {
         tker->line++;
@@ -202,7 +239,7 @@ Tokenizer_read_char(Tokenizer* tker) {
 }
 
 // 返回下一个字节
-char
+static char
 Tokenizer_peek_char(Tokenizer* tker) {
     if (tker->read_position >= tker->number_of_byte) {
         // 返回 0 表示 EOF
@@ -213,18 +250,52 @@ Tokenizer_peek_char(Tokenizer* tker) {
 }
 
 // 标记当前位置
-void
+static void
 Tokenizer_mark(Tokenizer* tker) {
     tker->mark_position = tker->position;
     tker->mark_line     = tker->line;
     tker->mark_column   = tker->column;
 }
 
+// 跳过空白字符
+// 空白字符包括空格、制表符、换行符和回车符
+static void
+Tokenizer_skip_whitespace(Tokenizer* tker) {
+    while (tker->ch == ' ' || tker->ch == '\t' || tker->ch == '\n' || tker->ch == '\r') {
+        Tokenizer_read_char(tker);
+    }
+}
+
+static DaiToken*
+Tokenizer_new_token(Tokenizer* tker) {
+    return DaiTokenList_new_token(tker->tlist);
+}
+
+// 构建一个新的 Token
+static DaiToken*
+Tokenizer_build_token(Tokenizer* tker, DaiTokenType type) {
+    assert(tker->position >= tker->mark_position);
+    DaiToken* tok     = Tokenizer_new_token(tker);
+    tok->type         = type;
+    tok->s            = tker->s + tker->mark_position;
+    tok->length       = tker->position - tker->mark_position;
+    tok->start_line   = tker->mark_line;
+    tok->start_column = tker->mark_column;
+    tok->end_line     = tker->line;
+    tok->end_column   = tker->column;
+    if (tok->type == DaiTokenType_auto) {
+        Token_autoConvert(tok);
+    }
+    return tok;
+}
+
+// #endregion
+
 // 创建一个新的 Tokenizer
 // 参数 s 是源字符串，返回一个新的 Tokenizer 对象
 // 注意：调用者需要负责释放 Tokenizer 对象
-Tokenizer*
-Tokenizer_New(const char* s) {
+static Tokenizer*
+Tokenizer_New(const char* s, DaiTokenList* tlist) {
     Tokenizer* tker      = dai_malloc(sizeof(Tokenizer));
     tker->s              = s;
     tker->number_of_byte = strlen(s);
@@ -241,51 +312,18 @@ Tokenizer_New(const char* s) {
     tker->has_error_msg = false;
     memset(tker->error_msg, 0, sizeof(tker->error_msg));
 
-    tker->tokens_offset = 0;
-    tker->tokens_size   = 32;
-    tker->tokens        = dai_malloc(sizeof(DaiToken) * tker->tokens_size);
+    tker->tlist = tlist;
+    DaiTokenList_grow(tlist, tker->number_of_byte / 8);   // 预分配内存，大小是拍脑袋定的
+
     Tokenizer_read_char(tker);
     return tker;
 }
 
 // 释放 Tokenizer 对象
-void
+static void
 Tokenizer_free(Tokenizer* tker) {
     dai_free(tker);
 }
-
-// 跳过空白字符
-// 空白字符包括空格、制表符、换行符和回车符
-void
-Tokenizer_skip_whitespace(Tokenizer* tker) {
-    while (tker->ch == ' ' || tker->ch == '\t' || tker->ch == '\n' || tker->ch == '\r') {
-        Tokenizer_read_char(tker);
-    }
-}
-
-// 构建一个新的 Token
-DaiToken*
-Tokenizer_build_token(Tokenizer* tker, DaiTokenType type) {
-    assert(tker->position >= tker->mark_position);
-    if (tker->tokens_offset >= tker->tokens_size) {
-        tker->tokens_size *= 2;
-        tker->tokens = dai_realloc(tker->tokens, sizeof(DaiToken) * tker->tokens_size);
-    }
-    DaiToken* tok     = &(tker->tokens[tker->tokens_offset]);
-    tok->type         = type;
-    tok->s            = tker->s + tker->mark_position;
-    tok->length       = tker->position - tker->mark_position;
-    tok->start_line   = tker->mark_line;
-    tok->start_column = tker->mark_column;
-    tok->end_line     = tker->line;
-    tok->end_column   = tker->column;
-    tker->tokens_offset++;
-    if (tok->type == DaiTokenType_auto) {
-        Token_autoConvert(tok);
-    }
-    return tok;
-}
-
 
 // #region token 解析逻辑
 static bool
@@ -358,7 +396,7 @@ Tokenizer_read_fraction(Tokenizer* tker) {
 // octinteger ::= "0" ("o" | "O") ( ("_")* octdigit)+
 // hexinteger ::= "0" ("x" | "X") ( ("_")* hexdigit)+
 // float      ::= ("0" | decinteger) "." fraction [ exp ]
-
+//
 // fraction     ::= digit ( ("_")* digit)*
 // exp          ::= ("e" | "E") [ "-" | "+" ] (digit)+
 // nonzerodigit ::=  "1"..."9"
@@ -457,17 +495,6 @@ Tokenizer_read_number(Tokenizer* tker) {
         return Tokenizer_read_fraction(tker);
     }
     return Tokenizer_build_token(tker, DaiTokenType_int);
-}
-
-// 查询关键字类型
-static DaiTokenType
-lookup_ident(const char* ident, size_t length) {
-    for (int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {
-        if (length == strlen(keywords[i].s) && strncmp(ident, keywords[i].s, length) == 0) {
-            return keywords[i].type;
-        }
-    }
-    return DaiTokenType_ident;
 }
 
 static bool
@@ -772,6 +799,7 @@ Tokenizer_next_token(Tokenizer* tker) {
 }
 // #endregion
 
+// 执行词法分析
 static DaiSyntaxError*
 Tokenizer_run(Tokenizer* tker, DaiTokenList* tlist) {
     while (true) {
@@ -786,17 +814,9 @@ Tokenizer_run(Tokenizer* tker, DaiTokenList* tlist) {
                              (int)tok->length,
                              tok->s);
                 }
-                {
-                    dai_move(tker->tokens, tlist->tokens);
-                    tlist->length = tker->tokens_offset;
-                }
                 return DaiSyntaxError_New(tker->error_msg, tok->start_line, tok->start_column);
             }
             case DaiTokenType_eof: {
-                {
-                    dai_move(tker->tokens, tlist->tokens);
-                    tlist->length = tker->tokens_offset;
-                }
                 return NULL;
             }
             default: {
@@ -813,7 +833,7 @@ Tokenizer_run(Tokenizer* tker, DaiTokenList* tlist) {
 
 DaiSyntaxError*
 dai_tokenize_string(const char* s, DaiTokenList* tlist) {
-    Tokenizer* tker     = Tokenizer_New(s);
+    Tokenizer* tker     = Tokenizer_New(s, tlist);
     DaiSyntaxError* err = Tokenizer_run(tker, tlist);
     Tokenizer_free(tker);
     return err;
