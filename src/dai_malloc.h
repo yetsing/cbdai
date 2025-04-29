@@ -1,8 +1,8 @@
 /*
 封装内存操作，用于词法分析、语法分析使用
 */
-#ifndef CBDAI_SRC_DAI_MALLOC_H_
-#define CBDAI_SRC_DAI_MALLOC_H_
+#ifndef CBDAI_DAI_MALLOC_H
+#define CBDAI_DAI_MALLOC_H
 
 #include <stdlib.h>
 
@@ -29,4 +29,4 @@ dai_realloc(void* ptr, size_t size);
         src = NULL;        \
     } while (0)
 
-#endif   // CBDAI_SRC_DAI_MALLOC_H_
+#endif /* CBDAI_DAI_MALLOC_H */

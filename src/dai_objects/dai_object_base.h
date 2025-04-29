@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_BASE_H_
-#define SRC_DAI_OBJECT_BASE_H_
+#ifndef CBDAI_DAI_OBJECT_BASE_H
+#define CBDAI_DAI_OBJECT_BASE_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -145,4 +145,4 @@ DaiObj*
 allocate_object(DaiVM* vm, size_t size, DaiObjType type);
 // #endregion
 
-#endif /* SRC_DAI_OBJECT_BASE_H_ */
+#endif /* CBDAI_DAI_OBJECT_BASE_H */

@@ -1,5 +1,5 @@
-#ifndef CBDAI_SRC_DAI_AST_DAI_ASTFORINSTATEMENT_H
-#define CBDAI_SRC_DAI_AST_DAI_ASTFORINSTATEMENT_H
+#ifndef CBDAI_DAI_ASTFORINSTATEMENT_H
+#define CBDAI_DAI_ASTFORINSTATEMENT_H
 
 #include "dai_ast/dai_astblockstatement.h"
 #include "dai_ast/dai_astexpression.h"
@@ -19,4 +19,4 @@ typedef struct {
 DaiAstForInStatement*
 DaiAstForInStatement_New(void);
 
-#endif /* CBDAI_SRC_DAI_AST_DAI_ASTFORINSTATEMENT_H */
+#endif /* CBDAI_DAI_ASTFORINSTATEMENT_H */

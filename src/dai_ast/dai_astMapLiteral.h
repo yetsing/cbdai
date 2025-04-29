@@ -1,5 +1,5 @@
-#ifndef DAI_ASTMAPLITERAL_H
-#define DAI_ASTMAPLITERAL_H
+#ifndef CBDAI_DAI_ASTMAPLITERAL_H
+#define CBDAI_DAI_ASTMAPLITERAL_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_tokenize.h"
@@ -19,4 +19,4 @@ DaiAstMapLiteral*
 DaiAstMapLiteral_New(void);
 
 
-#endif   // DAI_ASTMAPLITERAL_H
+#endif /* CBDAI_DAI_ASTMAPLITERAL_H */

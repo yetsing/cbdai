@@ -1,5 +1,5 @@
-#ifndef DAI_OBJECT_CLASS_H
-#define DAI_OBJECT_CLASS_H
+#ifndef CBDAI_DAI_OBJECT_CLASS_H
+#define CBDAI_DAI_OBJECT_CLASS_H
 
 #include <string.h>
 
@@ -84,4 +84,4 @@ void
 DaiObj_get_method(DaiVM* vm, DaiObjClass* klass, DaiValue receiver, DaiObjString* name,
                   DaiValue* method);
 
-#endif   // DAI_OBJECT_CLASS_H
+#endif /* CBDAI_DAI_OBJECT_CLASS_H */

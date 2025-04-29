@@ -1,5 +1,5 @@
-#ifndef A27DBEBF_6C4E_4D54_AFEF_42B0BCF50BC5
-#define A27DBEBF_6C4E_4D54_AFEF_42B0BCF50BC5
+#ifndef CBDAI_DAI_ASTTYPE_H
+#define CBDAI_DAI_ASTTYPE_H
 
 typedef enum {
     DaiAstType_unspecified = 0,
@@ -51,4 +51,4 @@ typedef enum {
 const char*
 DaiAstType_string(DaiAstType type);
 
-#endif /* A27DBEBF_6C4E_4D54_AFEF_42B0BCF50BC5 */
+#endif /* CBDAI_DAI_ASTTYPE_H */

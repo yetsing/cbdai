@@ -1,5 +1,5 @@
-#ifndef CBDAI_TOKENIZE_H
-#define CBDAI_TOKENIZE_H
+#ifndef CBDAI_DAI_TOKENIZE_H
+#define CBDAI_DAI_TOKENIZE_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -138,4 +138,4 @@ DaiTokenList_get(const DaiTokenList* list, size_t index);
 DaiSyntaxError*
 dai_tokenize_string(const char* s, DaiTokenList* tlist);
 
-#endif   // CBDAI_TOKENIZE_H
+#endif /* CBDAI_DAI_TOKENIZE_H */

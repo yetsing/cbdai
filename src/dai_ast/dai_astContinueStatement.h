@@ -1,5 +1,5 @@
-#ifndef E15B6982_ABF2_4EB4_BA58_84313B199A32
-#define E15B6982_ABF2_4EB4_BA58_84313B199A32
+#ifndef CBDAI_DAI_ASTCONTINUESTATEMENT_H
+#define CBDAI_DAI_ASTCONTINUESTATEMENT_H
 
 #include "dai_ast/dai_aststatement.h"
 
@@ -10,4 +10,4 @@ typedef struct {
 DaiAstContinueStatement*
 DaiAstContinueStatement_New(void);
 
-#endif /* E15B6982_ABF2_4EB4_BA58_84313B199A32 */
+#endif /* CBDAI_DAI_ASTCONTINUESTATEMENT_H */

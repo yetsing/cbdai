@@ -1,8 +1,8 @@
 /*
 字符编解码
 */
-#ifndef DF6BFBC7_4DD0_476A_BEF4_B43D16139DF3
-#define DF6BFBC7_4DD0_476A_BEF4_B43D16139DF3
+#ifndef CBDAI_DAI_CODECS_H
+#define CBDAI_DAI_CODECS_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -23,4 +23,4 @@ dai_utf8_strlen(const char* s);
 size_t
 dai_utf8_strlen2(const char* s, size_t length);
 
-#endif /* DF6BFBC7_4DD0_476A_BEF4_B43D16139DF3 */
+#endif /* CBDAI_DAI_CODECS_H */

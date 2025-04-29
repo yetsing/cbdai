@@ -2,8 +2,8 @@
 // Created by  on 2024/6/5.
 //
 
-#ifndef CBDAI_SRC_DAI_AST_DAI_ASTINTEGERLITERAL_H_
-#define CBDAI_SRC_DAI_AST_DAI_ASTINTEGERLITERAL_H_
+#ifndef CBDAI_DAI_ASTINTEGERLITERAL_H
+#define CBDAI_DAI_ASTINTEGERLITERAL_H
 
 #include <stdint.h>
 
@@ -19,4 +19,4 @@ typedef struct {
 DaiAstIntegerLiteral*
 DaiAstIntegerLiteral_New(DaiToken* token);
 
-#endif   // CBDAI_SRC_DAI_AST_DAI_ASTINTEGERLITERAL_H_
+#endif /* CBDAI_DAI_ASTINTEGERLITERAL_H */

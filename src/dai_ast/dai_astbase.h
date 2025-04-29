@@ -1,5 +1,5 @@
-#ifndef A1A11555_07DC_49E9_AD46_766F7F9A7043
-#define A1A11555_07DC_49E9_AD46_766F7F9A7043
+#ifndef CBDAI_DAI_ASTBASE_H
+#define CBDAI_DAI_ASTBASE_H
 
 #include <stdbool.h>
 
@@ -25,4 +25,4 @@ typedef struct _DaiAstBase {
 } DaiAstBase;
 // #endregion
 
-#endif /* A1A11555_07DC_49E9_AD46_766F7F9A7043 */
+#endif /* CBDAI_DAI_ASTBASE_H */

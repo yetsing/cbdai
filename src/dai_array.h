@@ -1,5 +1,5 @@
-#ifndef CBDAI_SRC_DAI_ARRAY_H_
-#define CBDAI_SRC_DAI_ARRAY_H_
+#ifndef CBDAI_DAI_ARRAY_H
+#define CBDAI_DAI_ARRAY_H
 
 #include <stddef.h>
 
@@ -16,4 +16,4 @@ DaiArray_length(DaiArray* array);
 void*
 DaiArray_get(DaiArray* array, int index);
 
-#endif /* CBDAI_SRC_DAI_ARRAY_H_ */
+#endif /* CBDAI_DAI_ARRAY_H */

@@ -1,5 +1,5 @@
-#ifndef C759BE44_71CA_4041_B259_9DC171208F59
-#define C759BE44_71CA_4041_B259_9DC171208F59
+#ifndef CBDAI_DAI_STRINGBUFFER_H
+#define CBDAI_DAI_STRINGBUFFER_H
 #include <stdint.h>
 
 typedef struct _DaiStringBuffer DaiStringBuffer;
@@ -34,4 +34,4 @@ DaiStringBuffer_getAndFree(DaiStringBuffer* sb, size_t* length);
 void
 DaiStringBuffer_free(DaiStringBuffer* sb);
 
-#endif /* C759BE44_71CA_4041_B259_9DC171208F59 */
+#endif /* CBDAI_DAI_STRINGBUFFER_H */

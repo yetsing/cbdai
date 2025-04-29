@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_ARRAY_H_
-#define SRC_DAI_OBJECT_ARRAY_H_
+#ifndef CBDAI_DAI_OBJECT_ARRAY_H
+#define CBDAI_DAI_OBJECT_ARRAY_H
 
 #include "dai_objects/dai_object_base.h"
 
@@ -27,4 +27,4 @@ typedef struct {
 DaiObjArrayIterator*
 DaiObjArrayIterator_New(DaiVM* vm, DaiObjArray* array);
 
-#endif /* SRC_DAI_OBJECT_ARRAY_H_ */
+#endif /* CBDAI_DAI_OBJECT_ARRAY_H */

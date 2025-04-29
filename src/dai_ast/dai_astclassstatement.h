@@ -1,6 +1,6 @@
 
-#ifndef CBDAI_SRC_DAI_AST_DAI_ASTCLASSSTATEMENT_H_
-#define CBDAI_SRC_DAI_AST_DAI_ASTCLASSSTATEMENT_H_
+#ifndef CBDAI_DAI_ASTCLASSSTATEMENT_H
+#define CBDAI_DAI_ASTCLASSSTATEMENT_H
 
 #include "dai_ast/dai_astblockstatement.h"
 #include "dai_ast/dai_astidentifier.h"
@@ -17,4 +17,4 @@ typedef struct {
 DaiAstClassStatement*
 DaiAstClassStatement_New(DaiToken* name);
 
-#endif   // CBDAI_SRC_DAI_AST_DAI_ASTCLASSSTATEMENT_H_
+#endif /* CBDAI_DAI_ASTCLASSSTATEMENT_H */

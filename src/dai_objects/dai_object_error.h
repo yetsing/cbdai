@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_ERROR_H_
-#define SRC_DAI_OBJECT_ERROR_H_
+#ifndef CBDAI_DAI_OBJECT_ERROR_H
+#define CBDAI_DAI_OBJECT_ERROR_H
 
 #include "dai_error.h"
 #include "dai_objects/dai_object_base.h"
@@ -26,4 +26,4 @@ DaiObjError*
 DaiObjError_From(DaiVM* vm, DaiError* err);
 
 
-#endif /* SRC_DAI_OBJECT_ERROR_H_ */
+#endif /* CBDAI_DAI_OBJECT_ERROR_H */

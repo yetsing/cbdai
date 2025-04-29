@@ -1,5 +1,5 @@
-#ifndef A2C6620F_B3CB_4FC2_A309_D76A873205C0
-#define A2C6620F_B3CB_4FC2_A309_D76A873205C0
+#ifndef CBDAI_DAI_AST_H
+#define CBDAI_DAI_AST_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -49,4 +49,4 @@
 // IWYU pragma: end_exports
 
 
-#endif /* A2C6620F_B3CB_4FC2_A309_D76A873205C0 */
+#endif /* CBDAI_DAI_AST_H */

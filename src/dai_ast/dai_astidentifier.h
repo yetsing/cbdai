@@ -1,5 +1,5 @@
-#ifndef A98A0BCC_FE15_40BF_B927_5BB9A3DD92A0
-#define A98A0BCC_FE15_40BF_B927_5BB9A3DD92A0
+#ifndef CBDAI_DAI_ASTIDENTIFIER_H
+#define CBDAI_DAI_ASTIDENTIFIER_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_tokenize.h"
@@ -13,4 +13,4 @@ DaiAstIdentifier*
 DaiAstIdentifier_New(DaiToken* token);
 
 
-#endif /* A98A0BCC_FE15_40BF_B927_5BB9A3DD92A0 */
+#endif /* CBDAI_DAI_ASTIDENTIFIER_H */

@@ -1,5 +1,5 @@
-#ifndef C8CDB464_FD15_489C_8AC8_AE125875BA7E
-#define C8CDB464_FD15_489C_8AC8_AE125875BA7E
+#ifndef CBDAI_DAI_ASTCLASSVARSTATEMENT_H
+#define CBDAI_DAI_ASTCLASSVARSTATEMENT_H
 
 #include "dai_ast/dai_astidentifier.h"
 #include "dai_ast/dai_aststatement.h"
@@ -14,4 +14,4 @@ typedef struct {
 DaiAstClassVarStatement*
 DaiAstClassVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value);
 
-#endif /* C8CDB464_FD15_489C_8AC8_AE125875BA7E */
+#endif /* CBDAI_DAI_ASTCLASSVARSTATEMENT_H */

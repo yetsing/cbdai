@@ -1,8 +1,8 @@
 /*
 工具函数
 */
-#ifndef AECB9C05_1769_47C9_99B4_8EB1E4235629
-#define AECB9C05_1769_47C9_99B4_8EB1E4235629
+#ifndef CBDAI_DAI_UTILS_H
+#define CBDAI_DAI_UTILS_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -73,4 +73,4 @@ typedef struct {
     int column;
 } DaiFilePos;
 
-#endif /* AECB9C05_1769_47C9_99B4_8EB1E4235629 */
+#endif /* CBDAI_DAI_UTILS_H */

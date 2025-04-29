@@ -1,5 +1,5 @@
-#ifndef C7C10EF7_35B4_4607_B1BC_D808350558C2
-#define C7C10EF7_35B4_4607_B1BC_D808350558C2
+#ifndef CBDAI_ATSTR_H
+#define CBDAI_ATSTR_H
 
 #include <stdbool.h>
 
@@ -55,4 +55,4 @@ atstr_splitn(atstr_t* atstr, atstr_t* result, int n);
 int
 atstr_splitcn(atstr_t* atstr, char delimiter, atstr_t* result, int n);
 
-#endif /* C7C10EF7_35B4_4607_B1BC_D808350558C2 */
+#endif /* CBDAI_ATSTR_H */

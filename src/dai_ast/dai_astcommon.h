@@ -1,5 +1,5 @@
-#ifndef B0D14535_3DCF_4F93_879B_8B763471BC56
-#define B0D14535_3DCF_4F93_879B_8B763471BC56
+#ifndef CBDAI_DAI_ASTCOMMON_H
+#define CBDAI_DAI_ASTCOMMON_H
 
 // 定义颜色宏
 #define RED "\033[0;31m"
@@ -15,4 +15,4 @@
 __attribute__((unused)) static const char* indent       = "    ";
 __attribute__((unused)) static const char* doubleindent = "        ";
 
-#endif /* B0D14535_3DCF_4F93_879B_8B763471BC56 */
+#endif /* CBDAI_DAI_ASTCOMMON_H */

@@ -1,5 +1,5 @@
-#ifndef DAI_ASTARRAYLITERAL_H
-#define DAI_ASTARRAYLITERAL_H
+#ifndef CBDAI_DAI_ASTARRAYLITERAL_H
+#define CBDAI_DAI_ASTARRAYLITERAL_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_tokenize.h"
@@ -14,4 +14,4 @@ DaiAstArrayLiteral*
 DaiAstArrayLiteral_New(void);
 
 
-#endif   // DAI_ASTARRAYLITERAL_H
+#endif /* CBDAI_DAI_ASTARRAYLITERAL_H */

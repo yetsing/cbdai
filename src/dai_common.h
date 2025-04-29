@@ -1,5 +1,5 @@
-#ifndef EA18705B_2BFD_4995_89D9_F725E8A9F455
-#define EA18705B_2BFD_4995_89D9_F725E8A9F455
+#ifndef CBDAI_DAI_COMMON_H
+#define CBDAI_DAI_COMMON_H
 
 #include <assert.h>
 #include <stdbool.h>
@@ -30,4 +30,4 @@
 
 #define UINT8_COUNT (UINT8_MAX + 1)
 
-#endif /* EA18705B_2BFD_4995_89D9_F725E8A9F455 */
+#endif /* CBDAI_DAI_COMMON_H */

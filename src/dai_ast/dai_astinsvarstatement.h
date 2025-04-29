@@ -1,5 +1,5 @@
-#ifndef DBC180D2_54E7_4098_ACBC_35C189C6B529
-#define DBC180D2_54E7_4098_ACBC_35C189C6B529
+#ifndef CBDAI_DAI_ASTINSVARSTATEMENT_H
+#define CBDAI_DAI_ASTINSVARSTATEMENT_H
 
 #include "dai_ast/dai_astidentifier.h"
 #include "dai_ast/dai_aststatement.h"
@@ -15,4 +15,4 @@ DaiAstInsVarStatement*
 DaiAstInsVarStatement_New(DaiAstIdentifier* name, DaiAstExpression* value);
 
 
-#endif /* DBC180D2_54E7_4098_ACBC_35C189C6B529 */
+#endif /* CBDAI_DAI_ASTINSVARSTATEMENT_H */

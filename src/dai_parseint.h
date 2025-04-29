@@ -1,5 +1,5 @@
-#ifndef A8085DED_B87A_42E4_8C55_CA871EC13A08
-#define A8085DED_B87A_42E4_8C55_CA871EC13A08
+#ifndef CBDAI_DAI_PARSEINT_H
+#define CBDAI_DAI_PARSEINT_H
 
 #include <stdint.h>
 
@@ -11,4 +11,4 @@
 int64_t
 dai_parseint(const char* str, int base, char** error);
 
-#endif /* A8085DED_B87A_42E4_8C55_CA871EC13A08 */
+#endif /* CBDAI_DAI_PARSEINT_H */

@@ -1,5 +1,5 @@
-#ifndef C9146535_C1FA_42E3_B5A4_60209E40BC53
-#define C9146535_C1FA_42E3_B5A4_60209E40BC53
+#ifndef CBDAI_DAI_VM_H
+#define CBDAI_DAI_VM_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -125,4 +125,4 @@ DaiVM_isEmptyStack(const DaiVM* vm);
 // #endregion
 
 
-#endif /* C9146535_C1FA_42E3_B5A4_60209E40BC53 */
+#endif /* CBDAI_DAI_VM_H */

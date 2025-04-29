@@ -2,8 +2,8 @@
 // Created by  on 2024/6/5.
 //
 
-#ifndef CBDAI_SRC_DAI_AST_DAI_ASTPROGRAM_H_
-#define CBDAI_SRC_DAI_AST_DAI_ASTPROGRAM_H_
+#ifndef CBDAI_DAI_ASTPROGRAM_H
+#define CBDAI_DAI_ASTPROGRAM_H
 
 #include <stddef.h>
 
@@ -24,4 +24,4 @@ void
 DaiAstProgram_reset(DaiAstProgram* program);
 void
 DaiAstProgram_append(DaiAstProgram* program, DaiAstStatement* stmt);
-#endif   // CBDAI_SRC_DAI_AST_DAI_ASTPROGRAM_H_
+#endif /* CBDAI_DAI_ASTPROGRAM_H */

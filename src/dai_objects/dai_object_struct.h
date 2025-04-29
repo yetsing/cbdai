@@ -1,5 +1,5 @@
-#ifndef DAI_OBJECT_STRUCT_H
-#define DAI_OBJECT_STRUCT_H
+#ifndef CBDAI_DAI_OBJECT_STRUCT_H
+#define CBDAI_DAI_OBJECT_STRUCT_H
 
 #include "dai_objects/dai_object_base.h"
 
@@ -19,4 +19,4 @@ DaiObjStruct_New(DaiVM* vm, const char* name, struct DaiObjOperation* operation,
                  void (*free)(DaiObjStruct* st));
 void
 DaiObjStruct_Free(DaiVM* vm, DaiObjStruct* obj);
-#endif //DAI_OBJECT_STRUCT_H
+#endif /* CBDAI_DAI_OBJECT_STRUCT_H */

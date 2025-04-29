@@ -1,5 +1,5 @@
-#ifndef DAI_OBJECT_RANGE_H
-#define DAI_OBJECT_RANGE_H
+#ifndef CBDAI_DAI_OBJECT_RANGE_H
+#define CBDAI_DAI_OBJECT_RANGE_H
 
 #include "dai_objects/dai_object_base.h"
 
@@ -15,4 +15,4 @@ DaiObjRangeIterator*
 DaiObjRangeIterator_New(DaiVM* vm, int64_t start, int64_t end, int64_t step);
 
 
-#endif //DAI_OBJECT_RANGE_H
+#endif /* CBDAI_DAI_OBJECT_RANGE_H */

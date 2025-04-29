@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_FUNCTION_H_
-#define SRC_DAI_OBJECT_FUNCTION_H_
+#ifndef CBDAI_DAI_OBJECT_FUNCTION_H
+#define CBDAI_DAI_OBJECT_FUNCTION_H
 
 #include "dai_chunk.h"
 #include "dai_objects/dai_object_base.h"
@@ -53,4 +53,4 @@ DaiObjCFunction*
 DaiObjCFunction_New(DaiVM* vm, void* dai, BuiltinFn wrapper, CFunction func, const char* name,
                     int arity);
 
-#endif /* SRC_DAI_OBJECT_FUNCTION_H_ */
+#endif /* CBDAI_DAI_OBJECT_FUNCTION_H */

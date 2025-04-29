@@ -1,5 +1,5 @@
-#ifndef EC3F9B25_451A_484C_906A_F9BFCA85A45A
-#define EC3F9B25_451A_484C_906A_F9BFCA85A45A
+#ifndef CBDAI_DAI_TABLE_H
+#define CBDAI_DAI_TABLE_H
 
 #include "dai_value.h"
 
@@ -37,4 +37,4 @@ DaiObjString*
 DaiTable_findString(DaiTable* table, const char* chars, int length, uint32_t hash);
 void
 tableRemoveWhite(DaiTable* table);
-#endif /* EC3F9B25_451A_484C_906A_F9BFCA85A45A */
+#endif /* CBDAI_DAI_TABLE_H */

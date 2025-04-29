@@ -2,8 +2,8 @@
 // Created by  on 2024/6/5.
 //
 
-#ifndef CBDAI_SRC_DAI_AST_DAI_ASTRETURNSTATEMENT_H_
-#define CBDAI_SRC_DAI_AST_DAI_ASTRETURNSTATEMENT_H_
+#ifndef CBDAI_DAI_ASTRETURNSTATEMENT_H
+#define CBDAI_DAI_ASTRETURNSTATEMENT_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_ast/dai_aststatement.h"
@@ -15,4 +15,4 @@ typedef struct {
 
 DaiAstReturnStatement*
 DaiAstReturnStatement_New(DaiAstExpression* return_value);
-#endif   // CBDAI_SRC_DAI_AST_DAI_ASTRETURNSTATEMENT_H_
+#endif /* CBDAI_DAI_ASTRETURNSTATEMENT_H */

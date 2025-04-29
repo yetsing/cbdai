@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_MODULE_H_
-#define SRC_DAI_OBJECT_MODULE_H_
+#ifndef CBDAI_DAI_OBJECT_MODULE_H
+#define CBDAI_DAI_OBJECT_MODULE_H
 
 #include "hashmap.h"
 
@@ -49,4 +49,4 @@ DaiObjModule_copyto(DaiObjModule* module, DaiObjMap* globals);
 void
 builtin_module_setup(DaiObjModule* module);
 
-#endif /* SRC_DAI_OBJECT_MODULE_H_ */
+#endif /* CBDAI_DAI_OBJECT_MODULE_H */

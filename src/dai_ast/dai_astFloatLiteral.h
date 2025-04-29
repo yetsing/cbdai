@@ -1,5 +1,5 @@
-#ifndef CBDAI_SRC_DAI_AST_DAI_ASTFLOATLITERAL_H_
-#define CBDAI_SRC_DAI_AST_DAI_ASTFLOATLITERAL_H_
+#ifndef CBDAI_DAI_ASTFLOATLITERAL_H
+#define CBDAI_DAI_ASTFLOATLITERAL_H
 
 #include <stdint.h>
 
@@ -15,4 +15,4 @@ typedef struct {
 DaiAstFloatLiteral*
 DaiAstFloatLiteral_New(DaiToken* token);
 
-#endif   // CBDAI_SRC_DAI_AST_DAI_ASTFLOATLITERAL_H_
+#endif /* CBDAI_DAI_ASTFLOATLITERAL_H */

@@ -1,8 +1,8 @@
 /*
 反汇编
 */
-#ifndef D298E858_2BDE_4135_8445_E310684E5F1A
-#define D298E858_2BDE_4135_8445_E310684E5F1A
+#ifndef CBDAI_DAI_DEBUG_H
+#define CBDAI_DAI_DEBUG_H
 
 #include "dai_chunk.h"
 
@@ -13,4 +13,4 @@ int
 DaiChunk_disassembleInstruction(DaiChunk* chunk, int offset);
 
 
-#endif /* D298E858_2BDE_4135_8445_E310684E5F1A */
+#endif /* CBDAI_DAI_DEBUG_H */

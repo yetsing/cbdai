@@ -1,6 +1,6 @@
 // windows compat
-#ifndef DAI_WINDOWS_H
-#define DAI_WINDOWS_H
+#ifndef CBDAI_DAI_WINDOWS_H
+#define CBDAI_DAI_WINDOWS_H
 
 #ifdef _WIN32
 
@@ -16,4 +16,4 @@ strndup(const char* src, size_t size);
 
 #endif
 
-#endif   // DAI_WINDOWS_H
+#endif /* CBDAI_DAI_WINDOWS_H */

@@ -1,12 +1,12 @@
 /*
 字节码块
 */
-#ifndef A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0
-#define A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0
+#ifndef CBDAI_DAI_CHUNK_H
+#define CBDAI_DAI_CHUNK_H
 
 #include <stdint.h>
 
-#include "dai_common.h"
+#include "dai_common.h"   // IWYU pragma: keep
 #include "dai_value.h"
 
 #define GLOBAL_MAX 65536   // uint16
@@ -176,4 +176,4 @@ const char*
 DaiChunk_getName(const DaiChunk* chunk, int offset);
 #endif
 
-#endif /* A93FF060_4FC9_4322_AF9B_CD1FB97FF8A0 */
+#endif /* CBDAI_DAI_CHUNK_H */

@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_ASTNIL_H_
-#define SRC_DAI_ASTNIL_H_
+#ifndef CBDAI_DAI_ASTNIL_H
+#define CBDAI_DAI_ASTNIL_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_tokenize.h"
@@ -12,4 +12,4 @@ DaiAstNil*
 DaiAstNil_New(DaiToken* token);
 
 
-#endif /* SRC_DAI_ASTNIL_H_ */
+#endif /* CBDAI_DAI_ASTNIL_H */

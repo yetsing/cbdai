@@ -1,12 +1,10 @@
-#ifndef AF1F0FB7_2160_4F19_9BDE_8D075DABCEF8
-#define AF1F0FB7_2160_4F19_9BDE_8D075DABCEF8
+#ifndef CBDAI_DAI_ASTSTATEMENT_H
+#define CBDAI_DAI_ASTSTATEMENT_H
 
 #include "dai_ast/dai_astbase.h"
 
 #define DAI_AST_STATEMENT_HEAD \
-    DaiAstType type;           \
-    DaiAstStringFn string_fn;  \
-    DaiAstFreeFn free_fn;      \
+    DAI_AST_BASE_HEAD          \
     int start_line;            \
     int start_column;          \
     int end_line;              \
@@ -16,4 +14,4 @@ typedef struct _DaiAstStatement {
     DAI_AST_STATEMENT_HEAD
 } DaiAstStatement;
 
-#endif /* AF1F0FB7_2160_4F19_9BDE_8D075DABCEF8 */
+#endif /* CBDAI_DAI_ASTSTATEMENT_H */

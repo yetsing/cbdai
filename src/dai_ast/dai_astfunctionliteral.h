@@ -1,5 +1,5 @@
-#ifndef C9DE1BB0_1FB9_4F27_9F14_09C7100679C4
-#define C9DE1BB0_1FB9_4F27_9F14_09C7100679C4
+#ifndef CBDAI_DAI_ASTFUNCTIONLITERAL_H
+#define CBDAI_DAI_ASTFUNCTIONLITERAL_H
 
 #include <stddef.h>
 
@@ -18,4 +18,4 @@ typedef struct {
 DaiAstFunctionLiteral*
 DaiAstFunctionLiteral_New(void);
 
-#endif /* C9DE1BB0_1FB9_4F27_9F14_09C7100679C4 */
+#endif /* CBDAI_DAI_ASTFUNCTIONLITERAL_H */

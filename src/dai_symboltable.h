@@ -1,8 +1,8 @@
 /*
 符号表
 */
-#ifndef FADFA587_97BF_4F17_B81D_02BA645443DF
-#define FADFA587_97BF_4F17_B81D_02BA645443DF
+#ifndef CBDAI_DAI_SYMBOLTABLE_H
+#define CBDAI_DAI_SYMBOLTABLE_H
 
 #include <stdbool.h>
 
@@ -65,4 +65,4 @@ DaiSymbolTable_iter(DaiSymbolTable* table);
 bool
 DaiSymbolTable_next(DaiSymbolTable* table, DaiSymbol* symbol);
 
-#endif /* FADFA587_97BF_4F17_B81D_02BA645443DF */
+#endif /* CBDAI_DAI_SYMBOLTABLE_H */

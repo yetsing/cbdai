@@ -1,5 +1,5 @@
-#ifndef BA91B8C9_4E81_413C_886C_26C2FACF07B4
-#define BA91B8C9_4E81_413C_886C_26C2FACF07B4
+#ifndef CBDAI_DAI_ASTIFSTATEMENT_H
+#define CBDAI_DAI_ASTIFSTATEMENT_H
 
 #include "dai_ast/dai_astblockstatement.h"
 #include "dai_ast/dai_astexpression.h"
@@ -25,4 +25,4 @@ void
 DaiAstIfStatement_append_elif_branch(DaiAstIfStatement* ifstatement, DaiAstExpression* condition,
                                      DaiAstBlockStatement* then_branch);
 
-#endif /* BA91B8C9_4E81_413C_886C_26C2FACF07B4 */
+#endif /* CBDAI_DAI_ASTIFSTATEMENT_H */

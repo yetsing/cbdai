@@ -1,5 +1,5 @@
-#ifndef F2A82CE3_A2B6_424D_A75C_6DC3B57957B2
-#define F2A82CE3_A2B6_424D_A75C_6DC3B57957B2
+#ifndef CBDAI_DAI_ASTASSIGNSTATEMENT_H
+#define CBDAI_DAI_ASTASSIGNSTATEMENT_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_ast/dai_aststatement.h"
@@ -14,4 +14,4 @@ typedef struct {
 DaiAstAssignStatement*
 DaiAstAssignStatement_New(void);
 
-#endif /* F2A82CE3_A2B6_424D_A75C_6DC3B57957B2 */
+#endif /* CBDAI_DAI_ASTASSIGNSTATEMENT_H */

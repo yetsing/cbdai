@@ -1,8 +1,8 @@
 /*
 内存操作封装，用于编译和运行时
 */
-#ifndef DF841974_3A3C_41A3_AA7A_2B86D8FE982D
-#define DF841974_3A3C_41A3_AA7A_2B86D8FE982D
+#ifndef CBDAI_DAI_MEMORY_H
+#define CBDAI_DAI_MEMORY_H
 
 #include "dai_common.h"
 #include "dai_object.h"
@@ -61,4 +61,4 @@ dai_free_objects(DaiVM* vm);
 void
 test_mark(DaiVM* vm);
 #endif
-#endif /* DF841974_3A3C_41A3_AA7A_2B86D8FE982D */
+#endif /* CBDAI_DAI_MEMORY_H */

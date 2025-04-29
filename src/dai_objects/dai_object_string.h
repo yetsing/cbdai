@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_STRING_H_
-#define SRC_DAI_OBJECT_STRING_H_
+#ifndef CBDAI_DAI_OBJECT_STRING_H
+#define CBDAI_DAI_OBJECT_STRING_H
 
 #include "dai_objects/dai_object_base.h"
 
@@ -24,4 +24,4 @@ dai_copy_string(DaiVM* vm, const char* chars, int length);
 int
 DaiObjString_cmp(DaiObjString* s1, DaiObjString* s2);
 
-#endif /* SRC_DAI_OBJECT_STRING_H_ */
+#endif /* CBDAI_DAI_OBJECT_STRING_H */

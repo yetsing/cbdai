@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_MAP_H_
-#define SRC_DAI_OBJECT_MAP_H_
+#ifndef CBDAI_DAI_OBJECT_MAP_H
+#define CBDAI_DAI_OBJECT_MAP_H
 
 #include "dai_objects/dai_object_base.h"
 #include "dai_objects/dai_object_error.h"
@@ -38,4 +38,4 @@ typedef struct {
 DaiObjMapIterator*
 DaiObjMapIterator_New(DaiVM* vm, DaiObjMap* map);
 
-#endif /* SRC_DAI_OBJECT_MAP_H_ */
+#endif /* CBDAI_DAI_OBJECT_MAP_H */

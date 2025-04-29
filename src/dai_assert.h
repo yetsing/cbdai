@@ -1,5 +1,5 @@
-#ifndef B3714F2B_3668_44DA_94B6_7C4516C32529
-#define B3714F2B_3668_44DA_94B6_7C4516C32529
+#ifndef CBDAI_DAI_ASSERT_H
+#define CBDAI_DAI_ASSERT_H
 
 #include <assert.h>
 
@@ -11,4 +11,4 @@
         }                                 \
     } while (0)
 
-#endif /* B3714F2B_3668_44DA_94B6_7C4516C32529 */
+#endif /* CBDAI_DAI_ASSERT_H */

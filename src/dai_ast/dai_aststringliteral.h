@@ -1,5 +1,5 @@
-#ifndef CB57E96B_E733_407C_AA33_5B030EBC6088
-#define CB57E96B_E733_407C_AA33_5B030EBC6088
+#ifndef CBDAI_DAI_ASTSTRINGLITERAL_H
+#define CBDAI_DAI_ASTSTRINGLITERAL_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_tokenize.h"
@@ -12,4 +12,4 @@ typedef struct {
 DaiAstStringLiteral*
 DaiAstStringLiteral_New(DaiToken* token);
 
-#endif /* CB57E96B_E733_407C_AA33_5B030EBC6088 */
+#endif /* CBDAI_DAI_ASTSTRINGLITERAL_H */

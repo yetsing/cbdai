@@ -1,5 +1,5 @@
-#ifndef D8DC9D21_3030_4AA8_B393_10949166F172
-#define D8DC9D21_3030_4AA8_B393_10949166F172
+#ifndef CBDAI_DAI_ASTMETHODSTATEMENT_H
+#define CBDAI_DAI_ASTMETHODSTATEMENT_H
 
 #include <stddef.h>
 
@@ -19,4 +19,4 @@ typedef struct {
 DaiAstMethodStatement*
 DaiAstMethodStatement_New(void);
 
-#endif /* D8DC9D21_3030_4AA8_B393_10949166F172 */
+#endif /* CBDAI_DAI_ASTMETHODSTATEMENT_H */

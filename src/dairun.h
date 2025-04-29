@@ -1,5 +1,5 @@
-#ifndef SRC_DAIRUN_H_
-#define SRC_DAIRUN_H_
+#ifndef CBDAI_DAIRUN_H
+#define CBDAI_DAIRUN_H
 
 #include "dai_object.h"
 #include "dai_vm.h"
@@ -16,4 +16,4 @@ Dairun_File(DaiVM* vm, const char* filename);
 DaiObjError*
 Daiexec_String(DaiVM* vm, const char* text, DaiObjMap* globals);
 
-#endif   // SRC_DAIRUN_H_
+#endif /* CBDAI_DAIRUN_H */

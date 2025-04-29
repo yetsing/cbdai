@@ -1,5 +1,5 @@
-#ifndef B8C8815A_AE82_4D97_878C_C7E54C6A1639
-#define B8C8815A_AE82_4D97_878C_C7E54C6A1639
+#ifndef CBDAI_DAI_ASTBLOCKSTATEMENT_H
+#define CBDAI_DAI_ASTBLOCKSTATEMENT_H
 
 #include <stddef.h>
 
@@ -17,4 +17,4 @@ DaiAstBlockStatement_New(void);
 void
 DaiAstBlockStatement_append(DaiAstBlockStatement* block, DaiAstStatement* stmt);
 
-#endif /* B8C8815A_AE82_4D97_878C_C7E54C6A1639 */
+#endif /* CBDAI_DAI_ASTBLOCKSTATEMENT_H */

@@ -1,5 +1,5 @@
-#ifndef B631E35D_4FD8_4671_8307_6575CED881B1
-#define B631E35D_4FD8_4671_8307_6575CED881B1
+#ifndef CBDAI_DAI_ASTCALLEXPRESSION_H
+#define CBDAI_DAI_ASTCALLEXPRESSION_H
 
 #include <stddef.h>
 
@@ -15,4 +15,4 @@ typedef struct {
 DaiAstCallExpression*
 DaiAstCallExpression_New(void);
 
-#endif /* B631E35D_4FD8_4671_8307_6575CED881B1 */
+#endif /* CBDAI_DAI_ASTCALLEXPRESSION_H */

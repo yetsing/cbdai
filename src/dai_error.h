@@ -1,5 +1,5 @@
-#ifndef A3530368_FF1B_4382_89C3_A117897BF660
-#define A3530368_FF1B_4382_89C3_A117897BF660
+#ifndef CBDAI_DAI_ERROR_H
+#define CBDAI_DAI_ERROR_H
 
 #include "dai_utils.h"
 
@@ -45,4 +45,4 @@ DaiCompileError*
 DaiCompileError_Newf(const char* filename, int lineno, int column, const char* fmt, ...)
     __attribute__((format(printf, 4, 5)));
 
-#endif /* A3530368_FF1B_4382_89C3_A117897BF660 */
+#endif /* CBDAI_DAI_ERROR_H */

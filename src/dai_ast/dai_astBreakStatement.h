@@ -1,5 +1,5 @@
-#ifndef D1058241_2B9E_49ED_862D_43F7E64878C5
-#define D1058241_2B9E_49ED_862D_43F7E64878C5
+#ifndef CBDAI_DAI_ASTBREAKSTATEMENT_H
+#define CBDAI_DAI_ASTBREAKSTATEMENT_H
 
 #include "dai_ast/dai_aststatement.h"
 
@@ -10,4 +10,4 @@ typedef struct {
 DaiAstBreakStatement*
 DaiAstBreakStatement_New(void);
 
-#endif /* D1058241_2B9E_49ED_862D_43F7E64878C5 */
+#endif /* CBDAI_DAI_ASTBREAKSTATEMENT_H */

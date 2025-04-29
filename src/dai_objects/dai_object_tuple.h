@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_TUPLE_H_
-#define SRC_DAI_OBJECT_TUPLE_H_
+#ifndef CBDAI_DAI_OBJECT_TUPLE_H
+#define CBDAI_DAI_OBJECT_TUPLE_H
 
 #include "dai_objects/dai_object_base.h"
 
@@ -20,4 +20,4 @@ DaiObjTuple_get(DaiObjTuple* tuple, int index);
 void
 DaiObjTuple_set(DaiObjTuple* tuple, int index, DaiValue value);
 
-#endif /* SRC_DAI_OBJECT_TUPLE_H_ */
+#endif /* CBDAI_DAI_OBJECT_TUPLE_H */

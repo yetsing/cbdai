@@ -1,5 +1,5 @@
-#ifndef CD10A624_072A_4677_89EA_4BAA4F985CF9
-#define CD10A624_072A_4677_89EA_4BAA4F985CF9
+#ifndef CBDAI_DAI_ASTBOOLEAN_H
+#define CBDAI_DAI_ASTBOOLEAN_H
 
 #include <stdbool.h>
 
@@ -15,4 +15,4 @@ DaiAstBoolean*
 DaiAstBoolean_New(DaiToken* token);
 
 
-#endif /* CD10A624_072A_4677_89EA_4BAA4F985CF9 */
+#endif /* CBDAI_DAI_ASTBOOLEAN_H */

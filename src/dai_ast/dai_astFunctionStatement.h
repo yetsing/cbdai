@@ -1,5 +1,5 @@
-#ifndef C3D21FC6_7BA3_4426_9C0E_1E8D17AABC74
-#define C3D21FC6_7BA3_4426_9C0E_1E8D17AABC74
+#ifndef CBDAI_DAI_ASTFUNCTIONSTATEMENT_H
+#define CBDAI_DAI_ASTFUNCTIONSTATEMENT_H
 
 #include <stddef.h>
 
@@ -19,4 +19,4 @@ typedef struct {
 DaiAstFunctionStatement*
 DaiAstFunctionStatement_New(void);
 
-#endif /* C3D21FC6_7BA3_4426_9C0E_1E8D17AABC74 */
+#endif /* CBDAI_DAI_ASTFUNCTIONSTATEMENT_H */

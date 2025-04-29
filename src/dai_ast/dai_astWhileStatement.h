@@ -1,5 +1,5 @@
-#ifndef DF4D362D_3C93_4246_84BA_501639E74670
-#define DF4D362D_3C93_4246_84BA_501639E74670
+#ifndef CBDAI_DAI_ASTWHILESTATEMENT_H
+#define CBDAI_DAI_ASTWHILESTATEMENT_H
 
 #include "dai_ast/dai_astblockstatement.h"
 #include "dai_ast/dai_astexpression.h"
@@ -14,4 +14,4 @@ typedef struct {
 DaiAstWhileStatement*
 DaiAstWhileStatement_New(void);
 
-#endif /* DF4D362D_3C93_4246_84BA_501639E74670 */
+#endif /* CBDAI_DAI_ASTWHILESTATEMENT_H */

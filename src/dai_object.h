@@ -1,5 +1,5 @@
-#ifndef SRC_DAI_OBJECT_H_
-#define SRC_DAI_OBJECT_H_
+#ifndef CBDAI_DAI_OBJECT_H
+#define CBDAI_DAI_OBJECT_H
 
 // IWYU pragma: begin_exports
 #include "dai_objects/dai_object_array.h"
@@ -18,4 +18,4 @@
 
 const char*
 dai_object_ts(DaiValue value);
-#endif /* SRC_DAI_OBJECT_H_ */
+#endif /* CBDAI_DAI_OBJECT_H */

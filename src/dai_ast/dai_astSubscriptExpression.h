@@ -1,5 +1,5 @@
-#ifndef CBDAI_SRC_DAI_AST_DAI_ASTSUBSCRIPTEXPRESSION_H
-#define CBDAI_SRC_DAI_AST_DAI_ASTSUBSCRIPTEXPRESSION_H
+#ifndef CBDAI_DAI_ASTSUBSCRIPTEXPRESSION_H
+#define CBDAI_DAI_ASTSUBSCRIPTEXPRESSION_H
 
 #include "dai_ast/dai_astexpression.h"
 #include "dai_tokenize.h"
@@ -14,4 +14,4 @@ typedef struct {
 DaiAstSubscriptExpression*
 DaiAstSubscriptExpression_New(DaiAstExpression* left);
 
-#endif /* CBDAI_SRC_DAI_AST_DAI_ASTSUBSCRIPTEXPRESSION_H */
+#endif /* CBDAI_DAI_ASTSUBSCRIPTEXPRESSION_H */
