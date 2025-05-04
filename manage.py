@@ -267,6 +267,11 @@ def fmt(*args):
     subprocess.check_call(["./cmake-build-debug/Debug/dai", "fmt", *args])
 
 
+def fmt_check(*args):
+    compile("dai")
+    subprocess.check_call(["./cmake-build-debug/Debug/dai", "fmt_check", *args])
+
+
 def main():
     find_cmake()
     find_ninja()
@@ -292,6 +297,7 @@ def main():
         "runfile": runfile,
         "dis": dis,
         "fmt": fmt,
+        "fmt_check": fmt_check,
     }
 
     if command in commands:

@@ -1,6 +1,7 @@
 #ifndef CBDAI_DAI_ARRAY_H
 #define CBDAI_DAI_ARRAY_H
 
+#include <stdbool.h>
 #include <stddef.h>
 
 typedef struct DaiArray DaiArray;

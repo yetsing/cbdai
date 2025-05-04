@@ -14,7 +14,9 @@ def unify(directory):
                     continue
                 guard = f"CBDAI_{file.replace('.h', '_H').upper()}"
                 for i in range(len(lines) - 1):
-                    if lines[i].startswith("#ifndef") and lines[i + 1].startswith("#define"):
+                    if lines[i].startswith("#ifndef") and lines[i + 1].startswith(
+                        "#define"
+                    ):
                         lines[i] = f"#ifndef {guard}\n"
                         lines[i + 1] = f"#define {guard}\n"
                         break

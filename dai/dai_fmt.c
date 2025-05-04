@@ -7,17 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "dai_array.h"
 #include "dai_assert.h"
 #include "dai_ast.h"
-#include "dai_ast/dai_astMapLiteral.h"
-#include "dai_ast/dai_astSelfExpression.h"
-#include "dai_ast/dai_astclassstatement.h"
-#include "dai_ast/dai_astexpression.h"
-#include "dai_ast/dai_astinfixexpression.h"
-#include "dai_ast/dai_astprefixexpression.h"
-#include "dai_ast/dai_astprogram.h"
-#include "dai_ast/dai_aststatement.h"
-#include "dai_ast/dai_asttype.h"
 #include "dai_common.h"
 #include "dai_stringbuffer.h"
 #include "dai_tokenize.h"
@@ -217,19 +209,6 @@ Formatter_skip_end_semicolon(Formatter* formatter, DaiAstStatement* stmt) {
     }
 }
 
-// static void
-// Formatter_print_token_range(Formatter* formatter, size_t start, size_t end) {
-//     for (size_t i = start; i < end; i++) {
-//         DaiToken* token = DaiTokenList_get(formatter->tlist, i);
-//         if (token->type == DaiTokenType_comment &&
-//             token->start_line == formatter->last_token->start_line) {
-//             // 行尾注释，前面增加空格
-//             Formatter_print(formatter, "  ");
-//         }
-//         Formatter_print_token(formatter, token);
-//     }
-// }
-
 static void
 Formatter_print_statement(Formatter* formatter, DaiAstStatement* stmt);
 static void
@@ -255,6 +234,9 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
                 Formatter_print_token_with_comment(formatter, prefix->lparen);
             }
             Formatter_print_token_with_comment(formatter, prefix->start_token);
+            if (strcmp(prefix->operator, "not") == 0) {
+                Formatter_append_space(formatter);
+            }
             Formatter_print_expression(formatter, prefix->right);
             if (prefix->rparen) {
                 Formatter_print_token_with_comment(formatter, prefix->rparen);
@@ -1002,4 +984,360 @@ dai_fmt(const DaiAstProgram* program, size_t source_len) {
     // 释放格式化器
     Formatter_reset(&formatter);
     return formatted;
+}
+
+bool
+dai_ast_eq(const DaiAstBase* source, const DaiAstBase* target);
+bool
+dai_defaults_eq(DaiArray* source, DaiArray* target) {
+    if (DaiArray_length(source) != DaiArray_length(target)) {
+        return false;
+    }
+    size_t n = DaiArray_length(source);
+    for (size_t i = 0; i < n; i++) {
+        if (!dai_ast_eq(*(DaiAstBase**)DaiArray_get(source, i),
+                        *(DaiAstBase**)DaiArray_get(target, i))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// #define AST_EQ_DEBUG
+#ifdef AST_EQ_DEBUG
+#    define AST_EQ_RETURN_FALSE assert(false)
+#else
+#    define AST_EQ_RETURN_FALSE return false
+#endif
+
+
+bool
+dai_ast_eq(const DaiAstBase* source, const DaiAstBase* target) {
+    if (source == target) {
+        return true;
+    }
+    if (source->type != target->type) {
+        AST_EQ_RETURN_FALSE;
+    }
+    switch (source->type) {
+        case DaiAstType_program: {
+            const DaiAstProgram* source_program = (const DaiAstProgram*)source;
+            const DaiAstProgram* target_program = (const DaiAstProgram*)target;
+            if (source_program->length != target_program->length) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_program->length; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_program->statements[i],
+                                (DaiAstBase*)target_program->statements[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            return true;
+        }
+        case DaiAstType_VarStatement: {
+            const DaiAstVarStatement* source_var = (const DaiAstVarStatement*)source;
+            const DaiAstVarStatement* target_var = (const DaiAstVarStatement*)target;
+            return source_var->is_con == target_var->is_con &&
+                   dai_ast_eq((DaiAstBase*)source_var->name, (DaiAstBase*)target_var->name) &&
+                   dai_ast_eq((DaiAstBase*)source_var->value, (DaiAstBase*)target_var->value);
+        }
+        case DaiAstType_ReturnStatement: {
+            const DaiAstReturnStatement* source_return = (const DaiAstReturnStatement*)source;
+            const DaiAstReturnStatement* target_return = (const DaiAstReturnStatement*)target;
+            return dai_ast_eq((DaiAstBase*)source_return->return_value,
+                              (DaiAstBase*)target_return->return_value);
+        }
+        case DaiAstType_ExpressionStatement: {
+            const DaiAstExpressionStatement* source_expr = (const DaiAstExpressionStatement*)source;
+            const DaiAstExpressionStatement* target_expr = (const DaiAstExpressionStatement*)target;
+            return dai_ast_eq((DaiAstBase*)source_expr->expression,
+                              (DaiAstBase*)target_expr->expression);
+        }
+        case DaiAstType_IfStatement: {
+            const DaiAstIfStatement* source_if = (const DaiAstIfStatement*)source;
+            const DaiAstIfStatement* target_if = (const DaiAstIfStatement*)target;
+            if (!dai_ast_eq((DaiAstBase*)source_if->condition, (DaiAstBase*)target_if->condition)) {
+                AST_EQ_RETURN_FALSE;
+            }
+            if (source_if->elif_branch_count != target_if->elif_branch_count) {
+                AST_EQ_RETURN_FALSE;
+            }
+            if (!dai_ast_eq((DaiAstBase*)source_if->then_branch,
+                            (DaiAstBase*)target_if->then_branch)) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_if->elif_branch_count; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_if->elif_branches[i].condition,
+                                (DaiAstBase*)target_if->elif_branches[i].condition)) {
+                    AST_EQ_RETURN_FALSE;
+                }
+                if (!dai_ast_eq((DaiAstBase*)source_if->elif_branches[i].then_branch,
+                                (DaiAstBase*)target_if->elif_branches[i].then_branch)) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            if (!dai_ast_eq((DaiAstBase*)source_if->else_branch,
+                            (DaiAstBase*)target_if->else_branch)) {
+                AST_EQ_RETURN_FALSE;
+            }
+            return true;
+        }
+        case DaiAstType_BlockStatement: {
+            const DaiAstBlockStatement* source_block = (const DaiAstBlockStatement*)source;
+            const DaiAstBlockStatement* target_block = (const DaiAstBlockStatement*)target;
+            if (source_block->length != target_block->length) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_block->length; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_block->statements[i],
+                                (DaiAstBase*)target_block->statements[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            return true;
+        }
+        case DaiAstType_AssignStatement: {
+            const DaiAstAssignStatement* source_assign = (const DaiAstAssignStatement*)source;
+            const DaiAstAssignStatement* target_assign = (const DaiAstAssignStatement*)target;
+            return dai_ast_eq((DaiAstBase*)source_assign->left, (DaiAstBase*)target_assign->left) &&
+                   dai_ast_eq((DaiAstBase*)source_assign->value, (DaiAstBase*)target_assign->value);
+        }
+        case DaiAstType_FunctionStatement: {
+            const DaiAstFunctionStatement* source_func = (const DaiAstFunctionStatement*)source;
+            const DaiAstFunctionStatement* target_func = (const DaiAstFunctionStatement*)target;
+            if (strcmp(source_func->name, target_func->name) != 0) {
+                AST_EQ_RETURN_FALSE;
+            }
+            if (source_func->parameters_count != target_func->parameters_count) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_func->parameters_count; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_func->parameters[i],
+                                (DaiAstBase*)target_func->parameters[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            if (!dai_defaults_eq(source_func->defaults, target_func->defaults)) {
+                AST_EQ_RETURN_FALSE;
+            }
+            return dai_ast_eq((DaiAstBase*)source_func->body, (DaiAstBase*)target_func->body);
+        }
+        case DaiAstType_ClassStatement: {
+            const DaiAstClassStatement* source_class = (const DaiAstClassStatement*)source;
+            const DaiAstClassStatement* target_class = (const DaiAstClassStatement*)target;
+            return dai_ast_eq((DaiAstBase*)source_class->parent,
+                              (DaiAstBase*)target_class->parent) &&
+                   dai_ast_eq((DaiAstBase*)source_class->body, (DaiAstBase*)target_class->body);
+        }
+        case DaiAstType_InsVarStatement: {
+            const DaiAstInsVarStatement* source_ins_var = (const DaiAstInsVarStatement*)source;
+            const DaiAstInsVarStatement* target_ins_var = (const DaiAstInsVarStatement*)target;
+            return source_ins_var->is_con == target_ins_var->is_con &&
+                   dai_ast_eq((DaiAstBase*)source_ins_var->name,
+                              (DaiAstBase*)target_ins_var->name) &&
+                   dai_ast_eq((DaiAstBase*)source_ins_var->value,
+                              (DaiAstBase*)target_ins_var->value);
+        }
+        case DaiAstType_MethodStatement: {
+            const DaiAstMethodStatement* source_method = (const DaiAstMethodStatement*)source;
+            const DaiAstMethodStatement* target_method = (const DaiAstMethodStatement*)target;
+            if (strcmp(source_method->name, target_method->name) != 0) {
+                AST_EQ_RETURN_FALSE;
+            }
+            if (source_method->parameters_count != target_method->parameters_count) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_method->parameters_count; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_method->parameters[i],
+                                (DaiAstBase*)target_method->parameters[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            if (!dai_defaults_eq(source_method->defaults, target_method->defaults)) {
+                AST_EQ_RETURN_FALSE;
+            }
+            return dai_ast_eq((DaiAstBase*)source_method->body, (DaiAstBase*)target_method->body);
+        }
+        case DaiAstType_ClassVarStatement: {
+            const DaiAstClassVarStatement* source_class_var =
+                (const DaiAstClassVarStatement*)source;
+            const DaiAstClassVarStatement* target_class_var =
+                (const DaiAstClassVarStatement*)target;
+            return source_class_var->is_con == target_class_var->is_con &&
+                   dai_ast_eq((DaiAstBase*)source_class_var->name,
+                              (DaiAstBase*)target_class_var->name) &&
+                   dai_ast_eq((DaiAstBase*)source_class_var->value,
+                              (DaiAstBase*)target_class_var->value);
+        }
+        case DaiAstType_ClassMethodStatement: {
+            const DaiAstClassMethodStatement* source_class_method =
+                (const DaiAstClassMethodStatement*)source;
+            const DaiAstClassMethodStatement* target_class_method =
+                (const DaiAstClassMethodStatement*)target;
+            if (strcmp(source_class_method->name, target_class_method->name) != 0) {
+                AST_EQ_RETURN_FALSE;
+            }
+            if (source_class_method->parameters_count != target_class_method->parameters_count) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_class_method->parameters_count; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_class_method->parameters[i],
+                                (DaiAstBase*)target_class_method->parameters[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            if (!dai_defaults_eq(source_class_method->defaults, target_class_method->defaults)) {
+                AST_EQ_RETURN_FALSE;
+            }
+            return dai_ast_eq((DaiAstBase*)source_class_method->body,
+                              (DaiAstBase*)target_class_method->body);
+        }
+        case DaiAstType_WhileStatement: {
+            const DaiAstWhileStatement* source_while = (const DaiAstWhileStatement*)source;
+            const DaiAstWhileStatement* target_while = (const DaiAstWhileStatement*)target;
+            return dai_ast_eq((DaiAstBase*)source_while->condition,
+                              (DaiAstBase*)target_while->condition) &&
+                   dai_ast_eq((DaiAstBase*)source_while->body, (DaiAstBase*)target_while->body);
+        }
+        case DaiAstType_ContinueStatement: {
+            return true;
+        }
+        case DaiAstType_BreakStatement: {
+            return true;
+        }
+        case DaiAstType_ForInStatement: {
+            const DaiAstForInStatement* source_for = (const DaiAstForInStatement*)source;
+            const DaiAstForInStatement* target_for = (const DaiAstForInStatement*)target;
+            return dai_ast_eq((DaiAstBase*)source_for->i, (DaiAstBase*)target_for->i) &&
+                   dai_ast_eq((DaiAstBase*)source_for->e, (DaiAstBase*)target_for->e) &&
+                   dai_ast_eq((DaiAstBase*)source_for->expression,
+                              (DaiAstBase*)target_for->expression) &&
+                   dai_ast_eq((DaiAstBase*)source_for->body, (DaiAstBase*)target_for->body);
+        }
+
+        case DaiAstType_IntegerLiteral:
+        case DaiAstType_FloatLiteral:
+        case DaiAstType_Boolean:
+        case DaiAstType_Nil:
+        case DaiAstType_Identifier: {
+            return strncmp(source->start_token->s,
+                           target->start_token->s,
+                           source->start_token->length) == 0;
+        }
+        case DaiAstType_PrefixExpression: {
+            const DaiAstPrefixExpression* source_prefix = (const DaiAstPrefixExpression*)source;
+            const DaiAstPrefixExpression* target_prefix = (const DaiAstPrefixExpression*)target;
+            return strcmp(source_prefix->operator, target_prefix->operator) == 0 &&
+                   dai_ast_eq((DaiAstBase*)source_prefix->right, (DaiAstBase*)target_prefix->right);
+        }
+        case DaiAstType_InfixExpression: {
+            const DaiAstInfixExpression* source_infix = (const DaiAstInfixExpression*)source;
+            const DaiAstInfixExpression* target_infix = (const DaiAstInfixExpression*)target;
+            return strcmp(source_infix->operator, target_infix->operator) == 0 &&
+                   dai_ast_eq((DaiAstBase*)source_infix->left, (DaiAstBase*)target_infix->left) &&
+                   dai_ast_eq((DaiAstBase*)source_infix->right, (DaiAstBase*)target_infix->right);
+        }
+        case DaiAstType_FunctionLiteral: {
+            const DaiAstFunctionLiteral* source_func = (const DaiAstFunctionLiteral*)source;
+            const DaiAstFunctionLiteral* target_func = (const DaiAstFunctionLiteral*)target;
+            if (source_func->parameters_count != target_func->parameters_count) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_func->parameters_count; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_func->parameters[i],
+                                (DaiAstBase*)target_func->parameters[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            if (!dai_defaults_eq(source_func->defaults, target_func->defaults)) {
+                AST_EQ_RETURN_FALSE;
+            }
+            return dai_ast_eq((DaiAstBase*)source_func->body, (DaiAstBase*)target_func->body);
+        }
+        case DaiAstType_StringLiteral: {
+            return strncmp(source->start_token->s,
+                           target->start_token->s,
+                           source->start_token->length) == 0;
+        }
+        case DaiAstType_ArrayLiteral: {
+            const DaiAstArrayLiteral* source_array = (const DaiAstArrayLiteral*)source;
+            const DaiAstArrayLiteral* target_array = (const DaiAstArrayLiteral*)target;
+            if (source_array->length != target_array->length) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_array->length; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_array->elements[i],
+                                (DaiAstBase*)target_array->elements[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            return true;
+        }
+        case DaiAstType_CallExpression: {
+            const DaiAstCallExpression* source_call = (const DaiAstCallExpression*)source;
+            const DaiAstCallExpression* target_call = (const DaiAstCallExpression*)target;
+            if (source_call->arguments_count != target_call->arguments_count) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_call->arguments_count; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_call->arguments[i],
+                                (DaiAstBase*)target_call->arguments[i])) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            return dai_ast_eq((DaiAstBase*)source_call->function,
+                              (DaiAstBase*)target_call->function);
+        }
+        case DaiAstType_DotExpression: {
+            const DaiAstDotExpression* source_dot = (const DaiAstDotExpression*)source;
+            const DaiAstDotExpression* target_dot = (const DaiAstDotExpression*)target;
+            return dai_ast_eq((DaiAstBase*)source_dot->left, (DaiAstBase*)target_dot->left) &&
+                   dai_ast_eq((DaiAstBase*)source_dot->name, (DaiAstBase*)target_dot->name);
+        }
+        case DaiAstType_SelfExpression: {
+            const DaiAstSelfExpression* source_self = (const DaiAstSelfExpression*)source;
+            const DaiAstSelfExpression* target_self = (const DaiAstSelfExpression*)target;
+            return dai_ast_eq((DaiAstBase*)source_self->name, (DaiAstBase*)target_self->name);
+        }
+        case DaiAstType_ClassExpression: {
+            const DaiAstClassExpression* source_class = (const DaiAstClassExpression*)source;
+            const DaiAstClassExpression* target_class = (const DaiAstClassExpression*)target;
+            return dai_ast_eq((DaiAstBase*)source_class->name, (DaiAstBase*)target_class->name);
+        }
+        case DaiAstType_SuperExpression: {
+            const DaiAstSuperExpression* source_super = (const DaiAstSuperExpression*)source;
+            const DaiAstSuperExpression* target_super = (const DaiAstSuperExpression*)target;
+            return dai_ast_eq((DaiAstBase*)source_super->name, (DaiAstBase*)target_super->name);
+        }
+        case DaiAstType_SubscriptExpression: {
+            const DaiAstSubscriptExpression* source_sub = (const DaiAstSubscriptExpression*)source;
+            const DaiAstSubscriptExpression* target_sub = (const DaiAstSubscriptExpression*)target;
+            return dai_ast_eq((DaiAstBase*)source_sub->left, (DaiAstBase*)target_sub->left) &&
+                   dai_ast_eq((DaiAstBase*)source_sub->right, (DaiAstBase*)target_sub->right);
+        }
+        case DaiAstType_MapLiteral: {
+            const DaiAstMapLiteral* source_map = (const DaiAstMapLiteral*)source;
+            const DaiAstMapLiteral* target_map = (const DaiAstMapLiteral*)target;
+            if (source_map->length != target_map->length) {
+                AST_EQ_RETURN_FALSE;
+            }
+            for (size_t i = 0; i < source_map->length; i++) {
+                if (!dai_ast_eq((DaiAstBase*)source_map->pairs[i].key,
+                                (DaiAstBase*)target_map->pairs[i].key)) {
+                    AST_EQ_RETURN_FALSE;
+                }
+                if (!dai_ast_eq((DaiAstBase*)source_map->pairs[i].value,
+                                (DaiAstBase*)target_map->pairs[i].value)) {
+                    AST_EQ_RETURN_FALSE;
+                }
+            }
+            return true;
+        }
+        default: unreachable();
+    }
+}
+
+bool
+dai_ast_program_eq(const DaiAstProgram* source, const DaiAstProgram* target) {
+    return dai_ast_eq((DaiAstBase*)source, (DaiAstBase*)target);
 }

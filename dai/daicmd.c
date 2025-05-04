@@ -280,6 +280,57 @@ END:
 }
 
 int
+daicmd_fmt_check(int argc, char* argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s fmt_check <filename>\n", argv[0]);
+        return 1;
+    }
+    const char* filename = argv[2];
+    char* filepath       = realpath(filename, NULL);
+    if (filepath == NULL) {
+        perror("Error: cannot read file");
+        return 1;
+    }
+    char* text = dai_string_from_file(filepath);
+    if (text == NULL) {
+        free(filepath);
+        perror("Error: cannot read file");
+        return 1;
+    }
+    int ret = 0;
+    DaiAstProgram src_prog;
+    DaiAstProgram_init(&src_prog);
+    DaiAstProgram dst_prog;
+    DaiAstProgram_init(&dst_prog);
+    DaiSyntaxError* err = dai_parse(text, filename, &src_prog);
+    if (err != NULL) {
+        DaiSyntaxError_pprint(err, text);
+        ret = 1;
+        goto END;
+    }
+
+    char* formatted = dai_fmt(&src_prog, strlen(text));
+    err             = dai_parse(formatted, filename, &dst_prog);
+    if (err != NULL) {
+        DaiSyntaxError_pprint(err, formatted);
+        ret = 1;
+        goto END;
+    }
+
+    if (!dai_ast_program_eq(&src_prog, &dst_prog)) {
+        printf("fmt_check failed\n");
+    }
+    free(formatted);
+
+END:
+    DaiAstProgram_reset(&src_prog);
+    DaiAstProgram_reset(&dst_prog);
+    free(filepath);
+    free(text);
+    return ret;
+}
+
+int
 daicmd_runfile(int argc, char* argv[]) {
     if (argc != 2) {
         printf("Usage: %s <filename>\n", argv[0]);
@@ -323,6 +374,9 @@ Daicmd_Main(int argc, char* argv[]) {
     }
     if (strcmp(cmd, "fmt") == 0) {
         return daicmd_fmt(argc, argv);
+    }
+    if (strcmp(cmd, "fmt_check") == 0) {
+        return daicmd_fmt_check(argc, argv);
     }
     return daicmd_runfile(argc, argv);
 }
