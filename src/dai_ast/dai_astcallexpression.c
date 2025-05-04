@@ -92,7 +92,8 @@ DaiAstCallExpression_literal(DaiAstExpression* base) {
 DaiAstCallExpression*
 DaiAstCallExpression_New(void) {
     DaiAstCallExpression* call = (DaiAstCallExpression*)dai_malloc(sizeof(DaiAstCallExpression));
-    call->type                 = DaiAstType_CallExpression;
+    DAI_AST_EXPRESSION_INIT(call);
+    call->type = DaiAstType_CallExpression;
     {
         call->free_fn    = DaiAstCallExpression_free;
         call->string_fn  = DaiAstCallExpression_string;

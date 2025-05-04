@@ -78,6 +78,7 @@ DaiAstSubscriptExpression_literal(DaiAstExpression* expr) {
 DaiAstSubscriptExpression*
 DaiAstSubscriptExpression_New(DaiAstExpression* left) {
     DaiAstSubscriptExpression* expr = dai_malloc(sizeof(DaiAstSubscriptExpression));
+    DAI_AST_EXPRESSION_INIT(expr);
     {
         expr->type       = DaiAstType_SubscriptExpression;
         expr->string_fn  = DaiAstSubscriptExpression_string;

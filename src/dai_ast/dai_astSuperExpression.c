@@ -60,8 +60,9 @@ DaiAstSuperExpression_literal(DaiAstExpression* base) {
 DaiAstSuperExpression*
 DaiAstSuperExpression_New(void) {
     DaiAstSuperExpression* expr = (DaiAstSuperExpression*)dai_malloc(sizeof(DaiAstSuperExpression));
-    expr->type                  = DaiAstType_SuperExpression;
-    expr->name                  = NULL;
+    DAI_AST_EXPRESSION_INIT(expr);
+    expr->type = DaiAstType_SuperExpression;
+    expr->name = NULL;
     {
         expr->string_fn  = DaiAstSuperExpression_string;
         expr->free_fn    = DaiAstSuperExpression_free;

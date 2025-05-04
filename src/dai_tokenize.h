@@ -6,6 +6,8 @@
 
 #include "dai_error.h"
 
+// #region DaiToken
+
 // Token 类型
 typedef enum {
     DaiTokenType_illegal = 0,   // "illegal"
@@ -104,7 +106,10 @@ typedef struct {
     int end_line;
     int end_column;
     size_t length;
+    size_t index;   // 在 token 列表中的索引（从 0 开始）
 } DaiToken;
+
+// #endregion
 
 // #region DaiTokenList 结构体及其方法，保存词法分析的结果，提供方法读取
 // DaiTokenList 结构体，表示一个 Token 列表

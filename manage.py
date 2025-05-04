@@ -207,7 +207,7 @@ def coverage(*args):
     pathlib.Path("coverage.txt").write_text(output)
 
 
-def fmt():
+def cfmt():
     clang_format_command = shutil.which("clang-format")
     if not clang_format_command:
         print("clang-format could not be found")
@@ -262,6 +262,11 @@ def dis(*args):
     subprocess.check_call(["./cmake-build-debug/Debug/dai", "dis", *args])
 
 
+def fmt(*args):
+    compile("dai")
+    subprocess.check_call(["./cmake-build-debug/Debug/dai", "fmt", *args])
+
+
 def main():
     find_cmake()
     find_ninja()
@@ -274,6 +279,7 @@ def main():
     args = sys.argv[2:]
 
     commands = {
+        "cfmt": cfmt,
         "clean": clean,
         "test": test,
         "repl": repl,
@@ -283,9 +289,9 @@ def main():
         "mem": mem,
         "memrepl": memrepl,
         "coverage": coverage,
-        "fmt": fmt,
         "runfile": runfile,
         "dis": dis,
+        "fmt": fmt,
     }
 
     if command in commands:

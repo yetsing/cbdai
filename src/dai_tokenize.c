@@ -176,6 +176,7 @@ DaiTokenList_new_token(DaiTokenList* list) {
         DaiTokenList_grow(list, new_size);
     }
     DaiToken* tok = &(list->tokens[list->length]);
+    tok->index    = list->length;
     list->length++;
     return tok;
 }

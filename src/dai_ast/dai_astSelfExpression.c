@@ -59,8 +59,9 @@ DaiAstSelfExpression_literal(DaiAstExpression* base) {
 DaiAstSelfExpression*
 DaiAstSelfExpression_New(void) {
     DaiAstSelfExpression* expr = (DaiAstSelfExpression*)dai_malloc(sizeof(DaiAstSelfExpression));
-    expr->type                 = DaiAstType_SelfExpression;
-    expr->name                 = NULL;
+    DAI_AST_EXPRESSION_INIT(expr);
+    expr->type = DaiAstType_SelfExpression;
+    expr->name = NULL;
     {
         expr->string_fn  = DaiAstSelfExpression_string;
         expr->free_fn    = DaiAstSelfExpression_free;

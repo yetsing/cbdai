@@ -74,6 +74,7 @@ DaiAstArrayLiteral_literal(DaiAstExpression* base) {
 DaiAstArrayLiteral*
 DaiAstArrayLiteral_New(void) {
     DaiAstArrayLiteral* array = dai_malloc(sizeof(DaiAstArrayLiteral));
+    DAI_AST_EXPRESSION_INIT(array);
     {
         array->type       = DaiAstType_ArrayLiteral;
         array->string_fn  = DaiAstArrayLiteral_string;

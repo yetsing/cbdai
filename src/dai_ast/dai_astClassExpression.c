@@ -60,8 +60,9 @@ DaiAstClassExpression_literal(DaiAstExpression* base) {
 DaiAstClassExpression*
 DaiAstClassExpression_New(void) {
     DaiAstClassExpression* expr = (DaiAstClassExpression*)dai_malloc(sizeof(DaiAstClassExpression));
-    expr->type                  = DaiAstType_ClassExpression;
-    expr->name                  = NULL;
+    DAI_AST_EXPRESSION_INIT(expr);
+    expr->type = DaiAstType_ClassExpression;
+    expr->name = NULL;
     {
         expr->string_fn  = DaiAstClassExpression_string;
         expr->free_fn    = DaiAstClassExpression_free;

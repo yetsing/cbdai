@@ -11,6 +11,7 @@
 #include "dai_compile.h"
 #include "dai_debug.h"
 #include "dai_error.h"
+#include "dai_fmt.h"
 #include "dai_malloc.h"
 #include "dai_object.h"
 #include "dai_parse.h"
@@ -240,6 +241,45 @@ daicmd_dis(int argc, char* argv[]) {
 }
 
 int
+daicmd_fmt(int argc, char* argv[]) {
+    if (argc != 3) {
+        printf("Usage: %s fmt <filename>\n", argv[0]);
+        return 1;
+    }
+    const char* filename = argv[2];
+    char* filepath       = realpath(filename, NULL);
+    if (filepath == NULL) {
+        perror("Error: cannot read file");
+        return 1;
+    }
+    char* text = dai_string_from_file(filepath);
+    if (text == NULL) {
+        free(filepath);
+        perror("Error: cannot read file");
+        return 1;
+    }
+    int ret = 0;
+    DaiAstProgram prog;
+    DaiAstProgram_init(&prog);
+    DaiAstProgram* program = &prog;
+    DaiSyntaxError* err    = dai_parse(text, filename, program);
+    if (err != NULL) {
+        DaiSyntaxError_pprint(err, text);
+        ret = 1;
+        goto END;
+    }
+    char* formatted = dai_fmt(&prog, strlen(text));
+    printf("%s\n", formatted);
+    free(formatted);
+
+END:
+    DaiAstProgram_reset(&prog);
+    free(filepath);
+    free(text);
+    return ret;
+}
+
+int
 daicmd_runfile(int argc, char* argv[]) {
     if (argc != 2) {
         printf("Usage: %s <filename>\n", argv[0]);
@@ -280,6 +320,9 @@ Daicmd_Main(int argc, char* argv[]) {
     }
     if (strcmp(cmd, "dis") == 0) {
         return daicmd_dis(argc, argv);
+    }
+    if (strcmp(cmd, "fmt") == 0) {
+        return daicmd_fmt(argc, argv);
     }
     return daicmd_runfile(argc, argv);
 }

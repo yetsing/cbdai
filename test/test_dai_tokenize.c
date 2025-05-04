@@ -303,7 +303,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
         DaiSyntaxError_pprint(err, input);
     }
     munit_assert_null(err);
-    for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
+    for (size_t i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
 #ifdef DAI_TEST_VERBOSE
         dai_log("check token at %d\n", i);
 #endif
@@ -327,6 +327,7 @@ test_next_token(__attribute__((unused)) const MunitParameter params[],
             munit_assert_int(expect.end_line, ==, tok->end_line);
             munit_assert_int(expect.end_column, ==, tok->end_column);
         }
+        munit_assert_size(i, ==, tok->index);
     }
     DaiTokenList_reset(&list);
     free((void*)input);

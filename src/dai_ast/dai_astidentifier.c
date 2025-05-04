@@ -44,6 +44,7 @@ DaiAstIdentifier_literal(DaiAstExpression* expr) {
 DaiAstIdentifier*
 DaiAstIdentifier_New(DaiToken* token) {
     DaiAstIdentifier* id = dai_malloc(sizeof(DaiAstIdentifier));
+    DAI_AST_EXPRESSION_INIT(id);
     {
         id->type       = DaiAstType_Identifier;
         id->string_fn  = DaiAstIdentifier_string;

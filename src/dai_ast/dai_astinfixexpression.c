@@ -86,10 +86,11 @@ DaiAstInfixExpression_literal(DaiAstExpression* base) {
 DaiAstInfixExpression*
 DaiAstInfixExpression_New(const DaiToken* tk, DaiAstExpression* left) {
     DaiAstInfixExpression* expr = (DaiAstInfixExpression*)dai_malloc(sizeof(DaiAstInfixExpression));
-    expr->type                  = DaiAstType_InfixExpression;
-    expr->string_fn             = DaiAstInfixExpression_string;
-    expr->free_fn               = DaiAstInfixExpression_free;
-    expr->literal_fn            = DaiAstInfixExpression_literal;
+    DAI_AST_EXPRESSION_INIT(expr);
+    expr->type       = DaiAstType_InfixExpression;
+    expr->string_fn  = DaiAstInfixExpression_string;
+    expr->free_fn    = DaiAstInfixExpression_free;
+    expr->literal_fn = DaiAstInfixExpression_literal;
     expr->operator= strndup(tk->s, tk->length);
     expr->left         = left;
     expr->start_line   = left->start_line;

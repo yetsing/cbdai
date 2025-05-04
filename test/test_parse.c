@@ -11,9 +11,9 @@
 #include "dai_common.h"
 #include "dai_malloc.h"
 #include "dai_parse.h"
-#include "dai_tokenize.h"
+#include "dai_tokenize.h"   // IWYU pragma: keep
 #include "dai_utils.h"
-#include "dai_windows.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 
 // 获取当前文件所在文件夹路径
@@ -1810,6 +1810,8 @@ test_syntax_error(__attribute__((unused)) const MunitParameter params[],
 
 static void
 recursive_string_and_free(DaiAstBase* ast) {
+    munit_assert_not_null(ast->start_token);
+    munit_assert_not_null(ast->end_token);
     switch (ast->type) {
         case DaiAstType_program: {
             DaiAstProgram* program = (DaiAstProgram*)ast;

@@ -90,6 +90,7 @@ handle_escape(const char* s, size_t length) {
 DaiAstStringLiteral*
 DaiAstStringLiteral_New(DaiToken* token) {
     DaiAstStringLiteral* str = dai_malloc(sizeof(DaiAstStringLiteral));
+    DAI_AST_EXPRESSION_INIT(str);
     {
         str->type       = DaiAstType_StringLiteral;
         str->string_fn  = DaiAstStringLiteral_string;

@@ -13,20 +13,7 @@
 #include "dai_parse.h"
 #include "dai_tokenize.h"
 
-typedef struct TParser Parser;
-
-// 解析函数需要遵循一个约定
-// 函数在开始解析表达式时， cur_token 必须是当前所关联的 token 类型，
-// 返回分析的表达式结果时， cur_token 是当前表达式类型中的最后一个 token
-// 比如 5 + 4 解析
-// 开始解析时， cur_token = 5
-// 返回分析的表达式结果时， cur_token = 4
-// 前缀表达式解析函数
-typedef DaiAstExpression* (*prefixParseFn)(Parser* p);
-// 中缀表达式解析函数
-typedef DaiAstExpression* (*infixParseFn)(Parser* p, DaiAstExpression* left);
-
-// 表达式优先级
+// #region 表达式优先级
 typedef enum {
     Precedence_none = 0,
     // 优先级最低
@@ -77,14 +64,30 @@ token_precedences(const DaiTokenType type) {
     }
 }
 
+// #endregion
+
+// #region Parser
+typedef struct TParser Parser;
+
+// 解析函数需要遵循一个约定
+// 函数在开始解析表达式时， cur_token 必须是当前所关联的 token 类型，
+// 返回分析的表达式结果时， cur_token 是当前表达式类型中的最后一个 token
+// 比如 5 + 4 解析
+// 开始解析时， cur_token = 5
+// 返回分析的表达式结果时， cur_token = 4
+// 前缀表达式解析函数
+typedef DaiAstExpression* (*prefixParseFn)(Parser* p);
+// 中缀表达式解析函数
+typedef DaiAstExpression* (*infixParseFn)(Parser* p, DaiAstExpression* left);
+
 typedef struct TParser {
     DaiTokenList* tlist;
 
-    // 上一个 token ，帮助展示更准确的错误信息
+    // 上一个非注释 token ，帮助展示更准确的错误信息
     DaiToken* prev_token;
-    // 当前 token
+    // 当前非注释 token
     DaiToken* cur_token;
-    // 下一个 token
+    // 下一个非注释 token
     DaiToken* peek_token;
 
     // DaiTokenType 对应前缀、中缀解析函数
@@ -343,6 +346,12 @@ Parser_register(Parser* p) {
     }
 }
 
+// cur_token 的下一个 token
+static DaiToken*
+Parser_follow_token(Parser* p) {
+    return DaiTokenList_get(p->tlist, p->cur_token->index + 1);
+}
+
 // #endregion
 
 // #region 解析表达式
@@ -414,6 +423,7 @@ DaiAstExpression*
 Parser_parseArrayLiteral(Parser* p) {
     DaiAstArrayLiteral* array = DaiAstArrayLiteral_New();
     {
+        array->start_token  = p->cur_token;
         array->start_line   = p->cur_token->start_line;
         array->start_column = p->cur_token->start_column;
     }
@@ -423,6 +433,7 @@ Parser_parseArrayLiteral(Parser* p) {
         return NULL;
     }
     {
+        array->end_token  = Parser_follow_token(p);
         array->end_line   = p->cur_token->end_line;
         array->end_column = p->cur_token->end_column;
     }
@@ -529,6 +540,7 @@ DaiAstExpression*
 Parser_parseMapLiteral(Parser* p) {
     DaiAstMapLiteral* map = DaiAstMapLiteral_New();
     {
+        map->start_token  = p->cur_token;
         map->start_line   = p->cur_token->start_line;
         map->start_column = p->cur_token->start_column;
     }
@@ -538,6 +550,7 @@ Parser_parseMapLiteral(Parser* p) {
         return NULL;
     }
     {
+        map->end_token  = Parser_follow_token(p);
         map->end_line   = p->cur_token->end_line;
         map->end_column = p->cur_token->end_column;
     }
@@ -549,7 +562,10 @@ Parser_parseBoolean(Parser* p) {
     daiassert(p->cur_token->type == DaiTokenType_true || p->cur_token->type == DaiTokenType_false,
               "not a boolean: %s",
               DaiTokenType_string(p->cur_token->type));
-    return (DaiAstExpression*)DaiAstBoolean_New(p->cur_token);
+    DaiAstExpression* expr = (DaiAstExpression*)DaiAstBoolean_New(p->cur_token);
+    expr->start_token      = p->cur_token;
+    expr->end_token        = Parser_follow_token(p);
+    return expr;
 }
 
 // 解析整数字面量
@@ -617,6 +633,8 @@ Parser_parseInteger(Parser* p) {
     // 创建整数节点
     DaiAstIntegerLiteral* num = DaiAstIntegerLiteral_New(p->cur_token);
     num->value                = n;
+    num->start_token          = p->cur_token;
+    num->end_token            = Parser_follow_token(p);
     return (DaiAstExpression*)num;
 }
 
@@ -669,6 +687,8 @@ Parser_parseFloat(Parser* p) {
     // 创建浮点数节点
     DaiAstFloatLiteral* num = DaiAstFloatLiteral_New(p->cur_token);
     num->value              = f;
+    num->start_token        = p->cur_token;
+    num->end_token          = Parser_follow_token(p);
     return (DaiAstExpression*)num;
 }
 
@@ -677,12 +697,18 @@ Parser_parseNil(Parser* p) {
     daiassert(p->cur_token->type == DaiTokenType_nil,
               "not a nil: %s",
               DaiTokenType_string(p->cur_token->type));
-    return (DaiAstExpression*)DaiAstNil_New(p->cur_token);
+    DaiAstExpression* expr = (DaiAstExpression*)DaiAstNil_New(p->cur_token);
+    expr->start_token      = p->cur_token;
+    expr->end_token        = Parser_follow_token(p);
+    return expr;
 }
 
 static DaiAstExpression*
 Parser_parseStringLiteral(Parser* p) {
-    return (DaiAstExpression*)DaiAstStringLiteral_New(p->cur_token);
+    DaiAstExpression* expr = (DaiAstExpression*)DaiAstStringLiteral_New(p->cur_token);
+    expr->start_token      = p->cur_token;
+    expr->end_token        = Parser_follow_token(p);
+    return expr;
 }
 
 // 解析标识符
@@ -691,7 +717,10 @@ Parser_parseIdentifier(Parser* p) {
     daiassert(p->cur_token->type == DaiTokenType_ident,
               "not an identifier: %s",
               DaiTokenType_string(p->cur_token->type));
-    return (DaiAstExpression*)DaiAstIdentifier_New(p->cur_token);
+    DaiAstExpression* expr = (DaiAstExpression*)DaiAstIdentifier_New(p->cur_token);
+    expr->start_token      = p->cur_token;
+    expr->end_token        = Parser_follow_token(p);
+    return expr;
 }
 
 static void
@@ -724,6 +753,8 @@ Parser_parseFunctionParameters(Parser* p, size_t* param_count, DaiArray* default
         return NULL;
     }
     DaiAstIdentifier* param = DaiAstIdentifier_New(p->cur_token);
+    param->start_token      = p->cur_token;
+    param->end_token        = Parser_follow_token(p);
     params[*param_count]    = param;
     (*param_count)++;
     // 解析默认值
@@ -762,6 +793,8 @@ Parser_parseFunctionParameters(Parser* p, size_t* param_count, DaiArray* default
         }
 
         param                = DaiAstIdentifier_New(p->cur_token);
+        param->start_token   = p->cur_token;
+        param->end_token     = Parser_follow_token(p);
         params[*param_count] = param;
         (*param_count)++;
         if (!Parser_peekTokenIs(p, DaiTokenType_assign)) {
@@ -801,6 +834,7 @@ static DaiAstExpression*
 Parser_parseFunctionLiteral(Parser* p) {
     DaiAstFunctionLiteral* func = DaiAstFunctionLiteral_New();
     {
+        func->start_token  = p->cur_token;
         func->start_line   = p->cur_token->start_line;
         func->start_column = p->cur_token->start_column;
     }
@@ -827,6 +861,7 @@ Parser_parseFunctionLiteral(Parser* p) {
     }
 
     {
+        func->end_token  = Parser_follow_token(p);
         func->end_line   = p->cur_token->end_line;
         func->end_column = p->cur_token->end_column;
     }
@@ -837,6 +872,7 @@ static DaiAstExpression*
 Parser_parseCallExpression(Parser* p, DaiAstExpression* left) {
     DaiAstCallExpression* call = DaiAstCallExpression_New();
     {
+        call->start_token  = left->start_token;
         call->start_line   = left->start_line;
         call->start_column = left->start_column;
     }
@@ -847,6 +883,7 @@ Parser_parseCallExpression(Parser* p, DaiAstExpression* left) {
         return NULL;
     }
     {
+        call->end_token  = Parser_follow_token(p);
         call->end_line   = p->cur_token->end_line;
         call->end_column = p->cur_token->end_column;
     }
@@ -857,6 +894,7 @@ static DaiAstExpression*
 Parser_parseDotExpression(Parser* p, DaiAstExpression* left) {
     DaiAstDotExpression* expr = DaiAstDotExpression_New(left);
     {
+        expr->start_token  = left->start_token;
         expr->start_line   = left->start_line;
         expr->start_column = left->start_column;
     }
@@ -867,6 +905,7 @@ Parser_parseDotExpression(Parser* p, DaiAstExpression* left) {
     DaiAstIdentifier* name = (DaiAstIdentifier*)Parser_parseIdentifier(p);
     expr->name             = name;
     {
+        expr->end_token  = Parser_follow_token(p);
         expr->end_line   = name->end_line;
         expr->end_column = name->end_column;
     }
@@ -876,6 +915,7 @@ Parser_parseDotExpression(Parser* p, DaiAstExpression* left) {
 static DaiAstExpression*
 Parser_parseSubscriptExpression(Parser* p, DaiAstExpression* left) {
     DaiAstSubscriptExpression* subscript = DaiAstSubscriptExpression_New(left);
+    subscript->start_token               = left->start_token;
     Parser_nextToken(p);
     subscript->right = Parser_parseExpression(p, Precedence_Lowest);
     if (subscript->right == NULL) {
@@ -887,6 +927,7 @@ Parser_parseSubscriptExpression(Parser* p, DaiAstExpression* left) {
         return NULL;
     }
     {
+        subscript->end_token  = Parser_follow_token(p);
         subscript->end_line   = subscript->right->end_line;
         subscript->end_column = subscript->right->end_column;
     }
@@ -895,6 +936,7 @@ Parser_parseSubscriptExpression(Parser* p, DaiAstExpression* left) {
 
 DaiAstExpression*
 Parser_parseGroupedExpression(Parser* p) {
+    DaiToken* lparen = p->cur_token;
     Parser_nextToken(p);
     DaiAstExpression* exp = Parser_parseExpression(p, Precedence_Lowest);
     if (exp == NULL) {
@@ -904,6 +946,8 @@ Parser_parseGroupedExpression(Parser* p) {
         exp->free_fn((DaiAstBase*)exp, true);
         return NULL;
     }
+    exp->lparen = lparen;
+    exp->rparen = p->cur_token;
     return exp;
 }
 
@@ -912,12 +956,14 @@ static DaiAstExpression*
 Parser_parsePrefixExpression(Parser* p) {
     DaiAstPrefixExpression* prefix =
         (DaiAstPrefixExpression*)DaiAstPrefixExpression_New(p->cur_token, NULL);
+    prefix->start_token = p->cur_token;
     Parser_nextToken(p);
     prefix->right = Parser_parseExpression(p, Precedence_Prefix);
     if (prefix->right == NULL) {
         prefix->free_fn((DaiAstBase*)prefix, true);
         return NULL;
     }
+    prefix->end_token  = Parser_follow_token(p);
     prefix->end_line   = prefix->right->end_line;
     prefix->end_column = prefix->right->end_column;
     return (DaiAstExpression*)prefix;
@@ -927,6 +973,7 @@ static DaiAstExpression*
 Parser_parseInfixExpression(Parser* p, DaiAstExpression* left) {
     // 创建中缀表达式节点，此时 cur_token 是操作符
     DaiAstInfixExpression* expr = DaiAstInfixExpression_New(p->cur_token, left);
+    expr->start_token           = left->start_token;
     // 获取当前操作的优先级
     Precedence precedence = Parser_curPrecedence(p);
     Parser_nextToken(p);
@@ -937,6 +984,7 @@ Parser_parseInfixExpression(Parser* p, DaiAstExpression* left) {
         return NULL;
     }
     expr->right      = right;
+    expr->end_token  = right->end_token;
     expr->end_line   = right->end_line;
     expr->end_column = right->end_column;
     return (DaiAstExpression*)expr;
@@ -946,6 +994,7 @@ static DaiAstExpression*
 Parser_parseClassExpression(Parser* p) {
     DaiAstClassExpression* expr = DaiAstClassExpression_New();
     {
+        expr->start_token  = p->cur_token;
         expr->start_line   = p->cur_token->start_line;
         expr->start_column = p->cur_token->start_column;
     }
@@ -966,6 +1015,7 @@ Parser_parseClassExpression(Parser* p) {
     DaiAstIdentifier* name = (DaiAstIdentifier*)Parser_parseIdentifier(p);
     expr->name             = name;
     {
+        expr->end_token  = name->end_token;
         expr->end_line   = name->end_line;
         expr->end_column = name->end_column;
     }
@@ -976,11 +1026,13 @@ static DaiAstExpression*
 Parser_parseSelfExpression(Parser* p) {
     DaiAstSelfExpression* expr = DaiAstSelfExpression_New();
     {
+        expr->start_token  = p->cur_token;
         expr->start_line   = p->cur_token->start_line;
         expr->start_column = p->cur_token->start_column;
     }
     if (!Parser_peekTokenIs(p, DaiTokenType_dot)) {
         // 单独的 self 表达式
+        expr->end_token  = Parser_follow_token(p);
         expr->end_line   = p->cur_token->end_line;
         expr->end_column = p->cur_token->end_column;
         return (DaiAstExpression*)expr;
@@ -996,6 +1048,7 @@ Parser_parseSelfExpression(Parser* p) {
     DaiAstIdentifier* name = (DaiAstIdentifier*)Parser_parseIdentifier(p);
     expr->name             = name;
     {
+        expr->end_token  = name->end_token;
         expr->end_line   = name->end_line;
         expr->end_column = name->end_column;
     }
@@ -1006,6 +1059,7 @@ static DaiAstExpression*
 Parser_parseSuperExpression(Parser* p) {
     DaiAstSuperExpression* expr = DaiAstSuperExpression_New();
     {
+        expr->start_token  = p->cur_token;
         expr->start_line   = p->cur_token->start_line;
         expr->start_column = p->cur_token->start_column;
     }
@@ -1020,6 +1074,7 @@ Parser_parseSuperExpression(Parser* p) {
     DaiAstIdentifier* name = (DaiAstIdentifier*)Parser_parseIdentifier(p);
     expr->name             = name;
     {
+        expr->end_token  = name->end_token;
         expr->end_line   = name->end_line;
         expr->end_column = name->end_column;
     }
@@ -1063,8 +1118,11 @@ Parser_parseExpression(Parser* p, Precedence precedence) {
 static DaiAstBlockStatement*
 Parser_parseBlockStatementOfClass(Parser* p) {
     DaiAstBlockStatement* blockstatement = DaiAstBlockStatement_New();
-    blockstatement->start_line           = p->cur_token->start_line;
-    blockstatement->start_column         = p->cur_token->start_column;
+    {
+        blockstatement->start_token  = p->cur_token;
+        blockstatement->start_line   = p->cur_token->start_line;
+        blockstatement->start_column = p->cur_token->start_column;
+    }
     Parser_nextToken(p);
 
     while (!Parser_curTokenIs(p, DaiTokenType_rbrace) && !Parser_curTokenIs(p, DaiTokenType_eof)) {
@@ -1083,8 +1141,12 @@ Parser_parseBlockStatementOfClass(Parser* p) {
         blockstatement->free_fn((DaiAstBase*)blockstatement, true);
         return NULL;
     }
-    blockstatement->end_line   = p->cur_token->end_line;
-    blockstatement->end_column = p->cur_token->end_column;
+
+    {
+        blockstatement->end_token  = Parser_follow_token(p);
+        blockstatement->end_line   = p->cur_token->end_line;
+        blockstatement->end_column = p->cur_token->end_column;
+    }
     return blockstatement;
 }
 
@@ -1092,6 +1154,7 @@ DaiAstClassMethodStatement*
 Parser_parseClassMethodStatement(Parser* p) {
     DaiAstClassMethodStatement* func = DaiAstClassMethodStatement_New();
     {
+        func->start_token  = p->cur_token;
         func->start_line   = p->cur_token->start_line;
         func->start_column = p->cur_token->start_column;
     }
@@ -1132,6 +1195,7 @@ Parser_parseClassMethodStatement(Parser* p) {
     }
 
     {
+        func->end_token  = Parser_follow_token(p);
         func->end_line   = p->cur_token->end_line;
         func->end_column = p->cur_token->end_column;
     }
@@ -1141,8 +1205,11 @@ Parser_parseClassMethodStatement(Parser* p) {
 static DaiAstClassVarStatement*
 Parser_parseClassVarStatement(Parser* p) {
     DaiAstClassVarStatement* stmt = DaiAstClassVarStatement_New(NULL, NULL);
-    stmt->start_line              = p->cur_token->start_line;
-    stmt->start_column            = p->cur_token->start_column;
+    {
+        stmt->start_token  = p->cur_token;
+        stmt->start_line   = p->cur_token->start_line;
+        stmt->start_column = p->cur_token->start_column;
+    }
 
     // 跳过 class ，现在当前 token 是 var/con
     Parser_nextToken(p);
@@ -1158,6 +1225,8 @@ Parser_parseClassVarStatement(Parser* p) {
 
     // 创建 identifier 节点
     DaiAstIdentifier* name = DaiAstIdentifier_New(p->cur_token);
+    name->start_token      = p->cur_token;
+    name->end_token        = Parser_follow_token(p);
     stmt->name             = name;
 
     // 下一个 token 应该是 assign
@@ -1180,16 +1249,22 @@ Parser_parseClassVarStatement(Parser* p) {
         return NULL;
     }
 
-    stmt->end_line   = p->cur_token->end_line;
-    stmt->end_column = p->cur_token->end_column;
+    {
+        stmt->end_token  = Parser_follow_token(p);
+        stmt->end_line   = p->cur_token->end_line;
+        stmt->end_column = p->cur_token->end_column;
+    }
     return stmt;
 }
 
 static DaiAstInsVarStatement*
 Parser_parseInsVarStatement(Parser* p) {
     DaiAstInsVarStatement* stmt = DaiAstInsVarStatement_New(NULL, NULL);
-    stmt->start_line            = p->cur_token->start_line;
-    stmt->start_column          = p->cur_token->start_column;
+    {
+        stmt->start_token  = p->cur_token;
+        stmt->start_line   = p->cur_token->start_line;
+        stmt->start_column = p->cur_token->start_column;
+    }
     if (Parser_curTokenIs(p, DaiTokenType_con)) {
         stmt->is_con = true;
     }
@@ -1202,10 +1277,17 @@ Parser_parseInsVarStatement(Parser* p) {
 
     // 创建 identifier 节点
     DaiAstIdentifier* name = DaiAstIdentifier_New(p->cur_token);
+    name->start_token      = p->cur_token;
+    name->end_token        = Parser_follow_token(p);
     stmt->name             = name;
 
     if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
         Parser_nextToken(p);
+        {
+            stmt->end_token  = Parser_follow_token(p);
+            stmt->end_line   = p->cur_token->end_line;
+            stmt->end_column = p->cur_token->end_column;
+        }
         return stmt;
     }
     // 下一个 token 应该是 assign
@@ -1228,8 +1310,11 @@ Parser_parseInsVarStatement(Parser* p) {
         return NULL;
     }
 
-    stmt->end_line   = p->cur_token->end_line;
-    stmt->end_column = p->cur_token->end_column;
+    {
+        stmt->end_token  = Parser_follow_token(p);
+        stmt->end_line   = p->cur_token->end_line;
+        stmt->end_column = p->cur_token->end_column;
+    }
     return stmt;
 }
 
@@ -1237,6 +1322,7 @@ DaiAstMethodStatement*
 Parser_parseMethodStatement(Parser* p) {
     DaiAstMethodStatement* func = DaiAstMethodStatement_New();
     {
+        func->start_token  = p->cur_token;
         func->start_line   = p->cur_token->start_line;
         func->start_column = p->cur_token->start_column;
     }
@@ -1272,6 +1358,7 @@ Parser_parseMethodStatement(Parser* p) {
     }
 
     {
+        func->end_token  = Parser_follow_token(p);
         func->end_line   = p->cur_token->end_line;
         func->end_column = p->cur_token->end_column;
     }
@@ -1288,6 +1375,7 @@ Parser_parseClassStatement(Parser* p) {
     }
     DaiAstClassStatement* klass = DaiAstClassStatement_New(p->cur_token);
     {
+        klass->start_token  = start_token;
         klass->start_line   = start_token->start_line;
         klass->start_column = start_token->start_column;
     }
@@ -1322,6 +1410,7 @@ Parser_parseClassStatement(Parser* p) {
         Parser_nextToken(p);
     }
     {
+        klass->end_token  = Parser_follow_token(p);
         klass->end_line   = p->cur_token->end_line;
         klass->end_column = p->cur_token->end_column;
     }
@@ -1363,6 +1452,7 @@ static DaiAstBreakStatement*
 Parser_parseBreakStatement(Parser* p) {
     DaiAstBreakStatement* break_stmt = DaiAstBreakStatement_New();
     {
+        break_stmt->start_token  = p->cur_token;
         break_stmt->start_line   = p->cur_token->start_line;
         break_stmt->start_column = p->cur_token->start_column;
     }
@@ -1371,6 +1461,7 @@ Parser_parseBreakStatement(Parser* p) {
         return NULL;
     }
     {
+        break_stmt->end_token  = Parser_follow_token(p);
         break_stmt->end_line   = p->cur_token->end_line;
         break_stmt->end_column = p->cur_token->end_column;
     }
@@ -1381,6 +1472,7 @@ static DaiAstContinueStatement*
 Parser_parseContinueStatement(Parser* p) {
     DaiAstContinueStatement* continue_stmt = DaiAstContinueStatement_New();
     {
+        continue_stmt->start_token  = p->cur_token;
         continue_stmt->start_line   = p->cur_token->start_line;
         continue_stmt->start_column = p->cur_token->start_column;
     }
@@ -1389,6 +1481,7 @@ Parser_parseContinueStatement(Parser* p) {
         return NULL;
     }
     {
+        continue_stmt->end_token  = Parser_follow_token(p);
         continue_stmt->end_line   = p->cur_token->end_line;
         continue_stmt->end_column = p->cur_token->end_column;
     }
@@ -1399,6 +1492,7 @@ DaiAstFunctionStatement*
 Parser_parseFunctionStatement(Parser* p) {
     DaiAstFunctionStatement* func = DaiAstFunctionStatement_New();
     {
+        func->start_token  = p->cur_token;
         func->start_line   = p->cur_token->start_line;
         func->start_column = p->cur_token->start_column;
     }
@@ -1434,6 +1528,7 @@ Parser_parseFunctionStatement(Parser* p) {
     }
 
     {
+        func->end_token  = Parser_follow_token(p);
         func->end_line   = p->cur_token->end_line;
         func->end_column = p->cur_token->end_column;
     }
@@ -1444,8 +1539,11 @@ Parser_parseFunctionStatement(Parser* p) {
 static DaiAstExpressionStatement*
 Parser_parseExpressionStatement(Parser* p) {
     DaiAstExpressionStatement* stmt = DaiAstExpressionStatement_New(NULL);
-    stmt->start_line                = p->cur_token->start_line;
-    stmt->start_column              = p->cur_token->start_column;
+    {
+        stmt->start_token  = p->cur_token;
+        stmt->start_line   = p->cur_token->start_line;
+        stmt->start_column = p->cur_token->start_column;
+    }
     // 解析表达式
     DaiAstExpression* expr = Parser_parseExpression(p, Precedence_Lowest);
     if (expr == NULL) {
@@ -1459,8 +1557,11 @@ Parser_parseExpressionStatement(Parser* p) {
         stmt->free_fn((DaiAstBase*)stmt, true);
         return NULL;
     }
-    stmt->end_line   = p->cur_token->end_line;
-    stmt->end_column = p->cur_token->end_column;
+    {
+        stmt->end_token  = Parser_follow_token(p);
+        stmt->end_line   = p->cur_token->end_line;
+        stmt->end_column = p->cur_token->end_column;
+    }
     return stmt;
 }
 
@@ -1486,9 +1587,12 @@ Parser_parseExpressionOrAssignStatement(Parser* p) {
         Parser_nextToken(p);
         DaiTokenType assign_type    = p->cur_token->type;
         DaiAstAssignStatement* stmt = DaiAstAssignStatement_New();
-        stmt->start_line            = start_token->start_line;
-        stmt->start_column          = start_token->start_column;
-        stmt->left                  = expr;
+        {
+            stmt->start_token  = start_token;
+            stmt->start_line   = start_token->start_line;
+            stmt->start_column = start_token->start_column;
+        }
+        stmt->left = expr;
         Parser_nextToken(p);
         stmt->value = Parser_parseExpression(p, Precedence_Lowest);
         if (stmt->value == NULL) {
@@ -1506,48 +1610,55 @@ Parser_parseExpressionOrAssignStatement(Parser* p) {
     } else {
         // 表达式语句
         DaiAstExpressionStatement* stmt = DaiAstExpressionStatement_New(expr);
-        stmt->start_line                = start_token->start_line;
-        stmt->start_column              = start_token->start_column;
-        dstmt                           = (DaiAstStatement*)stmt;
+        {
+            stmt->start_token  = start_token;
+            stmt->start_line   = start_token->start_line;
+            stmt->start_column = start_token->start_column;
+        }
+        dstmt = (DaiAstStatement*)stmt;
     }
     // 下一个 token 应该是语句结尾的分号
     if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
         dstmt->free_fn((DaiAstBase*)dstmt, true);
         return NULL;
     }
-    dstmt->end_line   = p->cur_token->end_line;
-    dstmt->end_column = p->cur_token->end_column;
+    {
+        dstmt->end_token  = Parser_follow_token(p);
+        dstmt->end_line   = p->cur_token->end_line;
+        dstmt->end_column = p->cur_token->end_column;
+    }
     return dstmt;
 }
 
 static DaiAstReturnStatement*
 Parser_parseReturnStatement(Parser* p) {
     DaiAstReturnStatement* stmt = DaiAstReturnStatement_New(NULL);
-    stmt->start_line            = p->cur_token->start_line;
-    stmt->start_column          = p->cur_token->start_column;
+    {
+        stmt->start_token  = p->cur_token;
+        stmt->start_line   = p->cur_token->start_line;
+        stmt->start_column = p->cur_token->start_column;
+    }
 
     // 跳过 return 关键字 token
     Parser_nextToken(p);
-    if (Parser_curTokenIs(p, DaiTokenType_semicolon)) {
-        // "return;" 返回空
+    if (!Parser_curTokenIs(p, DaiTokenType_semicolon)) {
+        // 解析返回值表达式
+        stmt->return_value = Parser_parseExpression(p, Precedence_Lowest);
+        if (stmt->return_value == NULL) {
+            stmt->free_fn((DaiAstBase*)stmt, true);
+            return NULL;
+        }
+        // 语句结尾必须是分号
+        if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
+            stmt->free_fn((DaiAstBase*)stmt, true);
+            return NULL;
+        }
+    }
+    {
+        stmt->end_token  = Parser_follow_token(p);
         stmt->end_line   = p->cur_token->end_line;
         stmt->end_column = p->cur_token->end_column;
-        return stmt;
     }
-    // 解析返回值表达式
-    stmt->return_value = Parser_parseExpression(p, Precedence_Lowest);
-    if (stmt->return_value == NULL) {
-        stmt->free_fn((DaiAstBase*)stmt, true);
-        return NULL;
-    }
-    // 语句结尾必须是分号
-    if (!Parser_expectPeek(p, DaiTokenType_semicolon)) {
-        stmt->free_fn((DaiAstBase*)stmt, true);
-        return NULL;
-    }
-
-    stmt->end_line   = p->cur_token->end_line;
-    stmt->end_column = p->cur_token->end_column;
     return stmt;
 }
 
@@ -1555,9 +1666,12 @@ Parser_parseReturnStatement(Parser* p) {
 static DaiAstVarStatement*
 Parser_parseVarStatement(Parser* p) {
     DaiAstVarStatement* stmt = DaiAstVarStatement_New(NULL, NULL);
-    stmt->start_line         = p->cur_token->start_line;
-    stmt->start_column       = p->cur_token->start_column;
-    stmt->is_con             = Parser_curTokenIs(p, DaiTokenType_con);
+    {
+        stmt->start_token  = p->cur_token;
+        stmt->start_line   = p->cur_token->start_line;
+        stmt->start_column = p->cur_token->start_column;
+    }
+    stmt->is_con = Parser_curTokenIs(p, DaiTokenType_con);
 
     // 下一个 token 应该是 identifier
     if (!Parser_expectPeek(p, DaiTokenType_ident)) {
@@ -1567,6 +1681,8 @@ Parser_parseVarStatement(Parser* p) {
 
     // 创建 identifier 节点
     DaiAstIdentifier* name = DaiAstIdentifier_New(p->cur_token);
+    name->start_token      = p->cur_token;
+    name->end_token        = Parser_follow_token(p);
     stmt->name             = name;
 
     // 下一个 token 应该是 assign
@@ -1589,8 +1705,11 @@ Parser_parseVarStatement(Parser* p) {
         return NULL;
     }
 
-    stmt->end_line   = p->cur_token->end_line;
-    stmt->end_column = p->cur_token->end_column;
+    {
+        stmt->end_token  = Parser_follow_token(p);
+        stmt->end_line   = p->cur_token->end_line;
+        stmt->end_column = p->cur_token->end_column;
+    }
     return stmt;
 }
 
@@ -1598,6 +1717,7 @@ static DaiAstIfStatement*
 Parser_parseIfStatement(Parser* p) {
     DaiAstIfStatement* ifstatement = DaiAstIfStatement_New();
     {
+        ifstatement->start_token  = p->cur_token;
         ifstatement->start_line   = p->cur_token->start_line;
         ifstatement->start_column = p->cur_token->start_column;
     }
@@ -1676,7 +1796,9 @@ Parser_parseIfStatement(Parser* p) {
     if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
         Parser_nextToken(p);
     }
+
     {
+        ifstatement->end_token  = Parser_follow_token(p);
         ifstatement->end_line   = p->cur_token->end_line;
         ifstatement->end_column = p->cur_token->end_column;
     }
@@ -1687,6 +1809,7 @@ static DaiAstWhileStatement*
 Parser_parseWhileStatement(Parser* p) {
     DaiAstWhileStatement* while_stmt = DaiAstWhileStatement_New();
     {
+        while_stmt->start_token  = p->cur_token;
         while_stmt->start_line   = p->cur_token->start_line;
         while_stmt->start_column = p->cur_token->start_column;
     }
@@ -1718,7 +1841,9 @@ Parser_parseWhileStatement(Parser* p) {
     if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
         Parser_nextToken(p);
     }
+
     {
+        while_stmt->end_token  = Parser_follow_token(p);
         while_stmt->end_line   = p->cur_token->end_line;
         while_stmt->end_column = p->cur_token->end_column;
     }
@@ -1728,8 +1853,11 @@ Parser_parseWhileStatement(Parser* p) {
 static DaiAstBlockStatement*
 Parser_parseBlockStatement1(Parser* p) {
     DaiAstBlockStatement* blockstatement = DaiAstBlockStatement_New();
-    blockstatement->start_line           = p->cur_token->start_line;
-    blockstatement->start_column         = p->cur_token->start_column;
+    {
+        blockstatement->start_token  = p->cur_token;
+        blockstatement->start_line   = p->cur_token->start_line;
+        blockstatement->start_column = p->cur_token->start_column;
+    }
     Parser_nextToken(p);
 
     while (!Parser_curTokenIs(p, DaiTokenType_rbrace) && !Parser_curTokenIs(p, DaiTokenType_eof)) {
@@ -1748,8 +1876,12 @@ Parser_parseBlockStatement1(Parser* p) {
         blockstatement->free_fn((DaiAstBase*)blockstatement, true);
         return NULL;
     }
-    blockstatement->end_line   = p->cur_token->end_line;
-    blockstatement->end_column = p->cur_token->end_column;
+
+    {
+        blockstatement->end_token  = Parser_follow_token(p);
+        blockstatement->end_line   = p->cur_token->end_line;
+        blockstatement->end_column = p->cur_token->end_column;
+    }
     return blockstatement;
 }
 
@@ -1763,8 +1895,11 @@ Parser_parseBlockStatement(Parser* p) {
     if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
         Parser_nextToken(p);
     }
-    blockstatement->end_line   = p->cur_token->end_line;
-    blockstatement->end_column = p->cur_token->end_column;
+    {
+        blockstatement->end_token  = Parser_follow_token(p);
+        blockstatement->end_line   = p->cur_token->end_line;
+        blockstatement->end_column = p->cur_token->end_column;
+    }
     return blockstatement;
 }
 
@@ -1775,6 +1910,7 @@ static DaiAstForInStatement*
 Parser_parseForInStatement(Parser* p) {
     DaiAstForInStatement* forin_stmt = DaiAstForInStatement_New();
     {
+        forin_stmt->start_token  = p->cur_token;
         forin_stmt->start_line   = p->cur_token->start_line;
         forin_stmt->start_column = p->cur_token->start_column;
     }
@@ -1839,7 +1975,9 @@ Parser_parseForInStatement(Parser* p) {
     if (Parser_peekTokenIs(p, DaiTokenType_semicolon)) {
         Parser_nextToken(p);
     }
+
     {
+        forin_stmt->end_token  = Parser_follow_token(p);
         forin_stmt->end_line   = p->cur_token->end_line;
         forin_stmt->end_column = p->cur_token->end_column;
     }
@@ -1912,6 +2050,7 @@ Parser_parseStatement(Parser* p) {
 
 static DaiSyntaxError*
 Parser_parseProgram(Parser* p, DaiAstProgram* program) {
+    program->start_token = p->cur_token;
 
     while (p->cur_token->type != DaiTokenType_eof) {
         DaiAstStatement* stmt = Parser_parseStatement(p);
@@ -1924,8 +2063,11 @@ Parser_parseProgram(Parser* p, DaiAstProgram* program) {
         // 所以需要读取下一个 token
         Parser_nextToken(p);
     }
+    program->end_token = p->cur_token;
     return p->syntax_error;
 }
+// #endregion
+
 // #endregion
 
 DaiSyntaxError*

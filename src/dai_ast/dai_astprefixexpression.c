@@ -61,6 +61,7 @@ DaiAstPrefixExpression_literal(DaiAstExpression* expr) {
 DaiAstPrefixExpression*
 DaiAstPrefixExpression_New(const DaiToken* operator, DaiAstExpression * right) {
     DaiAstPrefixExpression* expr = dai_malloc(sizeof(DaiAstPrefixExpression));
+    DAI_AST_EXPRESSION_INIT(expr);
     {
         expr->type       = DaiAstType_PrefixExpression;
         expr->string_fn  = DaiAstPrefixExpression_string;

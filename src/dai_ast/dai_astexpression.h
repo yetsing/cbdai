@@ -12,14 +12,16 @@ typedef char* (*DaiAstExpressionLiteralFn)(DaiAstExpression* ast);
 #define DAI_AST_EXPRESSION_HEAD           \
     DAI_AST_BASE_HEAD                     \
     DaiAstExpressionLiteralFn literal_fn; \
-    int start_line;                       \
-    int start_column;                     \
-    int end_line;                         \
-    int end_column;
+    DaiToken* lparen;                     \
+    DaiToken* rparen;
 
 typedef struct _DaiAstExpression {
     DAI_AST_EXPRESSION_HEAD
 } DaiAstExpression;
+
+#define DAI_AST_EXPRESSION_INIT(expr) \
+    expr->lparen = NULL;              \
+    expr->rparen = NULL;
 
 
 #endif /* CBDAI_DAI_ASTEXPRESSION_H */

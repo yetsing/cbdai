@@ -44,6 +44,7 @@ DaiAstIntegerLiteral_literal(DaiAstExpression* expr) {
 DaiAstIntegerLiteral*
 DaiAstIntegerLiteral_New(DaiToken* token) {
     DaiAstIntegerLiteral* num = dai_malloc(sizeof(DaiAstIntegerLiteral));
+    DAI_AST_EXPRESSION_INIT(num);
     {
         num->type       = DaiAstType_IntegerLiteral;
         num->string_fn  = DaiAstIntegerLiteral_string;

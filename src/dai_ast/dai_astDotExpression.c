@@ -76,7 +76,8 @@ DaiAstDotExpression_literal(DaiAstExpression* base) {
 DaiAstDotExpression*
 DaiAstDotExpression_New(DaiAstExpression* left) {
     DaiAstDotExpression* expr = (DaiAstDotExpression*)dai_malloc(sizeof(DaiAstDotExpression));
-    expr->type                = DaiAstType_DotExpression;
+    DAI_AST_EXPRESSION_INIT(expr);
+    expr->type = DaiAstType_DotExpression;
     {
         expr->free_fn    = DaiAstDotExpression_free;
         expr->string_fn  = DaiAstDotExpression_string;

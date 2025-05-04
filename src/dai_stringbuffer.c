@@ -28,7 +28,7 @@ DaiStringBuffer_write(DaiStringBuffer* sb, const char* str) {
 }
 
 static void
-DaiStringBuffer_grow(DaiStringBuffer* sb, size_t wantsize) {
+DaiStringBuffer_grow1(DaiStringBuffer* sb, size_t wantsize) {
     size_t newsize = sb->size + sb->size;
     if (wantsize > newsize) {
         newsize = wantsize;
@@ -48,7 +48,7 @@ DaiStringBuffer_writef(DaiStringBuffer* sb, const char* fmt, ...) {
     va_end(arg);
 
     if (sb->length + len + 1 > sb->size) {
-        DaiStringBuffer_grow(sb, sb->length + len + 1);
+        DaiStringBuffer_grow1(sb, sb->length + len + 1);
     }
     va_start(arg, fmt);
     vsnprintf(sb->data + sb->length, len + 1, fmt, arg);
@@ -60,7 +60,7 @@ DaiStringBuffer_writef(DaiStringBuffer* sb, const char* fmt, ...) {
 void
 DaiStringBuffer_writen(DaiStringBuffer* sb, const char* str, size_t n) {
     if (sb->length + n + 1 > sb->size) {
-        DaiStringBuffer_grow(sb, sb->length + n + 1);
+        DaiStringBuffer_grow1(sb, sb->length + n + 1);
     }
     memcpy(sb->data + sb->length, str, n);
     sb->length += n;
@@ -141,4 +141,18 @@ void
 DaiStringBuffer_free(DaiStringBuffer* sb) {
     dai_free(sb->data);
     dai_free(sb);
+}
+
+void
+DaiStringBuffer_grow(DaiStringBuffer* sb, size_t size) {
+    sb->size = size;
+    sb->data = dai_realloc(sb->data, size);
+}
+
+char
+DaiStringBuffer_last(DaiStringBuffer* sb) {
+    if (sb->length == 0) {
+        return '\0';
+    }
+    return sb->data[sb->length - 1];
 }

@@ -37,16 +37,17 @@ DaiAstNil_literal(DaiAstExpression* expr) {
 
 DaiAstNil*
 DaiAstNil_New(DaiToken* token) {
-    DaiAstNil* boolean = dai_malloc(sizeof(DaiAstNil));
+    DaiAstNil* n = dai_malloc(sizeof(DaiAstNil));
+    DAI_AST_EXPRESSION_INIT(n);
     {
-        boolean->type       = DaiAstType_Nil;
-        boolean->string_fn  = DaiAstNil_string;
-        boolean->free_fn    = DaiAstNil_free;
-        boolean->literal_fn = DaiAstNil_literal;
+        n->type       = DaiAstType_Nil;
+        n->string_fn  = DaiAstNil_string;
+        n->free_fn    = DaiAstNil_free;
+        n->literal_fn = DaiAstNil_literal;
     }
-    boolean->start_line   = token->start_line;
-    boolean->start_column = token->start_column;
-    boolean->end_line     = token->end_line;
-    boolean->end_column   = token->end_column;
-    return boolean;
+    n->start_line   = token->start_line;
+    n->start_column = token->start_column;
+    n->end_line     = token->end_line;
+    n->end_column   = token->end_column;
+    return n;
 }

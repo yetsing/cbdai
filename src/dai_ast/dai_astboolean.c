@@ -3,6 +3,7 @@
 
 #include "dai_ast/dai_astboolean.h"
 #include "dai_ast/dai_astcommon.h"
+#include "dai_ast/dai_astexpression.h"
 #include "dai_malloc.h"
 #include "dai_stringbuffer.h"
 
@@ -42,6 +43,7 @@ DaiAstBoolean_literal(DaiAstExpression* expr) {
 DaiAstBoolean*
 DaiAstBoolean_New(DaiToken* token) {
     DaiAstBoolean* boolean = dai_malloc(sizeof(DaiAstBoolean));
+    DAI_AST_EXPRESSION_INIT(boolean);
     {
         boolean->type       = DaiAstType_Boolean;
         boolean->string_fn  = DaiAstBoolean_string;

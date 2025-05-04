@@ -117,10 +117,11 @@ DaiAstFunctionLiteral_literal(DaiAstExpression* base) {
 DaiAstFunctionLiteral*
 DaiAstFunctionLiteral_New(void) {
     DaiAstFunctionLiteral* f = dai_malloc(sizeof(DaiAstFunctionLiteral));
-    f->parameters_count      = 0;
-    f->parameters            = NULL;
-    f->defaults              = DaiArray_New(sizeof(DaiAstExpression*));
-    f->body                  = NULL;
+    DAI_AST_EXPRESSION_INIT(f);
+    f->parameters_count = 0;
+    f->parameters       = NULL;
+    f->defaults         = DaiArray_New(sizeof(DaiAstExpression*));
+    f->body             = NULL;
     {
         f->type       = DaiAstType_FunctionLiteral;
         f->free_fn    = DaiAstFunctionLiteral_free;

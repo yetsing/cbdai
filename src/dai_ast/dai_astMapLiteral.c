@@ -96,6 +96,7 @@ DaiAstMapLiteral_literal(DaiAstExpression* base) {
 DaiAstMapLiteral*
 DaiAstMapLiteral_New(void) {
     DaiAstMapLiteral* map = dai_malloc(sizeof(DaiAstMapLiteral));
+    DAI_AST_EXPRESSION_INIT(map);
     {
         map->type       = DaiAstType_MapLiteral;
         map->string_fn  = DaiAstMapLiteral_string;

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "dai_ast/dai_asttype.h"
+#include "dai_tokenize.h"
 
 // #region DaiAst 基类
 typedef struct _DaiAstBase DaiAstBase;
@@ -15,10 +16,18 @@ typedef char* (*DaiAstStringFn)(DaiAstBase* ast, bool recursive);
 typedef void (*DaiAstFreeFn)(DaiAstBase* ast, bool recursive);
 
 // ast 节点公共部分，每个 ast 结构体的前面都要有这个部分
+// 包含的 token 为 [start_token, ..., end_token) （start_token end_token 仅为引用）
+// 行列位置为 [(start_line, start_column), ..., (end_line, end_column))
 #define DAI_AST_BASE_HEAD     \
     DaiAstType type;          \
     DaiAstStringFn string_fn; \
-    DaiAstFreeFn free_fn;
+    DaiAstFreeFn free_fn;     \
+    DaiToken* start_token;    \
+    DaiToken* end_token;      \
+    int start_line;           \
+    int start_column;         \
+    int end_line;             \
+    int end_column;
 
 typedef struct _DaiAstBase {
     DAI_AST_BASE_HEAD
