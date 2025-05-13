@@ -56,5 +56,8 @@ DaiStringBuffer_grow(DaiStringBuffer* sb, size_t size);
 // 返回缓冲区的最后一个字符。
 char
 DaiStringBuffer_last(DaiStringBuffer* sb);
+// 回退指定数量字节
+void
+DaiStringBuffer_back(DaiStringBuffer* sb, size_t n);
 
 #endif /* CBDAI_DAI_STRINGBUFFER_H */

@@ -4,6 +4,7 @@ con canvas_enum = import("canvas_enum.dai");
 var loop = 0;
 var index = 0;
 
+
 fn draw() {
     loop += 1;
     if (loop % 30 == 0) {
@@ -29,7 +30,17 @@ fn draw() {
     }
     elif (index == 2) {
         // canvas.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) 绘制图片
-        canvas.drawImage(img, 50, 50, img.width, img.height, 100, 100, img.width, img.height);
+        canvas.drawImage(
+            img, 
+            50, 
+            50, 
+            img.width, 
+            img.height, 
+            100, 
+            100, 
+            img.width, 
+            img.height, 
+        );
     }
     elif (index == 3) {
         // drawImageEx(image, srcrect, dstrect, angle, center, flip)
@@ -50,15 +61,15 @@ fn draw() {
     // canvas.present() 展示 canvas 的内容
     canvas.present();
 
-    time.sleep(1/30.0);
-
+    time.sleep(1 / 30.0);
     // example.jpeg 来源
     // <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
 }
 
+
 fn main() {
     print("Canvas example");
-    canvas.init(1524, 1024); // Reduced canvas size
+    canvas.init(1524, 1024);  // Reduced canvas size
 
     // canvas.addEventListener(event_type, callback) 添加事件监听器
     // event_type 事件类型
@@ -69,31 +80,41 @@ fn main() {
     //      canvas.EventMouseMotion 鼠标移动事件
     // callback 回调函数接受一个参数 event
     canvas.addEventListener(canvas.EventKeyDown, fn(event) {
-        // 键盘事件 KeyBoardEvent 包括下列字段
-        //   code int 键码
-        //   key str 字符串键值
-        //   altKey bool 是否按下 Alt 键
-        //   ctrlKey bool 是否按下 Ctrl 键
-        //   shiftKey bool 是否按下 Shift 键
-        //   metaKey bool 是否按下 command/windows 键
-        //   repeat bool 是否重复按下
-        print(event, "Key pressed:", event.code, event.key);
-        print("    Alt:", event.altKey, "Ctrl:", event.ctrlKey, "Shift:", event.shiftKey, "Meta:", event.metaKey);
-        if (event.code == canvas_enum.Keycode.key_a) {
-            print("    A pressed");
-        } elif (event.code == canvas_enum.Keycode.key_escape) {
-            print("    Escape pressed");
-            // 调用 canvas.quit() 退出 canvas
-            canvas.quit();
-        }
-    });
-    canvas.addEventListener(canvas.EventMouseDown, fn(event){
-        // 鼠标事件 MouseEvent 包括下列字段
-        //   x float 鼠标在 canvas 上的 x 坐标
-        //   y float 鼠标在 canvas 上的 y 坐标
-        //   button int 鼠标按键 0:左键 1:中键 2:右键
-        print(event, "Mouse pressed:", event.x, event.y, event.button);
-    });
+            // 键盘事件 KeyBoardEvent 包括下列字段
+            //   code int 键码
+            //   key str 字符串键值
+            //   altKey bool 是否按下 Alt 键
+            //   ctrlKey bool 是否按下 Ctrl 键
+            //   shiftKey bool 是否按下 Shift 键
+            //   metaKey bool 是否按下 command/windows 键
+            //   repeat bool 是否重复按下
+            print(event, "Key pressed:", event.code, event.key);
+            print(
+                "    Alt:", 
+                event.altKey, 
+                "Ctrl:", 
+                event.ctrlKey, 
+                "Shift:", 
+                event.shiftKey, 
+                "Meta:", 
+                event.metaKey, 
+            );
+            if (event.code == canvas_enum.Keycode.key_a) {
+                print("    A pressed");
+            }
+            elif (event.code == canvas_enum.Keycode.key_escape) {
+                print("    Escape pressed");
+                // 调用 canvas.quit() 退出 canvas
+                canvas.quit();
+            }
+        });
+    canvas.addEventListener(canvas.EventMouseDown, fn(event) {
+            // 鼠标事件 MouseEvent 包括下列字段
+            //   x float 鼠标在 canvas 上的 x 坐标
+            //   y float 鼠标在 canvas 上的 y 坐标
+            //   button int 鼠标按键 0:左键 1:中键 2:右键
+            print(event, "Mouse pressed:", event.x, event.y, event.button);
+        });
     // canvas.addEventListener(canvas.EventMouseMotion, fn(event){
     //     print(event, "Mouse move:", event.x, event.y, event.button);
     // });

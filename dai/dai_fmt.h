@@ -10,6 +10,9 @@
 char*
 dai_fmt(const DaiAstProgram* program, size_t source_len);
 
+int
+dai_fmt_file(const char* filename, bool write);
+
 bool
 dai_ast_program_eq(const DaiAstProgram* source, const DaiAstProgram* target);
 

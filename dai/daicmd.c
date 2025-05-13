@@ -1,5 +1,6 @@
 #include "daicmd.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -252,30 +253,8 @@ daicmd_fmt(int argc, char* argv[]) {
         perror("Error: cannot read file");
         return 1;
     }
-    char* text = dai_string_from_file(filepath);
-    if (text == NULL) {
-        free(filepath);
-        perror("Error: cannot read file");
-        return 1;
-    }
-    int ret = 0;
-    DaiAstProgram prog;
-    DaiAstProgram_init(&prog);
-    DaiAstProgram* program = &prog;
-    DaiSyntaxError* err    = dai_parse(text, filename, program);
-    if (err != NULL) {
-        DaiSyntaxError_pprint(err, text);
-        ret = 1;
-        goto END;
-    }
-    char* formatted = dai_fmt(&prog, strlen(text));
-    printf("%s\n", formatted);
-    free(formatted);
-
-END:
-    DaiAstProgram_reset(&prog);
+    int ret = dai_fmt_file(filepath, true);
     free(filepath);
-    free(text);
     return ret;
 }
 

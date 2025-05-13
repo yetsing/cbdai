@@ -5,15 +5,22 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "dai_array.h"
 #include "dai_assert.h"
 #include "dai_ast.h"
+#include "dai_ast/dai_asttype.h"
 #include "dai_common.h"
+#include "dai_parse.h"
 #include "dai_stringbuffer.h"
 #include "dai_tokenize.h"
 
+
+// #region Formatter
+
+#define MAX_ITEM_ONE_LINE 6
 
 typedef struct {
     DaiStringBuffer* sb;
@@ -73,6 +80,11 @@ Formatter_dedent(Formatter* formatter) {
     formatter->indent_level--;
 }
 
+static void
+Formatter_back(Formatter* formatter, size_t n) {
+    DaiStringBuffer_back(formatter->sb, n);
+}
+
 // 如果代码的最后一个字符不是换行符，则添加一个换行符
 static void
 Formatter_append_endline(Formatter* formatter) {
@@ -120,7 +132,7 @@ Formatter_print_newline(Formatter* formatter, int n) {
     char buf[MAX_NEWLINE_COUNT + 1];
     memset(buf, '\n', n);
     buf[n] = '\0';
-    Formatter_printn(formatter, buf, n);
+    DaiStringBuffer_writen(formatter->sb, buf, n);
 #undef MAX_NEWLINE_COUNT
 }
 
@@ -267,7 +279,9 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
             Formatter_print_next_token_with_comment(formatter);
             if (func->parameters_count > 0) {
                 Formatter_indent(formatter);
-                Formatter_append_endline(formatter);
+                if (func->parameters_count > MAX_ITEM_ONE_LINE) {
+                    Formatter_append_endline(formatter);
+                }
                 // 参数列表
                 size_t defaults_count = DaiArray_length(func->defaults);
                 for (size_t i = 0; i < func->parameters_count; i++) {
@@ -284,10 +298,22 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
                     // ,
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         Formatter_print_next_token_with_comment(formatter);
+                        if (func->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_append_space(formatter);
+                        } else {
+                            Formatter_append_endline(formatter);
+                        }
                     } else {
-                        Formatter_print(formatter, ",\n");
+                        if (func->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_print(formatter, ", ");
+                        } else {
+                            Formatter_print(formatter, ",\n");
+                        }
                     }
-                    Formatter_append_endline(formatter);
+                }
+                if (func->parameters_count <= MAX_ITEM_ONE_LINE) {
+                    // 回退最后的 ", "
+                    Formatter_back(formatter, 2);
                 }
                 Formatter_dedent(formatter);
             }
@@ -306,16 +332,30 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
             Formatter_print_token_with_comment(formatter, array->start_token);
             if (array->length > 0) {
                 Formatter_indent(formatter);
-                Formatter_append_endline(formatter);
+                if (array->length > MAX_ITEM_ONE_LINE) {
+                    Formatter_append_endline(formatter);
+                }
                 for (size_t i = 0; i < array->length; i++) {
                     Formatter_print_expression(formatter, array->elements[i]);
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         // ,
                         Formatter_print_next_token_with_comment(formatter);
-                        Formatter_append_endline(formatter);
+                        if (array->length <= MAX_ITEM_ONE_LINE) {
+                            Formatter_append_space(formatter);
+                        } else {
+                            Formatter_append_endline(formatter);
+                        }
                     } else {
-                        Formatter_print(formatter, ",\n");
+                        if (array->length <= MAX_ITEM_ONE_LINE) {
+                            Formatter_print(formatter, ", ");
+                        } else {
+                            Formatter_print(formatter, ",\n");
+                        }
                     }
+                }
+                if (array->length <= MAX_ITEM_ONE_LINE) {
+                    // 回退最后的 ", "
+                    Formatter_back(formatter, 2);
                 }
                 Formatter_dedent(formatter);
             }
@@ -330,16 +370,31 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
             Formatter_print_next_token_with_comment(formatter);
             if (call->arguments_count > 0) {
                 Formatter_indent(formatter);
-                Formatter_append_endline(formatter);
+                if (call->arguments_count > MAX_ITEM_ONE_LINE) {
+                    Formatter_append_endline(formatter);
+                }
                 for (size_t i = 0; i < call->arguments_count; i++) {
                     Formatter_print_expression(formatter, call->arguments[i]);
                     // ,
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         Formatter_print_next_token_with_comment(formatter);
-                        Formatter_append_endline(formatter);
+                        Formatter_append_space(formatter);
+                        if (call->arguments_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_append_space(formatter);
+                        } else {
+                            Formatter_append_endline(formatter);
+                        }
                     } else {
-                        Formatter_print(formatter, ",\n");
+                        if (call->arguments_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_print(formatter, ", ");
+                        } else {
+                            Formatter_print(formatter, ",\n");
+                        }
                     }
+                }
+                if (call->arguments_count <= MAX_ITEM_ONE_LINE) {
+                    // 回退最后的 ", "
+                    Formatter_back(formatter, 2);
                 }
                 Formatter_dedent(formatter);
             }
@@ -403,7 +458,9 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
             Formatter_print_token_with_comment(formatter, map->start_token);
             if (map->length > 0) {
                 Formatter_indent(formatter);
-                Formatter_append_endline(formatter);
+                if (map->length * 2 > MAX_ITEM_ONE_LINE) {
+                    Formatter_append_endline(formatter);
+                }
                 for (size_t i = 0; i < map->length; i++) {
                     DaiAstMapLiteralPair* pair = &map->pairs[i];
                     // key
@@ -416,10 +473,22 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
                     // ,
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         Formatter_print_next_token_with_comment(formatter);
-                        Formatter_append_endline(formatter);
+                        if (map->length * 2 <= MAX_ITEM_ONE_LINE) {
+                            Formatter_append_space(formatter);
+                        } else {
+                            Formatter_append_endline(formatter);
+                        }
                     } else {
-                        Formatter_print(formatter, ",\n");
+                        if (map->length * 2 <= MAX_ITEM_ONE_LINE) {
+                            Formatter_print(formatter, ", ");
+                        } else {
+                            Formatter_print(formatter, ",\n");
+                        }
                     }
+                }
+                if (map->length * 2 <= MAX_ITEM_ONE_LINE) {
+                    // 回退最后的 ", "
+                    Formatter_back(formatter, 2);
                 }
                 Formatter_dedent(formatter);
             }
@@ -471,6 +540,11 @@ Formatter_print_statement_leading(Formatter* formatter, DaiAstStatement* stmt) {
                 // 对于函数声明和类声明，统一添加两个空行，与上一条语句分隔开
                 Formatter_print_newline(formatter, 2);
                 break;
+            case DaiAstType_MethodStatement:
+            case DaiAstType_ClassMethodStatement:
+                // 对于方法声明，统一添加一个空行，与上一条语句分隔开
+                Formatter_print_newline(formatter, 1);
+                break;
             default: {
                 // 其他语句，看原本是否有空行。如果有，则添加一个空行；否则不添加
                 DaiToken* token =
@@ -519,6 +593,11 @@ Formatter_print_statement_leading(Formatter* formatter, DaiAstStatement* stmt) {
             case DaiAstType_ClassStatement:
                 // 对于函数声明和类声明，统一添加两个空行，与上一条语句分隔开
                 Formatter_print_newline(formatter, 2);
+                break;
+            case DaiAstType_MethodStatement:
+            case DaiAstType_ClassMethodStatement:
+                // 对于方法声明，统一添加一个空行，与上一条语句分隔开
+                Formatter_print_newline(formatter, 1);
                 break;
             default: {
                 // 其他语句，看原本是否有空行。如果有，则添加一个空行；否则不添加
@@ -695,7 +774,9 @@ Formatter_print_statement(Formatter* formatter, DaiAstStatement* stmt) {
             Formatter_print_next_token_with_comment(formatter);
             if (func->parameters_count > 0) {
                 Formatter_indent(formatter);
-                Formatter_append_endline(formatter);
+                if (func->parameters_count > MAX_ITEM_ONE_LINE) {
+                    Formatter_append_endline(formatter);
+                }
                 // 参数列表
                 size_t defaults_count = DaiArray_length(func->defaults);
                 for (size_t i = 0; i < func->parameters_count; i++) {
@@ -712,10 +793,22 @@ Formatter_print_statement(Formatter* formatter, DaiAstStatement* stmt) {
                     // ,
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         Formatter_print_next_token_with_comment(formatter);
+                        if (func->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_append_space(formatter);
+                        } else {
+                            Formatter_append_endline(formatter);
+                        }
                     } else {
-                        Formatter_print(formatter, ",\n");
+                        if (func->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_print(formatter, ", ");
+                        } else {
+                            Formatter_print(formatter, ",\n");
+                        }
                     }
-                    Formatter_append_endline(formatter);
+                }
+                if (func->parameters_count <= MAX_ITEM_ONE_LINE) {
+                    // 回退最后的 ", "
+                    Formatter_back(formatter, 2);
                 }
                 Formatter_dedent(formatter);
             }
@@ -778,7 +871,9 @@ Formatter_print_statement(Formatter* formatter, DaiAstStatement* stmt) {
             Formatter_print_next_token_with_comment(formatter);
             if (method->parameters_count > 0) {
                 Formatter_indent(formatter);
-                Formatter_append_endline(formatter);
+                if (method->parameters_count > MAX_ITEM_ONE_LINE) {
+                    Formatter_append_endline(formatter);
+                }
                 // 参数列表
                 size_t defaults_count = DaiArray_length(method->defaults);
                 for (size_t i = 0; i < method->parameters_count; i++) {
@@ -795,10 +890,22 @@ Formatter_print_statement(Formatter* formatter, DaiAstStatement* stmt) {
                     // ,
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         Formatter_print_next_token_with_comment(formatter);
+                        if (method->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_append_space(formatter);
+                        } else {
+                            Formatter_append_endline(formatter);
+                        }
                     } else {
-                        Formatter_print(formatter, ",\n");
+                        if (method->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_print(formatter, ", ");
+                        } else {
+                            Formatter_print(formatter, ",\n");
+                        }
                     }
-                    Formatter_append_endline(formatter);
+                }
+                if (method->parameters_count <= MAX_ITEM_ONE_LINE) {
+                    // 回退最后的 ", "
+                    Formatter_back(formatter, 2);
                 }
                 Formatter_dedent(formatter);
             }
@@ -844,7 +951,9 @@ Formatter_print_statement(Formatter* formatter, DaiAstStatement* stmt) {
             Formatter_print_next_token_with_comment(formatter);
             if (class_method->parameters_count > 0) {
                 Formatter_indent(formatter);
-                Formatter_append_endline(formatter);
+                if (class_method->parameters_count > MAX_ITEM_ONE_LINE) {
+                    Formatter_append_endline(formatter);
+                }
                 // 参数列表
                 size_t defaults_count = DaiArray_length(class_method->defaults);
                 for (size_t i = 0; i < class_method->parameters_count; i++) {
@@ -863,10 +972,22 @@ Formatter_print_statement(Formatter* formatter, DaiAstStatement* stmt) {
                     // ,
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         Formatter_print_next_token_with_comment(formatter);
+                        if (class_method->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_append_space(formatter);
+                        } else {
+                            Formatter_append_endline(formatter);
+                        }
                     } else {
-                        Formatter_print(formatter, ",\n");
+                        if (class_method->parameters_count <= MAX_ITEM_ONE_LINE) {
+                            Formatter_print(formatter, ", ");
+                        } else {
+                            Formatter_print(formatter, ",\n");
+                        }
                     }
-                    Formatter_append_endline(formatter);
+                }
+                if (class_method->parameters_count <= MAX_ITEM_ONE_LINE) {
+                    // 回退最后的 ", "
+                    Formatter_back(formatter, 2);
                 }
                 Formatter_dedent(formatter);
             }
@@ -985,6 +1106,55 @@ dai_fmt(const DaiAstProgram* program, size_t source_len) {
     Formatter_reset(&formatter);
     return formatted;
 }
+
+// #endregion
+
+int
+dai_fmt_file(const char* filename, bool write) {
+    char* text = dai_string_from_file(filename);
+    if (text == NULL) {
+        perror("Error: cannot read file");
+        return 1;
+    }
+    int ret = 0;
+    DaiAstProgram prog;
+    DaiAstProgram_init(&prog);
+    DaiSyntaxError* err = dai_parse(text, filename, &prog);
+    if (err != NULL) {
+        DaiSyntaxError_pprint(err, text);
+        ret = 1;
+        goto END;
+    }
+    char* formatted = dai_fmt(&prog, strlen(text));
+    if (write) {
+        FILE* file = fopen(filename, "w");
+        if (file == NULL) {
+            perror("Error: cannot open file");
+            ret = 1;
+            goto END;
+        }
+        size_t bytes_to_write = strlen(formatted);
+        size_t bytes_written  = fwrite(formatted, sizeof(char), bytes_to_write, file);
+        if (bytes_written < bytes_to_write) {
+            perror("Error: failed to write to file");
+            ret = 1;
+        }
+        if (fclose(file) != 0) {
+            perror("Error: failed to close file");
+            ret = 1;
+        }
+    } else {
+        printf("%s\n", formatted);
+    }
+    free(formatted);
+
+END:
+    DaiAstProgram_reset(&prog);
+    free(text);
+    return ret;
+}
+
+// #region ast check
 
 bool
 dai_ast_eq(const DaiAstBase* source, const DaiAstBase* target);
@@ -1341,3 +1511,5 @@ bool
 dai_ast_program_eq(const DaiAstProgram* source, const DaiAstProgram* target) {
     return dai_ast_eq((DaiAstBase*)source, (DaiAstBase*)target);
 }
+
+// #endregion

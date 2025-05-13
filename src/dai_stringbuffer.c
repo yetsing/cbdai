@@ -156,3 +156,12 @@ DaiStringBuffer_last(DaiStringBuffer* sb) {
     }
     return sb->data[sb->length - 1];
 }
+
+void
+DaiStringBuffer_back(DaiStringBuffer* sb, size_t n) {
+    if (n > sb->length) {
+        n = sb->length;
+    }
+    sb->length -= n;
+    sb->data[sb->length] = '\0';
+}
