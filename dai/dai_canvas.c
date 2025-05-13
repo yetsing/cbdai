@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <time.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -244,7 +245,7 @@ handle_event(DaiVM* vm) {
 //      fillRect(x, y, width, height, r, g, b, a)
 //      clear()
 //      present()
-//      run(callback)
+//      run(ms, callback)
 //      quit()
 //      addEventListener(event, callback)
 //      loadImage(path)
@@ -391,21 +392,37 @@ builtin_canvas_present(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int
 
 static DaiValue
 builtin_canvas_run(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
-    if (argc != 1) {
+    if (argc != 2) {
         DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.run() expected 1 argument, but got %d", argc);
+            DaiObjError_Newf(vm, "canvas.run() expected 2 argument, but got %d", argc);
         return OBJ_VAL(err);
     }
-    if (!IS_FUNCTION_LIKE(argv[0])) {
+    if (!IS_INTEGER(argv[0]) && !IS_FLOAT(argv[0])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "canvas.run() expected integer/float argument, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    if (!IS_FUNCTION_LIKE(argv[1])) {
         DaiObjError* err = DaiObjError_Newf(
             vm, "canvas.run() expected function argument, but got %s", dai_value_ts(argv[0]));
         return OBJ_VAL(err);
     }
-    DaiValue callback = argv[0];
+    DaiValue callback = argv[1];
     CHECK_INIT();
     is_running = true;
     DaiValue ret;
+    uint64_t interval = 0;
+
+    // Get the interval value from argv[0]
+    if (IS_INTEGER(argv[0])) {
+        interval = AS_INTEGER(argv[0]);
+    } else if (IS_FLOAT(argv[0])) {
+        interval = AS_FLOAT(argv[0]);
+    }
+
     while (is_running) {
+        uint64_t start_time = SDL_GetTicks();
+
         DaiVM_pauseGC(vm);
         ret = handle_event(vm);
         DaiVM_resumeGC(vm);
@@ -415,6 +432,17 @@ builtin_canvas_run(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int arg
         ret = DaiVM_runCall(vm, callback, 0);
         if (DAI_IS_ERROR(ret)) {
             return ret;
+        }
+        if (!SDL_RenderPresent(renderer)) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "SDL could not present window! SDL_Error: %s", SDL_GetError());
+            return OBJ_VAL(err);
+        }
+
+        // Calculate how much time to delay
+        uint64_t elapsed = SDL_GetTicks() - start_time;
+        if (elapsed < interval) {
+            SDL_Delay(interval - elapsed);
         }
     }
     return NIL_VAL;

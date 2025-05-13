@@ -31,15 +31,15 @@ fn draw() {
     elif (index == 2) {
         // canvas.drawImage(image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) 绘制图片
         canvas.drawImage(
-            img, 
-            50, 
-            50, 
-            img.width, 
-            img.height, 
-            100, 
-            100, 
-            img.width, 
-            img.height, 
+            img,
+            50,
+            50,
+            img.width,
+            img.height,
+            100,
+            100,
+            img.width,
+            img.height,
         );
     }
     elif (index == 3) {
@@ -58,10 +58,6 @@ fn draw() {
         canvas.drawImageEx(img, srcrect, dstrect, angle, center, flip);
     }
 
-    // canvas.present() 展示 canvas 的内容
-    canvas.present();
-
-    time.sleep(1 / 30.0);
     // example.jpeg 来源
     // <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
 }
@@ -90,14 +86,14 @@ fn main() {
             //   repeat bool 是否重复按下
             print(event, "Key pressed:", event.code, event.key);
             print(
-                "    Alt:", 
-                event.altKey, 
-                "Ctrl:", 
-                event.ctrlKey, 
-                "Shift:", 
-                event.shiftKey, 
-                "Meta:", 
-                event.metaKey, 
+                "    Alt:",
+                event.altKey,
+                "Ctrl:",
+                event.ctrlKey,
+                "Shift:",
+                event.shiftKey,
+                "Meta:",
+                event.metaKey,
             );
             if (event.code == canvas_enum.Keycode.key_a) {
                 print("    A pressed");
@@ -119,9 +115,9 @@ fn main() {
     //     print(event, "Mouse move:", event.x, event.y, event.button);
     // });
 
-    // canvas.run(callback) 接收一个无参函数作为参数
+    // canvas.run(ms, callback) 接收一个无参函数作为参数
     // 在窗口关闭或者调用 canvas.quit() 后返回
-    canvas.run(draw);
+    canvas.run(1000 / 30, draw);
     print("Canvas quited");
 }
 
