@@ -1,6 +1,7 @@
 #include "dai_canvas.h"
 
 #include <inttypes.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -253,6 +254,7 @@ handle_event(DaiVM* vm) {
 //      Rect(x, y, width, height)
 //      Point(x, y)
 //      drawImageEx(image, srcrect, dstrect, angle, center, flip)
+//      drawCircle(center, radius, r, g, b, a)
 
 static DaiValue
 builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
@@ -297,6 +299,12 @@ builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int ar
     if (renderer == NULL) {
         DaiObjError* err =
             DaiObjError_Newf(vm, "SDL could not create renderer! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+
+    if (!SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not set blend mode! SDL_Error: %s", SDL_GetError());
         return OBJ_VAL(err);
     }
 
@@ -712,15 +720,15 @@ builtin_canvas_Rect(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int ar
 
 typedef struct {
     DAI_OBJ_STRUCT_BASE
-    int x;
-    int y;
+    float x;
+    float y;
 } PointStruct;
 
 static char*
 PointStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
     char buf[128];
     PointStruct* obj = (PointStruct*)AS_STRUCT(value);
-    int length = snprintf(buf, sizeof(buf), "<struct %s(x=%d, y=%d)>", obj->name, obj->x, obj->y);
+    int length = snprintf(buf, sizeof(buf), "<struct %s(x=%f, y=%f)>", obj->name, obj->x, obj->y);
     return strndup(buf, length);
 }
 
@@ -746,21 +754,34 @@ builtin_canvas_Point(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int a
         return OBJ_VAL(err);
     }
     for (int i = 0; i < 2; i++) {
-        if (!IS_INTEGER(argv[i])) {
+        if (!IS_NUMBER(argv[i])) {
             DaiObjError* err = DaiObjError_Newf(
-                vm, "canvas.Point() expected integer arguments, but got %s", dai_value_ts(argv[i]));
+                vm, "canvas.Point() expected number arguments, but got %s", dai_value_ts(argv[i]));
             return OBJ_VAL(err);
         }
     }
     PointStruct* obj = (PointStruct*)DaiObjStruct_New(
         vm, point_struct_name, &point_struct_operation, sizeof(PointStruct), NULL);
-    obj->x = AS_INTEGER(argv[0]);
-    obj->y = AS_INTEGER(argv[1]);
+    if (IS_INTEGER(argv[0])) {
+        obj->x = AS_INTEGER(argv[0]);
+    } else {
+        obj->x = AS_FLOAT(argv[0]);
+    }
+    if (IS_INTEGER(argv[1])) {
+        obj->y = AS_INTEGER(argv[1]);
+    } else {
+        obj->y = AS_FLOAT(argv[1]);
+    }
     return OBJ_VAL(obj);
 }
 
 // drawImageEx(image, srcrect, dstrect, angle, center, flip)
+//     image: canvas.TextureStruct
+//     srcrect: canvas.RectStruct
+//     dstrect: canvas.RectStruct
 //     angle: int|float 角度
+//     center: canvas.PointStruct
+//     flip: int 0: none, 1: horizontal, 2: vertical
 static DaiValue
 builtin_canvas_drawImageEx(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
                            DaiValue* argv) {
@@ -836,8 +857,8 @@ builtin_canvas_drawImageEx(DaiVM* vm, __attribute__((unused)) DaiValue receiver,
         return OBJ_VAL(err);
     }
     PointStruct* point_obj = (PointStruct*)AS_STRUCT(argv[4]);
-    center.x               = (float)point_obj->x;
-    center.y               = (float)point_obj->y;
+    center.x               = point_obj->x;
+    center.y               = point_obj->y;
 
     if (!IS_INTEGER(argv[5])) {
         DaiObjError* err =
@@ -857,6 +878,66 @@ builtin_canvas_drawImageEx(DaiVM* vm, __attribute__((unused)) DaiValue receiver,
         DaiObjError* err =
             DaiObjError_Newf(vm, "SDL could not drawEx image! SDL_Error: %s", SDL_GetError());
         return OBJ_VAL(err);
+    }
+    return NIL_VAL;
+}
+
+// drawCircle(center, radius, r, g, b, a)
+static DaiValue
+builtin_canvas_drawCircle(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                          DaiValue* argv) {
+    if (argc != 6) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.drawCircle() expected 6 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_STRUCT(argv[0]) || AS_STRUCT(argv[0])->name != point_struct_name) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm,
+                             "canvas.drawCircle() expected struct %s argument, but got %s",
+                             point_struct_name,
+                             dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    for (int i = 1; i < 6; i++) {
+        if (!IS_INTEGER(argv[i])) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm,
+                                 "canvas.drawCircle() expected integer arguments, but got %s",
+                                 dai_value_ts(argv[i]));
+            return OBJ_VAL(err);
+        }
+    }
+    CHECK_INIT();
+    PointStruct* center = (PointStruct*)AS_STRUCT(argv[0]);
+    int radius          = AS_INTEGER(argv[1]);
+    int r               = AS_INTEGER(argv[2]);
+    int g               = AS_INTEGER(argv[3]);
+    int b               = AS_INTEGER(argv[4]);
+    int a               = AS_INTEGER(argv[5]);
+
+    if (!SDL_SetRenderDrawColor(renderer, r, g, b, a)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not set draw color! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+
+    // Drawing horizontal lines for each y from top to bottom of the circle
+    for (int y = -radius; y <= radius; y++) {
+        // At each height y, calculate the width of the circle using the Pythagorean theorem
+        float horizontalLineLength = (float)sqrt(radius * radius - y * y);
+
+        // Draw a line from left to right edge of the circle at height y
+        bool success = SDL_RenderLine(renderer,
+                                      center->x - horizontalLineLength,
+                                      center->y + y,
+                                      center->x + horizontalLineLength,
+                                      center->y + y);
+        if (!success) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm, "SDL could not draw circle! SDL_Error: %s", SDL_GetError());
+            return OBJ_VAL(err);
+        }
     }
     return NIL_VAL;
 }
@@ -922,6 +1003,11 @@ static DaiObjBuiltinFunction canvas_funcs[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "drawImageEx",
         .function = builtin_canvas_drawImageEx,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "drawCircle",
+        .function = builtin_canvas_drawCircle,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},

@@ -1,0 +1,142 @@
+// 烟花，鼠标点击发射烟花
+con canvas_enum = import("canvas_enum.dai");
+
+con fireworks = [];
+con particles = [];
+
+
+class Firework {
+    // 初始位置
+    var x;
+    var y;
+    // 目标位置
+    var tx;
+    var ty;
+    var speed;  // 速度
+    var angle;  // 角度
+    var vx;  // x 方向速度
+    var vy;  // y 方向速度
+    var distanceToTarget;  // 到目标的距离
+    var traveled;  // 已经移动的距离
+
+    fn __init__(x, y, targetX, targetY) {
+        self.x = x;
+        self.y = y;
+        self.tx = targetX;
+        self.ty = targetY;
+        self.speed = 3;
+        self.angle = math.atan2(targetY - y, targetX - x);
+        self.vx = math.cos(self.angle) * self.speed;
+        self.vy = math.sin(self.angle) * self.speed;
+        self.distanceToTarget = math.hypot(targetX - x, targetY - y);
+        self.traveled = 0;
+    }
+
+    fn update() {
+        self.x += self.vx;
+        self.y += self.vy;
+        self.traveled += self.speed;
+        if (self.traveled >= self.distanceToTarget) {
+            // 到达目标
+            fireworks.remove(self);
+            createParticles(self.x, self.y);
+        }
+    }
+
+    fn draw() {
+        con r = int(math.random() * 255);
+        con g = int(math.random() * 255);
+        con b = int(math.random() * 255);
+        con center = canvas.Point(self.x, self.y);
+        canvas.drawCircle(center, 2, r, g, b, 255);
+    }
+}
+
+
+class Particle {
+    var x;
+    var y;
+    var speed;
+    var angle;
+    var vx;
+    var vy;
+    var gravity = 0.05;
+    var alpha = 1;
+    var decay;
+    var rgb;
+
+    fn __init__(x, y) {
+        self.x = x;
+        self.y = y;
+        self.speed = math.random() * 5 + 1;
+        self.angle = math.random() * math.pi * 2;
+        self.vx = math.cos(self.angle) * self.speed;
+        self.vy = math.sin(self.angle) * self.speed;
+        self.decay = math.random() * 0.01 + 0.005;
+        self.rgb = [int(math.random() * 255), int(math.random() * 255), int(math.random() * 255)];
+    }
+
+    fn update() {
+        self.vx *= 0.98;
+        self.vy *= 0.98;
+        self.vy += self.gravity;
+        self.x += self.vx;
+        self.y += self.vy;
+        self.alpha -= self.decay;
+        if (self.alpha <= 0) {
+            particles.remove(self);
+        }
+    }
+
+    fn draw() {
+        con center = canvas.Point(self.x, self.y);
+        canvas.drawCircle(center, 2, self.rgb[0], self.rgb[1], self.rgb[2], int(self.alpha * 255));
+    }
+}
+
+
+fn createParticles(x, y) {
+    for (var i in range(60)) {
+        con particle = Particle(x, y);
+        particles.append(particle);
+    }
+}
+
+
+fn draw() {
+    // 覆盖一层半透明黑色，实现移动残影效果
+    canvas.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+        0,
+        0,
+        0,
+        100,
+    );
+
+    for (var firework in fireworks) {
+        firework.update();
+        firework.draw();
+    }
+
+    for (var particle in particles) {
+        particle.update();
+        particle.draw();
+    }
+}
+
+
+fn main() {
+    canvas.init(800, 600);
+
+    canvas.addEventListener(canvas.EventMouseDown, fn(event) {
+            con firework = Firework(canvas.width / 2, canvas.height, event.x, event.y);
+            fireworks.append(firework);
+        });
+
+    canvas.run(1000 / 60, draw);
+}
+
+main();

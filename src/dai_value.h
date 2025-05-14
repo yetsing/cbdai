@@ -53,6 +53,7 @@ dai_value_ts(DaiValue value);
 #define IS_INTEGER(value) ((value).type == DaiValueType_int)
 #define IS_FLOAT(value) ((value).type == DaiValueType_float)
 #define IS_OBJ(value) ((value).type == DaiValueType_obj)
+#define IS_NUMBER(value) (IS_INTEGER(value) || IS_FLOAT(value))   // 数字类型
 
 #define AS_BOOL(value) ((value).as.boolean)
 #define AS_INTEGER(value) ((value).as.intval)

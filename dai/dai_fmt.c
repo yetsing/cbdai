@@ -415,10 +415,12 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
             DaiAstSelfExpression* self = (DaiAstSelfExpression*)expr;
             // self
             Formatter_print_token_with_comment(formatter, self->start_token);
-            // .
-            Formatter_print_next_token_with_comment(formatter);
-            // identifier
-            Formatter_print_expression(formatter, (DaiAstExpression*)self->name);
+            if (self->name) {
+                // .
+                Formatter_print_next_token_with_comment(formatter);
+                // identifier
+                Formatter_print_expression(formatter, (DaiAstExpression*)self->name);
+            }
             break;
         }
         case DaiAstType_ClassExpression: {

@@ -708,6 +708,37 @@ builtin_math_sqrt(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) Dai
 }
 
 static DaiValue
+builtin_math_hypot(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                   int argc, DaiValue* argv) {
+    if (argc != 2) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "math.hypot() expected 2 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    double x, y;
+    if (IS_INTEGER(argv[0])) {
+        x = AS_INTEGER(argv[0]);
+    } else if (IS_FLOAT(argv[0])) {
+        x = AS_FLOAT(argv[0]);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math.hypot() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[1])) {
+        y = AS_INTEGER(argv[1]);
+    } else if (IS_FLOAT(argv[1])) {
+        y = AS_FLOAT(argv[1]);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math.hypot() expected number arguments, but got %s", dai_value_ts(argv[1]));
+        return OBJ_VAL(err);
+    }
+    double d = hypot(x, y);
+    return FLOAT_VAL(d);
+}
+
+static DaiValue
 builtin_math_sin(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
                  int argc, DaiValue* argv) {
     if (argc != 1) {
@@ -745,6 +776,38 @@ builtin_math_cos(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiV
             vm, "math.cos() expected number arguments, but got %s", dai_value_ts(argv[0]));
         return OBJ_VAL(err);
     }
+}
+
+static DaiValue
+builtin_math_atan2(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                   int argc, DaiValue* argv) {
+    if (argc != 2) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "math.atan2() expected 2 argument, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    double y, x;
+    if (IS_INTEGER(argv[0])) {
+        y = AS_INTEGER(argv[0]);
+    } else if (IS_FLOAT(argv[0])) {
+        y = AS_FLOAT(argv[0]);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math.atan2() expected number arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    if (IS_INTEGER(argv[1])) {
+        x = AS_INTEGER(argv[1]);
+    } else if (IS_FLOAT(argv[1])) {
+        x = AS_FLOAT(argv[1]);
+    } else {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "math.atan2() expected number arguments, but got %s", dai_value_ts(argv[1]));
+        return OBJ_VAL(err);
+    }
+
+    double d = atan2(y, x);
+    return FLOAT_VAL(d);
 }
 
 static DaiValue
@@ -807,6 +870,11 @@ static DaiObjBuiltinFunction builtin_math_funcs[] = {
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "hypot",
+        .function = builtin_math_hypot,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "sin",
         .function = builtin_math_sin,
     },
@@ -814,6 +882,11 @@ static DaiObjBuiltinFunction builtin_math_funcs[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "cos",
         .function = builtin_math_cos,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "atan2",
+        .function = builtin_math_atan2,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -842,6 +915,8 @@ builtin_math_module(DaiVM* vm) {
         DaiObjModule_add_global(
             module, builtin_math_funcs[i].name, OBJ_VAL(&builtin_math_funcs[i]));
     }
+    // 添加常量
+    DaiObjModule_add_global(module, "pi", FLOAT_VAL(M_PI));
     return module;
 }
 

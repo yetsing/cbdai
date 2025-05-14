@@ -35,7 +35,7 @@ fn main() {
     print("Canvas example");
     // canvas_enum.dai 包含 canvas 的枚举值，包括键盘 code 和鼠标 button
     con canvas_enum = import("canvas_enum.dai");
-    canvas.init(1024, 1024);  // Reduced canvas size
+    canvas.init(1024, 1024);
 
     // canvas.addEventListener(event_type, callback) 添加事件监听器
     // event_type 事件类型
