@@ -254,7 +254,7 @@ handle_event(DaiVM* vm) {
 //      Rect(x, y, width, height)
 //      Point(x, y)
 //      drawImageEx(image, srcrect, dstrect, angle, center, flip)
-//      drawCircle(center, radius, r, g, b, a)
+//      fillCircle(center, radius, r, g, b, a)
 
 static DaiValue
 builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
@@ -882,19 +882,57 @@ builtin_canvas_drawImageEx(DaiVM* vm, __attribute__((unused)) DaiValue receiver,
     return NIL_VAL;
 }
 
-// drawCircle(center, radius, r, g, b, a)
+bool
+fill_circle(SDL_Renderer* renderer, float x, float y, float radius) {
+    float offsetx, offsety, d;
+    int status;
+
+
+    offsetx = 0;
+    offsety = radius;
+    d       = radius - 1;
+    status  = 0;
+
+    while (offsety >= offsetx) {
+
+        status += SDL_RenderLine(renderer, x - offsety, y + offsetx, x + offsety, y + offsetx);
+        status += SDL_RenderLine(renderer, x - offsetx, y + offsety, x + offsetx, y + offsety);
+        status += SDL_RenderLine(renderer, x - offsetx, y - offsety, x + offsetx, y - offsety);
+        status += SDL_RenderLine(renderer, x - offsety, y - offsetx, x + offsety, y - offsetx);
+
+        if (status < 4) {
+            return false;
+        }
+
+        if (d >= 2 * offsetx) {
+            d -= 2 * offsetx + 1;
+            offsetx += 1;
+        } else if (d < 2 * (radius - offsety)) {
+            d += 2 * offsety - 1;
+            offsety -= 1;
+        } else {
+            d += 2 * (offsety - offsetx - 1);
+            offsety -= 1;
+            offsetx += 1;
+        }
+    }
+
+    return true;
+}
+
+// fillCircle(center, radius, r, g, b, a)
 static DaiValue
-builtin_canvas_drawCircle(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+builtin_canvas_fillCircle(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
                           DaiValue* argv) {
     if (argc != 6) {
         DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.drawCircle() expected 6 arguments, but got %d", argc);
+            DaiObjError_Newf(vm, "canvas.fillCircle() expected 6 arguments, but got %d", argc);
         return OBJ_VAL(err);
     }
     if (!IS_STRUCT(argv[0]) || AS_STRUCT(argv[0])->name != point_struct_name) {
         DaiObjError* err =
             DaiObjError_Newf(vm,
-                             "canvas.drawCircle() expected struct %s argument, but got %s",
+                             "canvas.fillCircle() expected struct %s argument, but got %s",
                              point_struct_name,
                              dai_value_ts(argv[0]));
         return OBJ_VAL(err);
@@ -903,7 +941,7 @@ builtin_canvas_drawCircle(DaiVM* vm, __attribute__((unused)) DaiValue receiver, 
         if (!IS_INTEGER(argv[i])) {
             DaiObjError* err =
                 DaiObjError_Newf(vm,
-                                 "canvas.drawCircle() expected integer arguments, but got %s",
+                                 "canvas.fillCircle() expected integer arguments, but got %s",
                                  dai_value_ts(argv[i]));
             return OBJ_VAL(err);
         }
@@ -921,6 +959,8 @@ builtin_canvas_drawCircle(DaiVM* vm, __attribute__((unused)) DaiValue receiver, 
             DaiObjError_Newf(vm, "SDL could not set draw color! SDL_Error: %s", SDL_GetError());
         return OBJ_VAL(err);
     }
+    fill_circle(renderer, center->x, center->y, radius);
+    return NIL_VAL;
 
     // Drawing horizontal lines for each y from top to bottom of the circle
     for (int y = -radius; y <= radius; y++) {
@@ -1006,8 +1046,8 @@ static DaiObjBuiltinFunction canvas_funcs[] = {
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "drawCircle",
-        .function = builtin_canvas_drawCircle,
+        .name     = "fillCircle",
+        .function = builtin_canvas_fillCircle,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
