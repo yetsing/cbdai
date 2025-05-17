@@ -113,6 +113,8 @@ void
 DaiVM_push1(DaiVM* vm, DaiValue value);
 void
 DaiVM_getSeed2(DaiVM* vm, uint64_t* seed0, uint64_t* seed1);
+size_t
+DaiVM_bytesAllocated(const DaiVM* vm);
 
 // #region 用于测试的函数
 

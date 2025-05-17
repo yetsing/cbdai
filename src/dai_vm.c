@@ -14,11 +14,8 @@
 #include "dai_malloc.h"
 #include "dai_memory.h"
 #include "dai_object.h"
-#include "dai_objects/dai_object_base.h"
-#include "dai_objects/dai_object_error.h"
 #include "dai_parse.h"
 #include "dai_symboltable.h"
-#include "dai_tokenize.h"
 #include "dai_utils.h"
 #include "dai_value.h"
 #include "dai_vm.h"
@@ -1292,6 +1289,11 @@ void
 DaiVM_getSeed2(DaiVM* vm, uint64_t* seed0, uint64_t* seed1) {
     *seed0 = *(uint64_t*)vm->seed;
     *seed1 = *(uint64_t*)(vm->seed + 8);
+}
+
+size_t
+DaiVM_bytesAllocated(const DaiVM* vm) {
+    return vm->bytesAllocated;
 }
 
 // #endregion

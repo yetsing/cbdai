@@ -1008,8 +1008,53 @@ builtin_os_module(DaiVM* vm) {
 
 // #endregion
 
+// #region 内置模块 sys
+
+
+static DaiValue
+builtin_sys_memory(__attribute__((unused)) DaiVM* vm, __attribute__((unused)) DaiValue receiver,
+                   int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "sys.memory() expected no arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    return INTEGER_VAL(DaiVM_bytesAllocated(vm));
+}
+
+static DaiObjBuiltinFunction builtin_sys_funcs[] = {
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "memory",
+        .function = builtin_sys_memory,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name = NULL,
+    },
+};
+
+static DaiObjModule*
+builtin_sys_module(DaiVM* vm) {
+    DaiObjModule* module = DaiObjModule_New(vm, strdup("sys"), strdup("<builtin>"));
+    for (int i = 0; builtin_sys_funcs[i].name != NULL; i++) {
+        DaiObjModule_add_global(module, builtin_sys_funcs[i].name, OBJ_VAL(&builtin_sys_funcs[i]));
+    }
+    return module;
+}
+
+// #endregion
+
 const char* builtin_names[BUILTIN_OBJECT_MAX_COUNT]               = {};
 static DaiBuiltinObject builtin_objects[BUILTIN_OBJECT_MAX_COUNT] = {};
+
+#define REGISTER_BUILTIN_MODULE(module_name)                                    \
+    do {                                                                        \
+        builtin_names[i]         = #module_name;                                \
+        builtin_objects[i].name  = #module_name;                                \
+        builtin_objects[i].value = OBJ_VAL(builtin_##module_name##_module(vm)); \
+        i++;                                                                    \
+    } while (0)
 
 DaiBuiltinObject*
 init_builtin_objects(DaiVM* vm, int* count) {
@@ -1039,6 +1084,8 @@ init_builtin_objects(DaiVM* vm, int* count) {
     builtin_objects[i].name  = "os";
     builtin_objects[i].value = OBJ_VAL(builtin_os_module(vm));
     i++;
+
+    REGISTER_BUILTIN_MODULE(sys);
 
     *count = i;
     return builtin_objects;

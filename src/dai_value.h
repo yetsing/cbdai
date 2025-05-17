@@ -59,6 +59,7 @@ dai_value_ts(DaiValue value);
 #define AS_INTEGER(value) ((value).as.intval)
 #define AS_FLOAT(value) ((value).as.floatval)
 #define AS_OBJ(value) ((value).as.obj)
+#define AS_NUMBER(value) (IS_INTEGER(value) ? AS_INTEGER(value) : AS_FLOAT(value))   // 获取数字值
 
 #define UNDEFINED_VAL ((DaiValue){DaiValueType_undefined, {.intval = 0}})
 #define BOOL_VAL(value) ((DaiValue){DaiValueType_bool, {.boolean = value}})
