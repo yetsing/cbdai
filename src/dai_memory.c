@@ -19,6 +19,9 @@
 
 void*
 vm_reallocate(DaiVM* vm, void* pointer, size_t old_size, size_t new_size) {
+#ifdef DEBUG_LOG_GC
+    size_t allocated = vm->bytesAllocated;
+#endif
     vm->bytesAllocated += new_size - old_size;
     if (new_size > old_size) {
         // 频繁地运行 GC ，方便找到内存管理 bug
@@ -29,7 +32,17 @@ vm_reallocate(DaiVM* vm, void* pointer, size_t old_size, size_t new_size) {
             collectGarbage(vm);
         }
     }
-    return reallocate(pointer, old_size, new_size);
+    void* newpointer = reallocate(pointer, old_size, new_size);
+#ifdef DEBUG_LOG_GC
+    dai_loggc("reallocate %p->%p %zu->%zu\n", pointer, newpointer, old_size, new_size);
+    if (allocated + new_size < old_size) {
+        dai_loggc("reallocate: %zu + %zu < %zu\n", allocated, new_size, old_size);
+        fflush(stdout);
+        fflush(stderr);
+        abort();
+    }
+#endif
+    return newpointer;
 }
 
 void*
@@ -88,7 +101,7 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
         }
         case DaiObjType_array: {
             DaiObjArray* array = (DaiObjArray*)object;
-            VM_FREE_ARRAY(vm, DaiValue, array->elements, array->capacity);
+            FREE_ARRAY(DaiValue, array->elements, array->capacity);
             VM_FREE(vm, DaiObjArray, object);
             break;
         }
