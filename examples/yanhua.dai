@@ -70,6 +70,7 @@ class Firework {
     var vy;  // y 方向速度
     var distanceToTarget;  // 到目标的距离
     var traveled;  // 已经移动的距离
+    var dead = false;
 
     fn __init__(x, y, targetX, targetY) {
         self.x = x;
@@ -90,7 +91,7 @@ class Firework {
         self.traveled += self.speed;
         if (self.traveled >= self.distanceToTarget) {
             // 到达目标
-            fireworks.remove(self);
+            self.dead = true;
             createParticles(self.x, self.y);
         }
     }
@@ -114,6 +115,7 @@ class Particle {
     var alpha = 1;
     var decay;
     var rgb;
+    var dead = false;
 
     fn __init__(x, y) {
         self.x = x;
@@ -134,7 +136,7 @@ class Particle {
         self.y += self.vy;
         self.alpha -= self.decay;
         if (self.alpha <= 0) {
-            particles.remove(self);
+            self.dead = true;
         }
     }
 
@@ -166,14 +168,35 @@ fn draw() {
         100,
     );
 
+    var daedFireworks = [];
     for (var firework in fireworks) {
         firework.update();
         firework.draw();
+        if (firework.dead) {
+            daedFireworks.append(firework);
+        }
     }
 
+    var daedParticles = [];
     for (var particle in particles) {
         particle.update();
         particle.draw();
+        if (particle.dead) {
+            daedParticles.append(particle);
+        }
+    }
+
+    // 删除已死亡的烟花
+    for (var firework in daedFireworks) {
+        fireworks.remove(firework);
+    }
+    // 删除已死亡的粒子
+    for (var particle in daedParticles) {
+        particles.remove(particle);
+    }
+
+    if (len(daedFireworks) > 0) {
+        print("Memory", sys.memory());
     }
 }
 

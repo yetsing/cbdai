@@ -378,7 +378,6 @@ Formatter_print_expression(Formatter* formatter, DaiAstExpression* expr) {
                     // ,
                     if (Formatter_next_token_is(formatter, DaiTokenType_comma)) {
                         Formatter_print_next_token_with_comment(formatter);
-                        Formatter_append_space(formatter);
                         if (call->arguments_count <= MAX_ITEM_ONE_LINE) {
                             Formatter_append_space(formatter);
                         } else {
