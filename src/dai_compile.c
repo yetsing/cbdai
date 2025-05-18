@@ -159,7 +159,7 @@ typedef struct {
 
     IntArray
         scope_stack;   // 记录作用域，用来判断一些语句的合法性，比如 break continue 必须在循环中
-    IntArray break_array;      // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
+    IntArray break_array;   // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
     IntArray continue_array;   // 记录 continue 跳转指令的位置，用于后续更新跳转偏移量
 
     int max_local_count;   // 记录最大的局部变量数量，用于分配栈空间
@@ -1156,7 +1156,7 @@ DaiCompiler_compileForInStatement(DaiCompiler* compiler, DaiAstBase* node) {
     DaiSymbolTable* outer            = compiler->symbolTable;
     DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
     compiler->symbolTable            = blockSymbolTable;
-    DaiSymbol itertor_symbol =
+    DaiSymbol iterator_symbol =
         DaiSymbolTable_define(blockSymbolTable, "//iterator", true);   // 一个特殊的变量名表示迭代器
     if (stmt->i == NULL) {
         DaiSymbolTable_define(blockSymbolTable, "//i", true);   // 占个位置保持一致
@@ -1164,12 +1164,12 @@ DaiCompiler_compileForInStatement(DaiCompiler* compiler, DaiAstBase* node) {
         DaiSymbolTable_define(blockSymbolTable, stmt->i->value, false);
     }
     DaiSymbolTable_define(blockSymbolTable, stmt->e->value, false);
-    compiler->max_local_count = MAX(compiler->max_local_count, itertor_symbol.index + 3);
+    compiler->max_local_count = MAX(compiler->max_local_count, iterator_symbol.index + 3);
     // 编译 for-in 循环
-    DaiCompiler_emit1(compiler, DaiOpIterInit, itertor_symbol.index, stmt->start_line);
+    DaiCompiler_emit1(compiler, DaiOpIterInit, iterator_symbol.index, stmt->start_line);
     int for_start = compiler->chunk->count;
     int jump_if_end_offset =
-        DaiCompiler_emitIterNext(compiler, itertor_symbol.index, stmt->start_line);
+        DaiCompiler_emitIterNext(compiler, iterator_symbol.index, stmt->start_line);
     err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
     if (err != NULL) {
         return err;
