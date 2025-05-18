@@ -882,6 +882,7 @@ builtin_canvas_drawImageEx(DaiVM* vm, __attribute__((unused)) DaiValue receiver,
     return NIL_VAL;
 }
 
+// code ref: https://gist.github.com/Gumichan01/332c26f6197a432db91cc4327fcabb1c
 bool
 fill_circle(SDL_Renderer* renderer, float x, float y, float radius) {
     float offsetx, offsety, d;

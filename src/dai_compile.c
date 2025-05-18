@@ -107,74 +107,11 @@ IntArray_show(const IntArray* array) {
 
 // #endregion
 
-// 计算执行字节码需要的最大栈空间
-static int
-calculate_max_stack_size(DaiChunk* chunk) {
-    int max_stack_size = 0;
-    int stack_size     = 0;
-    for (int offset = 0; offset < chunk->count;) {
-        const DaiOpCode instruction         = chunk->code[offset];
-        const DaiOpCodeDefinition* code_def = dai_opcode_lookup(instruction);
-        int stack_size_change               = code_def->stack_size_change;
-        if (stack_size_change == STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND) {
-            switch (instruction) {
-                case DaiOpArray: {
-                    uint16_t count    = DaiChunk_readu16(chunk, offset + 1);
-                    stack_size_change = -count;
-                    break;
-                }
-                case DaiOpMap: {
-                    uint16_t count    = DaiChunk_readu16(chunk, offset + 1);
-                    stack_size_change = -(2 * count);
-                    break;
-                }
-                case DaiOpPopN: {
-                    uint8_t count     = DaiChunk_read(chunk, offset + 1);
-                    stack_size_change = -count;
-                    break;
-                }
-                case DaiOpCall: {
-                    uint8_t count = DaiChunk_read(chunk, offset + 1);
-                    // 算上调用的函数本身，会弹栈 count + 1
-                    stack_size_change = -count - 1;
-                    break;
-                }
-                case DaiOpSetFunctionDefault: {
-                    uint8_t count     = DaiChunk_read(chunk, offset + 1);
-                    stack_size_change = -count;
-                    break;
-                }
-                case DaiOpClosure: {
-                    uint8_t count = DaiChunk_read(chunk, offset + 3);
-                    // 弹出 count 个自由变量，压入一个 closure 对象
-                    stack_size_change = -count + 1;
-                    break;
-                }
-                case DaiOpCallMethod:
-                case DaiOpCallSelfMethod:
-                case DaiOpCallSuperMethod: {
-                    uint8_t count = DaiChunk_read(chunk, offset + 3);
-                    // 算上调用的实例本身，会弹栈 count + 1
-                    stack_size_change = -count - 1;
-                    break;
-                }
-                default: {
-                    dai_error("unexpected op %s\n", code_def->name);
-                    unreachable();
-                }
-            }
-        }
-        offset += (code_def->operand_bytes + 1);
-        if (stack_size_change < 0) {
-            max_stack_size = MAX(max_stack_size, stack_size);
-        }
-        stack_size = stack_size + stack_size_change;
-    }
-    max_stack_size = MAX(max_stack_size, stack_size);
-    return max_stack_size;
-}
 
 // #region DaiCompiler
+
+#define JUMP_PLACEHOLDER UINT16_MAX
+
 typedef enum {
     FunctionType_classMethod,
     FunctionType_method,
@@ -344,6 +281,166 @@ DaiCompiler_reset(DaiCompiler* compiler) {
     IntArray_reset(&compiler->continue_array);
 }
 
+// 更新符号表
+static DaiCompileError*
+DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
+    char* name = NULL;
+    int line   = 0;
+    int column = 0;
+    switch (node->type) {
+        case DaiAstType_program: {
+            DaiAstProgram* program = (DaiAstProgram*)node;
+            for (int i = 0; i < program->length; i++) {
+                DaiCompileError* err =
+                    DaiCompiler_extractSymbol(compiler, (DaiAstBase*)program->statements[i]);
+                if (err != NULL) {
+                    return err;
+                }
+            }
+            break;
+        }
+        case DaiAstType_VarStatement: {
+            DaiAstVarStatement* stmt = (DaiAstVarStatement*)node;
+            name                     = stmt->name->value;
+            line                     = stmt->name->start_line;
+            column                   = stmt->name->start_column;
+            break;
+        }
+        case DaiAstType_FunctionStatement: {
+            DaiAstFunctionStatement* stmt = (DaiAstFunctionStatement*)node;
+            name                          = stmt->name;
+            line                          = stmt->start_line;
+            column                        = stmt->start_column;
+            break;
+        }
+        case DaiAstType_ClassStatement: {
+            DaiAstClassStatement* stmt = (DaiAstClassStatement*)node;
+            name                       = stmt->name;
+            line                       = stmt->start_line;
+            column                     = stmt->start_column;
+            break;
+        }
+        default: break;
+    }
+    // 检查全局变量是否重复定义和数量超出限制
+    if (name != NULL) {
+        DaiSymbol symbol;
+        if (DaiSymbolTable_resolve(compiler->symbolTable, name, &symbol)) {
+            return DaiCompileError_Newf(
+                compiler->filename, line, column, "symbol '%s' already defined", name);
+        }
+        symbol = DaiSymbolTable_predefine(compiler->symbolTable, name);
+        if (symbol.index >= GLOBAL_MAX) {
+            return DaiCompileError_Newf(
+                compiler->filename, line, column, "too many global symbols");
+        }
+    }
+    return NULL;
+}
+
+// #region 编译 AST 节点
+
+static void
+DaiCompiler_enterLoop(DaiCompiler* compiler) {
+    IntArray_enter(&compiler->break_array);
+    IntArray_enter(&compiler->continue_array);
+}
+
+static void
+DaiCompiler_leaveLoop(DaiCompiler* compiler, int loop_start) {
+    // 更新 break 跳转指令的偏移量
+    {
+        int count = compiler->break_array.count;
+        for (int i = 0; i < count; i++) {
+            int jump = IntArray_popCurrentLevel(&compiler->break_array);
+            if (jump == -1) {
+                break;
+            }
+            DaiCompiler_patchJump(compiler, jump);
+        }
+    }
+    // 更新 continue 跳转指令的偏移量
+    {
+        int count = compiler->continue_array.count;
+        for (int i = 0; i < count; i++) {
+            int jump = IntArray_popCurrentLevel(&compiler->continue_array);
+            if (jump == -1) {
+                break;
+            }
+            DaiCompiler_patchJumpBack(compiler, jump, loop_start);
+        }
+    }
+    IntArray_leave(&compiler->break_array);
+    IntArray_leave(&compiler->continue_array);
+}
+
+// 计算执行字节码需要的最大栈空间
+static int
+calculate_max_stack_size(DaiChunk* chunk) {
+    int max_stack_size = 0;
+    int stack_size     = 0;
+    for (int offset = 0; offset < chunk->count;) {
+        const DaiOpCode instruction         = chunk->code[offset];
+        const DaiOpCodeDefinition* code_def = dai_opcode_lookup(instruction);
+        int stack_size_change               = code_def->stack_size_change;
+        if (stack_size_change == STACK_SIZE_CHANGE_DEPENDS_ON_OPERAND) {
+            switch (instruction) {
+                case DaiOpArray: {
+                    uint16_t count    = DaiChunk_readu16(chunk, offset + 1);
+                    stack_size_change = -count;
+                    break;
+                }
+                case DaiOpMap: {
+                    uint16_t count    = DaiChunk_readu16(chunk, offset + 1);
+                    stack_size_change = -(2 * count);
+                    break;
+                }
+                case DaiOpPopN: {
+                    uint8_t count     = DaiChunk_read(chunk, offset + 1);
+                    stack_size_change = -count;
+                    break;
+                }
+                case DaiOpCall: {
+                    uint8_t count = DaiChunk_read(chunk, offset + 1);
+                    // 算上调用的函数本身，会弹栈 count + 1
+                    stack_size_change = -count - 1;
+                    break;
+                }
+                case DaiOpSetFunctionDefault: {
+                    uint8_t count     = DaiChunk_read(chunk, offset + 1);
+                    stack_size_change = -count;
+                    break;
+                }
+                case DaiOpClosure: {
+                    uint8_t count = DaiChunk_read(chunk, offset + 3);
+                    // 弹出 count 个自由变量，压入一个 closure 对象
+                    stack_size_change = -count + 1;
+                    break;
+                }
+                case DaiOpCallMethod:
+                case DaiOpCallSelfMethod:
+                case DaiOpCallSuperMethod: {
+                    uint8_t count = DaiChunk_read(chunk, offset + 3);
+                    // 算上调用的实例本身，会弹栈 count + 1
+                    stack_size_change = -count - 1;
+                    break;
+                }
+                default: {
+                    dai_error("unexpected op %s\n", code_def->name);
+                    unreachable();
+                }
+            }
+        }
+        offset += (code_def->operand_bytes + 1);
+        if (stack_size_change < 0) {
+            max_stack_size = MAX(max_stack_size, stack_size);
+        }
+        stack_size = stack_size + stack_size_change;
+    }
+    max_stack_size = MAX(max_stack_size, stack_size);
+    return max_stack_size;
+}
+
 static DaiCompileError*
 DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     const char* name;   // 函数名字
@@ -443,6 +540,7 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
     }
     // 给函数末尾统一加一个 return nil 指令，防止函数没有 return
     DaiCompiler_emit(&subcompiler, DaiOpReturn, end_line);
+    // 处理函数（函数闭包）的自由变量
     int num_free = 0;
     {
         DaiSymbol* free_symbols = DaiSymbolTable_getFreeSymbols(functable, &num_free);
@@ -468,8 +566,10 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
                           DaiCompiler_addConstant(compiler, OBJ_VAL(function)),
                           start_line);
     }
-    compiler->anonymous_count = subcompiler.anonymous_count;
-    size_t default_count      = DaiArray_length(defaults);
+
+
+    // 处理函数默认参数
+    size_t default_count = DaiArray_length(defaults);
     if (default_count > 0) {
         for (int i = 0; i < default_count; i++) {
             DaiAstExpression* expr = *(DaiAstExpression**)DaiArray_get(defaults, i);
@@ -480,67 +580,13 @@ DaiCompiler_compileFunction(DaiCompiler* compiler, DaiAstBase* node) {
         }
         DaiCompiler_emit1(compiler, DaiOpSetFunctionDefault, DaiArray_length(defaults), start_line);
     }
-    // 局部变量是预先分配在栈上的，同样需要占用栈空间
+
     function->max_local_count = subcompiler.max_local_count;
+    // 局部变量是预先分配在栈上的，同样需要占用栈空间
     function->max_stack_size =
         function->max_local_count + calculate_max_stack_size(&function->chunk);
-    return NULL;
-}
 
-// 更新符号表
-static DaiCompileError*
-DaiCompiler_extractSymbol(DaiCompiler* compiler, DaiAstBase* node) {
-    char* name = NULL;
-    int line   = 0;
-    int column = 0;
-    switch (node->type) {
-        case DaiAstType_program: {
-            DaiAstProgram* program = (DaiAstProgram*)node;
-            for (int i = 0; i < program->length; i++) {
-                DaiCompileError* err =
-                    DaiCompiler_extractSymbol(compiler, (DaiAstBase*)program->statements[i]);
-                if (err != NULL) {
-                    return err;
-                }
-            }
-            break;
-        }
-        case DaiAstType_VarStatement: {
-            DaiAstVarStatement* stmt = (DaiAstVarStatement*)node;
-            name                     = stmt->name->value;
-            line                     = stmt->name->start_line;
-            column                   = stmt->name->start_column;
-            break;
-        }
-        case DaiAstType_FunctionStatement: {
-            DaiAstFunctionStatement* stmt = (DaiAstFunctionStatement*)node;
-            name                          = stmt->name;
-            line                          = stmt->start_line;
-            column                        = stmt->start_column;
-            break;
-        }
-        case DaiAstType_ClassStatement: {
-            DaiAstClassStatement* stmt = (DaiAstClassStatement*)node;
-            name                       = stmt->name;
-            line                       = stmt->start_line;
-            column                     = stmt->start_column;
-            break;
-        }
-        default: break;
-    }
-    // 检查全局变量是否重复定义和数量超出限制
-    if (name != NULL) {
-        DaiSymbol symbol;
-        if (DaiSymbolTable_resolve(compiler->symbolTable, name, &symbol)) {
-            return DaiCompileError_Newf(
-                compiler->filename, line, column, "symbol '%s' already defined", name);
-        }
-        symbol = DaiSymbolTable_predefine(compiler->symbolTable, name);
-        if (symbol.index >= GLOBAL_MAX) {
-            return DaiCompileError_Newf(
-                compiler->filename, line, column, "too many global symbols");
-        }
-    }
+    compiler->anonymous_count = subcompiler.anonymous_count;
     return NULL;
 }
 
@@ -556,7 +602,7 @@ DaiCompiler_compileAndOrExpr(DaiCompiler* compiler, DaiAstInfixExpression* expr)
     if (strcmp(expr->operator, "or") == 0) {
         op = DaiOpOrJump;
     }
-    int jump_offset = DaiCompiler_emit2(compiler, op, 9999, expr->start_line);
+    int jump_offset = DaiCompiler_emit2(compiler, op, JUMP_PLACEHOLDER, expr->start_line);
     err             = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
     if (err != NULL) {
         return err;
@@ -566,556 +612,238 @@ DaiCompiler_compileAndOrExpr(DaiCompiler* compiler, DaiAstInfixExpression* expr)
 }
 
 static DaiCompileError*
-DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
-    switch (node->type) {
-        case DaiAstType_program: {
-            DaiAstProgram* program = (DaiAstProgram*)node;
-            for (int i = 0; i < program->length; i++) {
-                DaiCompileError* err =
-                    DaiCompiler_compile(compiler, (DaiAstBase*)program->statements[i]);
-                if (err != NULL) {
-                    return err;
-                }
-            }
+DaiCompiler_compileProgram(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstProgram* program = (DaiAstProgram*)node;
+    for (int i = 0; i < program->length; i++) {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)program->statements[i]);
+        if (err != NULL) {
+            return err;
+        }
+    }
+    return NULL;
+}
+
+static DaiCompileError*
+DaiCompiler_compileVarStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstVarStatement* stmt = (DaiAstVarStatement*)node;
+    DaiCompileError* err     = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+    if (err != NULL) {
+        return err;
+    }
+    if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name->value)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->name->start_line,
+                                    stmt->name->start_column,
+                                    "symbol '%s' already defined",
+                                    stmt->name->value);
+    }
+    DaiSymbol symbol =
+        DaiSymbolTable_define(compiler->symbolTable, stmt->name->value, stmt->is_con);
+    switch (symbol.type) {
+        case DaiSymbolType_global: {
+            DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
+            ADD_GLOBAL_NAME(compiler, symbol.name);
             break;
         }
-        case DaiAstType_BlockStatement: {
-            DaiSymbolTable* outer            = compiler->symbolTable;
-            DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
-            compiler->symbolTable            = blockSymbolTable;
-            DaiAstBlockStatement* stmt       = (DaiAstBlockStatement*)node;
-            for (int i = 0; i < stmt->length; i++) {
-                DaiCompileError* err =
-                    DaiCompiler_compile(compiler, (DaiAstBase*)stmt->statements[i]);
-                if (err != NULL) {
-                    DaiSymbolTable_free(blockSymbolTable);
-                    return err;
-                }
+        case DaiSymbolType_local: {
+            if (symbol.index >= LOCAL_MAX) {
+                return DaiCompileError_Newf(compiler->filename,
+                                            stmt->name->start_line,
+                                            stmt->name->start_column,
+                                            "error1 too many local symbols");
             }
-            compiler->is_function_block = false;
+            compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
+            DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
+            ADD_LOCAL_NAME(compiler, symbol.name);
+            break;
+        }
+        default: {
+            unreachable();
+        }
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileReturnStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstReturnStatement* stmt = (DaiAstReturnStatement*)node;
+    if (compiler->type == FunctionType_script) {
+        return DaiCompileError_New("Can't return from top-level code",
+                                   compiler->filename,
+                                   stmt->start_line,
+                                   stmt->start_column);
+    }
+    if (stmt->return_value == NULL) {
+        DaiCompiler_emit(compiler, DaiOpReturn, stmt->start_line);
+    } else {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->return_value);
+        if (err != NULL) {
+            return err;
+        }
+        DaiCompiler_emit(compiler, DaiOpReturnValue, stmt->start_line);
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileExpressionStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstExpressionStatement* stmt = (DaiAstExpressionStatement*)node;
+    DaiCompileError* err            = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->expression);
+    if (err != NULL) {
+        return err;
+    }
+    DaiCompiler_emit(compiler, DaiOpPop, stmt->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileIfStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    // 指令结构如下
+    // condition
+    // jump_if_false @else_branch
+    // @then_branch
+    // jump @end
+    // @else_branch
+    // @end
+    IntArray_push(&compiler->scope_stack, ScopeType_if);
+    DaiAstIfStatement* stmt = (DaiAstIfStatement*)node;
+    DaiCompileError* err    = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
+    if (err != NULL) {
+        return err;
+    }
+    int* jump_array = ALLOCATE(int, stmt->elif_branch_count + 1);
+    // 先发出虚假偏移量的跳转指令
+    int jump_if_false_offset =
+        DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, JUMP_PLACEHOLDER, stmt->start_line);
+    err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->then_branch);
+    if (err != NULL) {
+        return err;
+    }
+    for (int i = 0; i < stmt->elif_branch_count; i++) {
+        // 先发出虚假偏移量的跳转指令
+        jump_array[i] = DaiCompiler_emit2(compiler, DaiOpJump, JUMP_PLACEHOLDER, stmt->start_line);
+        DaiCompiler_patchJump(compiler, jump_if_false_offset);
+        err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->elif_branches[i].condition);
+        if (err != NULL) {
+            return err;
+        }
+        // 先发出虚假偏移量的跳转指令
+        jump_if_false_offset =
+            DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, JUMP_PLACEHOLDER, stmt->start_line);
+        err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->elif_branches[i].then_branch);
+        if (err != NULL) {
+            return err;
+        }
+    }
+    if (stmt->else_branch == NULL) {
+        DaiCompiler_patchJump(compiler, jump_if_false_offset);
+    } else {
+        // 先发出虚假偏移量的跳转指令
+        int jump_offset =
+            DaiCompiler_emit2(compiler, DaiOpJump, JUMP_PLACEHOLDER, stmt->then_branch->start_line);
+        DaiCompiler_patchJump(compiler, jump_if_false_offset);
+        err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->else_branch);
+        if (err != NULL) {
+            return err;
+        }
+        DaiCompiler_patchJump(compiler, jump_offset);
+    }
+    for (int i = 0; i < stmt->elif_branch_count; i++) {
+        DaiCompiler_patchJump(compiler, jump_array[i]);
+    }
+    FREE_ARRAY(int, jump_array, stmt->elif_branch_count + 1);
+    IntArray_pop(&compiler->scope_stack);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileBlockStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiSymbolTable* outer            = compiler->symbolTable;
+    DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
+    compiler->symbolTable            = blockSymbolTable;
+    DaiAstBlockStatement* stmt       = (DaiAstBlockStatement*)node;
+    for (int i = 0; i < stmt->length; i++) {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->statements[i]);
+        if (err != NULL) {
             DaiSymbolTable_free(blockSymbolTable);
-            compiler->symbolTable = outer;
-            break;
+            return err;
         }
-        case DaiAstType_IfStatement: {
-            // 指令结构如下
-            // condition
-            // jump_if_false @else_branch
-            // @then_branch
-            // jump @end
-            // @else_branch
-            // @end
-            IntArray_push(&compiler->scope_stack, ScopeType_if);
-            DaiAstIfStatement* stmt = (DaiAstIfStatement*)node;
-            DaiCompileError* err    = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
-            if (err != NULL) {
-                return err;
-            }
-            int* jump_array = ALLOCATE(int, stmt->elif_branch_count + 1);
-            // 先发出虚假偏移量的跳转指令
-            int jump_if_false_offset =
-                DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, 9999, stmt->start_line);
-            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->then_branch);
-            if (err != NULL) {
-                return err;
-            }
-            for (int i = 0; i < stmt->elif_branch_count; i++) {
-                // 先发出虚假偏移量的跳转指令
-                jump_array[i] = DaiCompiler_emit2(compiler, DaiOpJump, 9999, stmt->start_line);
-                DaiCompiler_patchJump(compiler, jump_if_false_offset);
-                err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->elif_branches[i].condition);
-                if (err != NULL) {
-                    return err;
-                }
-                // 先发出虚假偏移量的跳转指令
-                jump_if_false_offset =
-                    DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, 9999, stmt->start_line);
-                err =
-                    DaiCompiler_compile(compiler, (DaiAstBase*)stmt->elif_branches[i].then_branch);
-                if (err != NULL) {
-                    return err;
-                }
-            }
-            if (stmt->else_branch == NULL) {
-                DaiCompiler_patchJump(compiler, jump_if_false_offset);
-            } else {
-                // 先发出虚假偏移量的跳转指令
-                int jump_offset =
-                    DaiCompiler_emit2(compiler, DaiOpJump, 9999, stmt->then_branch->start_line);
-                DaiCompiler_patchJump(compiler, jump_if_false_offset);
-                err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->else_branch);
-                if (err != NULL) {
-                    return err;
-                }
-                DaiCompiler_patchJump(compiler, jump_offset);
-            }
-            for (int i = 0; i < stmt->elif_branch_count; i++) {
-                DaiCompiler_patchJump(compiler, jump_array[i]);
-            }
-            FREE_ARRAY(int, jump_array, stmt->elif_branch_count + 1);
-            IntArray_pop(&compiler->scope_stack);
-            break;
+    }
+    compiler->is_function_block = false;
+    DaiSymbolTable_free(blockSymbolTable);
+    compiler->symbolTable = outer;
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileAssignStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)node;
+    if (stmt->operator!= NULL) {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->left);
+        if (err != NULL) {
+            return err;
         }
-        case DaiAstType_VarStatement: {
-            DaiAstVarStatement* stmt = (DaiAstVarStatement*)node;
-            DaiCompileError* err     = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
-            if (err != NULL) {
-                return err;
-            }
-            if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name->value)) {
+    }
+    DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+    if (err != NULL) {
+        return err;
+    }
+    if (stmt->operator!= NULL) {
+        switch (*stmt->operator) {
+            case '+': DaiCompiler_emit(compiler, DaiOpAdd, stmt->start_line); break;
+            case '-': DaiCompiler_emit(compiler, DaiOpSub, stmt->start_line); break;
+            case '*': DaiCompiler_emit(compiler, DaiOpMul, stmt->start_line); break;
+            case '/': DaiCompiler_emit(compiler, DaiOpDiv, stmt->start_line); break;
+        }
+    }
+    switch (stmt->left->type) {
+        case DaiAstType_Identifier: {
+            DaiAstIdentifier* ident = (DaiAstIdentifier*)stmt->left;
+            DaiSymbol symbol;
+            bool found = DaiSymbolTable_resolve(compiler->symbolTable, ident->value, &symbol);
+            if (!found || !symbol.defined) {
                 return DaiCompileError_Newf(compiler->filename,
-                                            stmt->name->start_line,
-                                            stmt->name->start_column,
-                                            "symbol '%s' already defined",
-                                            stmt->name->value);
+                                            ident->start_line,
+                                            ident->start_column,
+                                            "undefined variable: '%s'",
+                                            ident->value);
             }
-            DaiSymbol symbol =
-                DaiSymbolTable_define(compiler->symbolTable, stmt->name->value, stmt->is_con);
+            if (symbol.is_const) {
+                return DaiCompileError_Newf(compiler->filename,
+                                            ident->start_line,
+                                            ident->start_column,
+                                            "cannot assign to const variable '%s'",
+                                            ident->value);
+            }
             switch (symbol.type) {
                 case DaiSymbolType_global: {
-                    DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
+                    DaiCompiler_emit2(compiler, DaiOpSetGlobal, symbol.index, stmt->start_line);
                     ADD_GLOBAL_NAME(compiler, symbol.name);
+
                     break;
                 }
                 case DaiSymbolType_local: {
-                    if (symbol.index >= LOCAL_MAX) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    stmt->name->start_line,
-                                                    stmt->name->start_column,
-                                                    "error1 too many local symbols");
-                    }
-                    compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
                     DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
                     ADD_LOCAL_NAME(compiler, symbol.name);
                     break;
                 }
+
                 default: {
                     unreachable();
                 }
             }
+
             break;
         }
-        case DaiAstType_AssignStatement: {
-            DaiAstAssignStatement* stmt = (DaiAstAssignStatement*)node;
-            if (stmt->operator!= NULL) {
-                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->left);
-                if (err != NULL) {
-                    return err;
-                }
-            }
-            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
-            if (err != NULL) {
-                return err;
-            }
-            if (stmt->operator!= NULL) {
-                switch (*stmt->operator) {
-                    case '+': DaiCompiler_emit(compiler, DaiOpAdd, stmt->start_line); break;
-                    case '-': DaiCompiler_emit(compiler, DaiOpSub, stmt->start_line); break;
-                    case '*': DaiCompiler_emit(compiler, DaiOpMul, stmt->start_line); break;
-                    case '/': DaiCompiler_emit(compiler, DaiOpDiv, stmt->start_line); break;
-                }
-            }
-            switch (stmt->left->type) {
-                case DaiAstType_Identifier: {
-                    DaiAstIdentifier* ident = (DaiAstIdentifier*)stmt->left;
-                    DaiSymbol symbol;
-                    bool found =
-                        DaiSymbolTable_resolve(compiler->symbolTable, ident->value, &symbol);
-                    if (!found || !symbol.defined) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    ident->start_line,
-                                                    ident->start_column,
-                                                    "undefined variable: '%s'",
-                                                    ident->value);
-                    }
-                    if (symbol.is_const) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    ident->start_line,
-                                                    ident->start_column,
-                                                    "cannot assign to const variable '%s'",
-                                                    ident->value);
-                    }
-                    switch (symbol.type) {
-                        case DaiSymbolType_global: {
-                            DaiCompiler_emit2(
-                                compiler, DaiOpSetGlobal, symbol.index, stmt->start_line);
-                            ADD_GLOBAL_NAME(compiler, symbol.name);
-
-                            break;
-                        }
-                        case DaiSymbolType_local: {
-                            DaiCompiler_emit1(
-                                compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
-                            ADD_LOCAL_NAME(compiler, symbol.name);
-                            break;
-                        }
-
-                        default: {
-                            unreachable();
-                        }
-                    }
-
-                    break;
-                }
-                case DaiAstType_DotExpression: {
-                    DaiAstDotExpression* expr = (DaiAstDotExpression*)stmt->left;
-                    DaiCompileError* err2 = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
-                    if (err2 != NULL) {
-                        return err2;
-                    }
-                    DaiObjString* name = dai_copy_string_intern(
-                        compiler->vm, expr->name->value, strlen(expr->name->value));
-                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                    DaiCompiler_emit2(compiler, DaiOpSetProperty, index, stmt->start_line);
-                    break;
-                }
-                case DaiAstType_ClassExpression: {
-                    DaiAstClassExpression* expr = (DaiAstClassExpression*)stmt->left;
-                    if (compiler->type != FunctionType_method &&
-                        compiler->type != FunctionType_classMethod) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    expr->start_line,
-                                                    expr->start_column,
-                                                    "cannot use 'class' outside of a method");
-                    }
-                    if (compiler->type == FunctionType_classMethod) {
-                        // 在类方法里面， class 类似于 self
-                        DaiObjString* name = dai_copy_string_intern(
-                            compiler->vm, expr->name->value, strlen(expr->name->value));
-                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                        DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
-                    } else {
-                        // 在实例方法里面，我们要从 self 里面获取类对象
-                        DaiObjString* name_class =
-                            dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
-                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
-                        DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
-
-
-                        DaiObjString* name = dai_copy_string_intern(
-                            compiler->vm, expr->name->value, strlen(expr->name->value));
-                        index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                        DaiCompiler_emit2(compiler, DaiOpSetProperty, index, stmt->start_line);
-                    }
-                    break;
-                }
-                case DaiAstType_SelfExpression: {
-                    DaiAstSelfExpression* expr = (DaiAstSelfExpression*)stmt->left;
-                    if (compiler->type != FunctionType_method) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    expr->start_line,
-                                                    expr->start_column,
-                                                    "cannot use 'self' outside of a method");
-                    }
-                    DaiObjString* name = dai_copy_string_intern(
-                        compiler->vm, expr->name->value, strlen(expr->name->value));
-                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                    DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
-                    break;
-                }
-                case DaiAstType_SubscriptExpression: {
-                    DaiAstSubscriptExpression* expr = (DaiAstSubscriptExpression*)stmt->left;
-                    err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
-                    if (err != NULL) {
-                        return err;
-                    }
-                    err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
-                    if (err != NULL) {
-                        return err;
-                    }
-                    DaiCompiler_emit(compiler, DaiOpSubscriptSet, stmt->start_line);
-                    break;
-                }
-                default: {
-                    dai_error("assign unsupported %s\n", DaiAstType_string(stmt->left->type));
-                    unreachable();
-                }
-            }
-            break;
-        }
-        case DaiAstType_ReturnStatement: {
-            DaiAstReturnStatement* stmt = (DaiAstReturnStatement*)node;
-            if (compiler->type == FunctionType_script) {
-                return DaiCompileError_New("Can't return from top-level code",
-                                           compiler->filename,
-                                           stmt->start_line,
-                                           stmt->start_column);
-            }
-            if (stmt->return_value == NULL) {
-                DaiCompiler_emit(compiler, DaiOpReturn, stmt->start_line);
-            } else {
-                DaiCompileError* err =
-                    DaiCompiler_compile(compiler, (DaiAstBase*)stmt->return_value);
-                if (err != NULL) {
-                    return err;
-                }
-                DaiCompiler_emit(compiler, DaiOpReturnValue, stmt->start_line);
-            }
-            break;
-        }
-        case DaiAstType_FunctionStatement: {
-            IntArray_push(&compiler->scope_stack, ScopeType_function);
-            DaiAstFunctionStatement* stmt = (DaiAstFunctionStatement*)node;
-            if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name)) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            stmt->start_line,
-                                            stmt->start_column,
-                                            "symbol '%s' already defined",
-                                            stmt->name);
-            }
-            DaiCompileError* err = DaiCompiler_compileFunction(compiler, node);
-            if (err != NULL) {
-                return err;
-            }
-            DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name, true);
-            switch (symbol.type) {
-                case DaiSymbolType_global: {
-                    DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
-                    ADD_GLOBAL_NAME(compiler, symbol.name);
-                    break;
-                }
-                case DaiSymbolType_local: {
-                    if (symbol.index >= LOCAL_MAX) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    stmt->start_line,
-                                                    stmt->start_column,
-                                                    "error2 too many local symbols");
-                    }
-                    compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
-                    DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
-                    ADD_LOCAL_NAME(compiler, symbol.name);
-                    break;
-                }
-                default: {
-                    unreachable();
-                }
-            }
-            IntArray_pop(&compiler->scope_stack);
-            break;
-        }
-        case DaiAstType_ClassStatement: {
-            IntArray_push(&compiler->scope_stack, ScopeType_class);
-            DaiAstClassStatement* stmt = (DaiAstClassStatement*)node;
-            if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name)) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            stmt->start_line,
-                                            stmt->start_column,
-                                            "symbol '%s' already defined",
-                                            stmt->name);
+        case DaiAstType_DotExpression: {
+            DaiAstDotExpression* expr = (DaiAstDotExpression*)stmt->left;
+            DaiCompileError* err2     = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+            if (err2 != NULL) {
+                return err2;
             }
             DaiObjString* name =
-                dai_copy_string_intern(compiler->vm, stmt->name, strlen(stmt->name));
-            int index = DaiCompiler_addConstant(compiler, OBJ_VAL(name));
-            DaiCompiler_emit2(compiler, DaiOpClass, index, stmt->start_line);
-            if (stmt->parent != NULL) {
-                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->parent);
-                if (err != NULL) {
-                    return err;
-                }
-                DaiCompiler_emit(compiler, DaiOpInherit, stmt->start_line);
-            }
-            DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name, true);
-            switch (symbol.type) {
-                case DaiSymbolType_global: {
-                    DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
-                    ADD_GLOBAL_NAME(compiler, symbol.name);
-                    break;
-                }
-                case DaiSymbolType_local: {
-                    if (symbol.index >= LOCAL_MAX) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    stmt->start_line,
-                                                    stmt->start_column,
-                                                    "error3 too many local symbols");
-                    }
-                    compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
-                    DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
-                    ADD_LOCAL_NAME(compiler, symbol.name);
-                    break;
-                }
-                default: {
-                    unreachable();
-                }
-            }
-            // 加载类对象到栈顶
-            DaiCompileError* err = DaiCompiler_loadSymbol(compiler, &symbol, stmt->start_line);
-            if (err != NULL) {
-                return err;
-            }
-            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
-            if (err != NULL) {
-                return err;
-            }
-            DaiTable_reset(&compiler->propertys);   // 重置属性表
-            // 弹出栈顶的类对象
-            DaiCompiler_emit(compiler, DaiOpPop, stmt->start_line);
-            IntArray_pop(&compiler->scope_stack);
-            break;
-        }
-        case DaiAstType_InsVarStatement: {
-            DaiAstInsVarStatement* stmt = (DaiAstInsVarStatement*)node;
-            if (stmt->value != NULL) {
-                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
-                if (err != NULL) {
-                    return err;
-                }
-            } else {
-                DaiCompiler_emit(compiler, DaiOpUndefined, stmt->start_line);
-            }
-            DaiObjString* name =
-                dai_copy_string_intern(compiler->vm, stmt->name->value, strlen(stmt->name->value));
-            if (DaiTable_has(&compiler->propertys, name)) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            stmt->name->start_line,
-                                            stmt->name->start_column,
-                                            "property '%s' already defined",
-                                            stmt->name->value);
-            }
-            DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
+                dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
             int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit3(
-                compiler, DaiOpDefineField, index, stmt->is_con, stmt->name->start_line);
-            break;
-        }
-        case DaiAstType_MethodStatement: {
-            IntArray_push(&compiler->scope_stack, ScopeType_method);
-            DaiAstMethodStatement* stmt = (DaiAstMethodStatement*)node;
-            DaiObjString* name =
-                dai_copy_string_intern(compiler->vm, stmt->name, strlen(stmt->name));
-            if (DaiTable_has(&compiler->propertys, name)) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            stmt->start_line,
-                                            stmt->start_column,
-                                            "property '%s' already defined",
-                                            stmt->name);
-            }
-            DaiCompileError* err = DaiCompiler_compileFunction(compiler, node);
-            if (err != NULL) {
-                return err;
-            }
-            DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
-            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit2(compiler, DaiOpDefineMethod, index, stmt->start_line);
-            IntArray_pop(&compiler->scope_stack);
-            break;
-        }
-        case DaiAstType_ClassVarStatement: {
-            DaiAstClassVarStatement* stmt = (DaiAstClassVarStatement*)node;
-            DaiCompileError* err          = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
-            if (err != NULL) {
-                return err;
-            }
-            DaiObjString* name =
-                dai_copy_string_intern(compiler->vm, stmt->name->value, strlen(stmt->name->value));
-            if (DaiTable_has(&compiler->propertys, name)) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            stmt->start_line,
-                                            stmt->start_column,
-                                            "property '%s' already defined",
-                                            stmt->name->value);
-            }
-            DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
-            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit3(
-                compiler, DaiOpDefineClassField, index, stmt->is_con, stmt->start_line);
-            break;
-        }
-        case DaiAstType_ClassMethodStatement: {
-            IntArray_push(&compiler->scope_stack, ScopeType_method);
-            DaiAstClassMethodStatement* stmt = (DaiAstClassMethodStatement*)node;
-            DaiCompileError* err             = DaiCompiler_compileFunction(compiler, node);
-            if (err != NULL) {
-                return err;
-            }
-            DaiObjString* name =
-                dai_copy_string_intern(compiler->vm, stmt->name, strlen(stmt->name));
-            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit2(compiler, DaiOpDefineClassMethod, index, stmt->start_line);
-            IntArray_pop(&compiler->scope_stack);
-            break;
-        }
-        case DaiAstType_WhileStatement: {
-            IntArray_push(&compiler->scope_stack, ScopeType_while);
-            IntArray_enter(&compiler->break_array);
-            IntArray_enter(&compiler->continue_array);
-            int while_start            = compiler->chunk->count;
-            DaiAstWhileStatement* stmt = (DaiAstWhileStatement*)node;
-            // int loop_offset            = 0;
-            // if (DaiSymbolTable_isLocal(compiler->symbolTable)) {
-            //     loop_offset = DaiSymbolTable_countOuter(compiler->symbolTable);
-            // }
-            // DaiCompiler_emit1(compiler, DaiOpSetStackTop, loop_offset, stmt->start_line);
-            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
-            if (err != NULL) {
-                return err;
-            }
-            // 先发出虚假偏移量的跳转指令
-            int jump_if_false_offset =
-                DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, 9999, stmt->start_line);
-            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
-            if (err != NULL) {
-                return err;
-            }
-            {
-                int jump_back = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
-                DaiCompiler_patchJumpBack(compiler, jump_back, while_start);
-            }
-            DaiCompiler_patchJump(compiler, jump_if_false_offset);
-            // 更新 break 跳转指令的偏移量
-            {
-                int count = compiler->break_array.count;
-                for (int i = 0; i < count; i++) {
-                    int jump = IntArray_popCurrentLevel(&compiler->break_array);
-                    if (jump == -1) {
-                        break;
-                    }
-                    DaiCompiler_patchJump(compiler, jump);
-                }
-            }
-            // 更新 continue 跳转指令的偏移量
-            {
-                int count = compiler->continue_array.count;
-                for (int i = 0; i < count; i++) {
-                    int jump = IntArray_popCurrentLevel(&compiler->continue_array);
-                    if (jump == -1) {
-                        break;
-                    }
-                    DaiCompiler_patchJumpBack(compiler, jump, while_start);
-                }
-            }
-            IntArray_leave(&compiler->break_array);
-            IntArray_leave(&compiler->continue_array);
-            IntArray_pop(&compiler->scope_stack);
-            break;
-        }
-        case DaiAstType_BreakStatement: {
-            DaiAstBreakStatement* stmt = (DaiAstBreakStatement*)node;
-            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while) &&
-                !IntArray_contains(&compiler->scope_stack, ScopeType_for)) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            stmt->start_line,
-                                            stmt->start_column,
-                                            "cannot use 'break' outside of a loop");
-            }
-            int jump = DaiCompiler_emit2(compiler, DaiOpJump, 9999, stmt->start_line);
-            IntArray_push(&compiler->break_array, jump);
-            break;
-        }
-        case DaiAstType_ContinueStatement: {
-            DaiAstContinueStatement* stmt = (DaiAstContinueStatement*)node;
-            if (!IntArray_contains(&compiler->scope_stack, ScopeType_while) &&
-                !IntArray_contains(&compiler->scope_stack, ScopeType_for)) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            stmt->start_line,
-                                            stmt->start_column,
-                                            "cannot use 'continue' outside of a loop");
-            }
-            int jump = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
-            IntArray_push(&compiler->continue_array, jump);
+            DaiCompiler_emit2(compiler, DaiOpSetProperty, index, stmt->start_line);
             break;
         }
         case DaiAstType_ClassExpression: {
-            DaiAstClassExpression* expr = (DaiAstClassExpression*)node;
+            DaiAstClassExpression* expr = (DaiAstClassExpression*)stmt->left;
             if (compiler->type != FunctionType_method &&
                 compiler->type != FunctionType_classMethod) {
                 return DaiCompileError_Newf(compiler->filename,
@@ -1125,117 +853,42 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             }
             if (compiler->type == FunctionType_classMethod) {
                 // 在类方法里面， class 类似于 self
-                if (expr->name) {
-                    DaiObjString* name = dai_copy_string_intern(
-                        compiler->vm, expr->name->value, strlen(expr->name->value));
-                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                    DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
-                } else {
-                    DaiCompiler_emit1(compiler, DaiOpGetLocal, 0, expr->start_line);
-                }
+                DaiObjString* name = dai_copy_string_intern(
+                    compiler->vm, expr->name->value, strlen(expr->name->value));
+                int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
             } else {
                 // 在实例方法里面，我们要从 self 里面获取类对象
                 DaiObjString* name_class =
                     dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
                 int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
                 DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
-                if (expr->name) {
-                    DaiObjString* name = dai_copy_string_intern(
-                        compiler->vm, expr->name->value, strlen(expr->name->value));
-                    index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                    DaiCompiler_emit2(compiler, DaiOpGetProperty, index, expr->start_line);
-                }
+
+
+                DaiObjString* name = dai_copy_string_intern(
+                    compiler->vm, expr->name->value, strlen(expr->name->value));
+                index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                DaiCompiler_emit2(compiler, DaiOpSetProperty, index, stmt->start_line);
             }
             break;
         }
         case DaiAstType_SelfExpression: {
-            DaiAstSelfExpression* expr = (DaiAstSelfExpression*)node;
+            DaiAstSelfExpression* expr = (DaiAstSelfExpression*)stmt->left;
             if (compiler->type != FunctionType_method) {
                 return DaiCompileError_Newf(compiler->filename,
                                             expr->start_line,
                                             expr->start_column,
                                             "cannot use 'self' outside of a method");
             }
-            if (expr->name) {
-                DaiObjString* name = dai_copy_string_intern(
-                    compiler->vm, expr->name->value, strlen(expr->name->value));
-                int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
-            } else {
-                DaiCompiler_emit1(compiler, DaiOpGetLocal, 0, expr->start_line);
-            }
-            break;
-        }
-        case DaiAstType_SuperExpression: {
-            DaiAstSuperExpression* expr = (DaiAstSuperExpression*)node;
-            if (compiler->type != FunctionType_method &&
-                compiler->type != FunctionType_classMethod) {
-                return DaiCompileError_Newf(compiler->filename,
-                                            expr->start_line,
-                                            expr->start_column,
-                                            "cannot use 'super' outside of a method");
-            }
             DaiObjString* name =
                 dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
             int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit2(compiler, DaiOpGetSuperProperty, index, expr->start_line);
+            DaiCompiler_emit2(compiler, DaiOpSetSelfProperty, index, stmt->start_line);
             break;
         }
-        case DaiAstType_DotExpression: {
-            DaiAstDotExpression* expr = (DaiAstDotExpression*)node;
-            DaiCompileError* err      = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
-            if (err != NULL) {
-                return err;
-            }
-            DaiObjString* name =
-                dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
-            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-            DaiCompiler_emit2(compiler, DaiOpGetProperty, index, expr->start_line);
-            break;
-        }
-        case DaiAstType_ExpressionStatement: {
-            DaiAstExpressionStatement* stmt = (DaiAstExpressionStatement*)node;
-            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->expression);
-            if (err != NULL) {
-                return err;
-            }
-            DaiCompiler_emit(compiler, DaiOpPop, stmt->start_line);
-            break;
-        }
-        case DaiAstType_InfixExpression: {
-            DaiAstInfixExpression* expr = (DaiAstInfixExpression*)node;
-            if (strcmp(expr->operator, "and") == 0 || strcmp(expr->operator, "or") == 0) {
-                return DaiCompiler_compileAndOrExpr(compiler, expr);
-            }
-
-            if (strcmp(expr->operator, "<") == 0) {
-                // 交换左右两边
-                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
-                if (err != NULL) {
-                    return err;
-                }
-                err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
-                if (err != NULL) {
-                    return err;
-                }
-                DaiCompiler_emit(compiler, DaiOpGreaterThan, expr->start_line);
-                return NULL;
-            }
-            if (strcmp(expr->operator, "<=") == 0) {
-                // 交换左右两边
-                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
-                if (err != NULL) {
-                    return err;
-                }
-                err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
-                if (err != NULL) {
-                    return err;
-                }
-                DaiCompiler_emit(compiler, DaiOpGreaterEqualThan, expr->start_line);
-                return NULL;
-            }
-
-            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+        case DaiAstType_SubscriptExpression: {
+            DaiAstSubscriptExpression* expr = (DaiAstSubscriptExpression*)stmt->left;
+            err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
             if (err != NULL) {
                 return err;
             }
@@ -1243,194 +896,496 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
             if (err != NULL) {
                 return err;
             }
-            if (strcmp(expr->operator, "+") == 0) {
-                DaiCompiler_emit(compiler, DaiOpAdd, expr->start_line);
-            } else if (strcmp(expr->operator, "-") == 0) {
-                DaiCompiler_emit(compiler, DaiOpSub, expr->start_line);
-            } else if (strcmp(expr->operator, "*") == 0) {
-                DaiCompiler_emit(compiler, DaiOpMul, expr->start_line);
-            } else if (strcmp(expr->operator, "/") == 0) {
-                DaiCompiler_emit(compiler, DaiOpDiv, expr->start_line);
-            } else if (strcmp(expr->operator, ">") == 0) {
-                DaiCompiler_emit(compiler, DaiOpGreaterThan, expr->start_line);
-            } else if (strcmp(expr->operator, ">=") == 0) {
-                DaiCompiler_emit(compiler, DaiOpGreaterEqualThan, expr->start_line);
-            } else if (strcmp(expr->operator, "==") == 0) {
-                DaiCompiler_emit(compiler, DaiOpEqual, expr->start_line);
-            } else if (strcmp(expr->operator, "!=") == 0) {
-                DaiCompiler_emit(compiler, DaiOpNotEqual, expr->start_line);
-            } else if (strcmp(expr->operator, "%") == 0) {
-                DaiCompiler_emit(compiler, DaiOpMod, expr->start_line);
-            } else if (strcmp(expr->operator, "<<") == 0) {
-                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpLeftShift, expr->start_line);
-            } else if (strcmp(expr->operator, ">>") == 0) {
-                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpRightShift, expr->start_line);
-            } else if (strcmp(expr->operator, "&") == 0) {
-                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseAnd, expr->start_line);
-            } else if (strcmp(expr->operator, "^") == 0) {
-                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseXor, expr->start_line);
-            } else if (strcmp(expr->operator, "|") == 0) {
-                DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseOr, expr->start_line);
-            } else {
-                return DaiCompileError_Newf(compiler->filename,
-                                            expr->left->end_line,
-                                            expr->left->end_column + 1,
-                                            "unknown infix operator: '%s'",
-                                            expr->operator);
-            }
+            DaiCompiler_emit(compiler, DaiOpSubscriptSet, stmt->start_line);
             break;
         }
-        case DaiAstType_PrefixExpression: {
-            DaiAstPrefixExpression* expr = (DaiAstPrefixExpression*)node;
-            DaiCompileError* err         = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
-            if (err != NULL) {
-                return err;
-            }
-            if (strcmp(expr->operator, "-") == 0) {
-                DaiCompiler_emit(compiler, DaiOpMinus, expr->start_line);
-            } else if (strcmp(expr->operator, "!") == 0) {
-                DaiCompiler_emit(compiler, DaiOpBang, expr->start_line);
-            } else if (strcmp(expr->operator, "not") == 0) {
-                DaiCompiler_emit(compiler, DaiOpNot, expr->start_line);
-            } else if (strcmp(expr->operator, "~") == 0) {
-                DaiCompiler_emit(compiler, DaiOpBitwiseNot, expr->start_line);
-            } else {
-                return DaiCompileError_Newf(compiler->filename,
-                                            expr->start_line,
-                                            expr->start_column,
-                                            "unknown prefix operator: '%s'",
-                                            expr->operator);
-            }
-            return NULL;
+        default: {
+            dai_error("assign unsupported %s\n", DaiAstType_string(stmt->left->type));
+            unreachable();
         }
-        case DaiAstType_CallExpression: {
-            DaiAstCallExpression* expr = (DaiAstCallExpression*)node;
-            if (expr->arguments_count >= LOCAL_MAX) {
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileFunctionStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    IntArray_push(&compiler->scope_stack, ScopeType_function);
+    DaiAstFunctionStatement* stmt = (DaiAstFunctionStatement*)node;
+    if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->start_line,
+                                    stmt->start_column,
+                                    "symbol '%s' already defined",
+                                    stmt->name);
+    }
+    DaiCompileError* err = DaiCompiler_compileFunction(compiler, node);
+    if (err != NULL) {
+        return err;
+    }
+    DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name, true);
+    switch (symbol.type) {
+        case DaiSymbolType_global: {
+            DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
+            ADD_GLOBAL_NAME(compiler, symbol.name);
+            break;
+        }
+        case DaiSymbolType_local: {
+            if (symbol.index >= LOCAL_MAX) {
                 return DaiCompileError_Newf(compiler->filename,
-                                            expr->start_line,
-                                            expr->start_column,
-                                            "too many arguments to call, got %d",
-                                            (int)expr->arguments_count);
+                                            stmt->start_line,
+                                            stmt->start_column,
+                                            "error2 too many local symbols");
             }
-            switch (expr->function->type) {
-                case DaiAstType_DotExpression: {
-                    DaiAstDotExpression* dot = (DaiAstDotExpression*)expr->function;
-                    DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)dot->left);
-                    if (err != NULL) {
-                        return err;
-                    }
-                    for (int i = 0; i < expr->arguments_count; i++) {
-                        err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
-                        if (err != NULL) {
-                            return err;
-                        }
-                    }
-                    DaiObjString* name = dai_copy_string_intern(
-                        compiler->vm, dot->name->value, strlen(dot->name->value));
-                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                    DaiCompiler_emit3(
-                        compiler, DaiOpCallMethod, index, expr->arguments_count, expr->start_line);
-                    return NULL;
-                }
-                case DaiAstType_ClassExpression: {
-                    if (compiler->type != FunctionType_method &&
-                        compiler->type != FunctionType_classMethod) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    expr->start_line,
-                                                    expr->start_column,
-                                                    "cannot use 'class' outside of a method");
-                    }
-                    DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
-                    for (int i = 0; i < expr->arguments_count; i++) {
-                        DaiCompileError* err =
-                            DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
-                        if (err != NULL) {
-                            return err;
-                        }
-                    }
-                    DaiAstClassExpression* classexpr = (DaiAstClassExpression*)expr->function;
-                    if (compiler->type == FunctionType_classMethod) {
-                        // 在类方法里面， class 类似于 self
-                        DaiObjString* name = dai_copy_string_intern(
-                            compiler->vm, classexpr->name->value, strlen(classexpr->name->value));
-                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                        DaiCompiler_emit3(compiler,
-                                          DaiOpCallSelfMethod,
-                                          index,
-                                          expr->arguments_count,
-                                          expr->start_line);
-                    } else {
-                        // 在实例方法里面，我们要从 self 里面获取类对象
-                        DaiObjString* name_class =
-                            dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
-                        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
-                        DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
-                        // 调用对象方法
-                        DaiObjString* name = dai_copy_string_intern(
-                            compiler->vm, classexpr->name->value, strlen(classexpr->name->value));
-                        index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                        DaiCompiler_emit3(compiler,
-                                          DaiOpCallMethod,
-                                          index,
-                                          expr->arguments_count,
-                                          expr->start_line);
-                        return NULL;
-                    }
-                    return NULL;
-                }
-                case DaiAstType_SelfExpression: {
-                    if (compiler->type != FunctionType_method) {
-                        return DaiCompileError_Newf(compiler->filename,
-                                                    expr->start_line,
-                                                    expr->start_column,
-                                                    "cannot use 'self' outside of a method");
-                    }
-                    // 塞一个 nil 到栈顶，代替原本的函数对象入栈操作
-                    DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
-                    for (int i = 0; i < expr->arguments_count; i++) {
-                        DaiCompileError* err =
-                            DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
-                        if (err != NULL) {
-                            return err;
-                        }
-                    }
-                    DaiAstSelfExpression* selfexpr = (DaiAstSelfExpression*)expr->function;
-                    DaiObjString* name             = dai_copy_string_intern(
-                        compiler->vm, selfexpr->name->value, strlen(selfexpr->name->value));
-                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                    DaiCompiler_emit3(compiler,
-                                      DaiOpCallSelfMethod,
-                                      index,
-                                      expr->arguments_count,
-                                      expr->start_line);
-                    return NULL;
-                }
-                case DaiAstType_SuperExpression: {
-                    DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
-                    for (int i = 0; i < expr->arguments_count; i++) {
-                        DaiCompileError* err =
-                            DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
-                        if (err != NULL) {
-                            return err;
-                        }
-                    }
-                    DaiAstSelfExpression* superexpr = (DaiAstSelfExpression*)expr->function;
-                    DaiObjString* name              = dai_copy_string_intern(
-                        compiler->vm, superexpr->name->value, strlen(superexpr->name->value));
-                    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
-                    DaiCompiler_emit3(compiler,
-                                      DaiOpCallSuperMethod,
-                                      index,
-                                      expr->arguments_count,
-                                      expr->start_line);
-                    return NULL;
-                }
-                default: {
-                    break;
-                }
+            compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
+            DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
+            ADD_LOCAL_NAME(compiler, symbol.name);
+            break;
+        }
+        default: {
+            unreachable();
+        }
+    }
+    IntArray_pop(&compiler->scope_stack);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileClassStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    IntArray_push(&compiler->scope_stack, ScopeType_class);
+    DaiAstClassStatement* stmt = (DaiAstClassStatement*)node;
+    if (DaiSymbolTable_isDefined(compiler->symbolTable, stmt->name)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->start_line,
+                                    stmt->start_column,
+                                    "symbol '%s' already defined",
+                                    stmt->name);
+    }
+    DaiObjString* name = dai_copy_string_intern(compiler->vm, stmt->name, strlen(stmt->name));
+    int index          = DaiCompiler_addConstant(compiler, OBJ_VAL(name));
+    DaiCompiler_emit2(compiler, DaiOpClass, index, stmt->start_line);
+    if (stmt->parent != NULL) {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->parent);
+        if (err != NULL) {
+            return err;
+        }
+        DaiCompiler_emit(compiler, DaiOpInherit, stmt->start_line);
+    }
+    DaiSymbol symbol = DaiSymbolTable_define(compiler->symbolTable, stmt->name, true);
+    switch (symbol.type) {
+        case DaiSymbolType_global: {
+            DaiCompiler_emit2(compiler, DaiOpDefineGlobal, symbol.index, stmt->start_line);
+            ADD_GLOBAL_NAME(compiler, symbol.name);
+            break;
+        }
+        case DaiSymbolType_local: {
+            if (symbol.index >= LOCAL_MAX) {
+                return DaiCompileError_Newf(compiler->filename,
+                                            stmt->start_line,
+                                            stmt->start_column,
+                                            "error3 too many local symbols");
             }
+            compiler->max_local_count = MAX(compiler->max_local_count, symbol.index + 1);
+            DaiCompiler_emit1(compiler, DaiOpSetLocal, symbol.index, stmt->start_line);
+            ADD_LOCAL_NAME(compiler, symbol.name);
+            break;
+        }
+        default: {
+            unreachable();
+        }
+    }
+    // 加载类对象到栈顶
+    DaiCompileError* err = DaiCompiler_loadSymbol(compiler, &symbol, stmt->start_line);
+    if (err != NULL) {
+        return err;
+    }
+    err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
+    if (err != NULL) {
+        return err;
+    }
+    DaiTable_reset(&compiler->propertys);   // 重置属性表
+    // 弹出栈顶的类对象
+    DaiCompiler_emit(compiler, DaiOpPop, stmt->start_line);
+    IntArray_pop(&compiler->scope_stack);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileInsVarStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstInsVarStatement* stmt = (DaiAstInsVarStatement*)node;
+    if (stmt->value != NULL) {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+        if (err != NULL) {
+            return err;
+        }
+    } else {
+        DaiCompiler_emit(compiler, DaiOpUndefined, stmt->start_line);
+    }
+    DaiObjString* name =
+        dai_copy_string_intern(compiler->vm, stmt->name->value, strlen(stmt->name->value));
+    if (DaiTable_has(&compiler->propertys, name)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->name->start_line,
+                                    stmt->name->start_column,
+                                    "property '%s' already defined",
+                                    stmt->name->value);
+    }
+    DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
+    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+    DaiCompiler_emit3(compiler, DaiOpDefineField, index, stmt->is_con, stmt->name->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileMethodStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    IntArray_push(&compiler->scope_stack, ScopeType_method);
+    DaiAstMethodStatement* stmt = (DaiAstMethodStatement*)node;
+    DaiObjString* name = dai_copy_string_intern(compiler->vm, stmt->name, strlen(stmt->name));
+    if (DaiTable_has(&compiler->propertys, name)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->start_line,
+                                    stmt->start_column,
+                                    "property '%s' already defined",
+                                    stmt->name);
+    }
+    DaiCompileError* err = DaiCompiler_compileFunction(compiler, node);
+    if (err != NULL) {
+        return err;
+    }
+    DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
+    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+    DaiCompiler_emit2(compiler, DaiOpDefineMethod, index, stmt->start_line);
+    IntArray_pop(&compiler->scope_stack);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileClassVarStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstClassVarStatement* stmt = (DaiAstClassVarStatement*)node;
+    DaiCompileError* err          = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->value);
+    if (err != NULL) {
+        return err;
+    }
+    DaiObjString* name =
+        dai_copy_string_intern(compiler->vm, stmt->name->value, strlen(stmt->name->value));
+    if (DaiTable_has(&compiler->propertys, name)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->start_line,
+                                    stmt->start_column,
+                                    "property '%s' already defined",
+                                    stmt->name->value);
+    }
+    DaiTable_set(&compiler->propertys, name, INTEGER_VAL(0));
+    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+    DaiCompiler_emit3(compiler, DaiOpDefineClassField, index, stmt->is_con, stmt->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileClassMethodStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    IntArray_push(&compiler->scope_stack, ScopeType_method);
+    DaiAstClassMethodStatement* stmt = (DaiAstClassMethodStatement*)node;
+    DaiCompileError* err             = DaiCompiler_compileFunction(compiler, node);
+    if (err != NULL) {
+        return err;
+    }
+    DaiObjString* name = dai_copy_string_intern(compiler->vm, stmt->name, strlen(stmt->name));
+    int index          = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+    DaiCompiler_emit2(compiler, DaiOpDefineClassMethod, index, stmt->start_line);
+    IntArray_pop(&compiler->scope_stack);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileWhileStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    IntArray_push(&compiler->scope_stack, ScopeType_while);
+    DaiCompiler_enterLoop(compiler);
+    int while_start            = compiler->chunk->count;
+    DaiAstWhileStatement* stmt = (DaiAstWhileStatement*)node;
+    DaiCompileError* err       = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->condition);
+    if (err != NULL) {
+        return err;
+    }
+    // 先发出虚假偏移量的跳转指令
+    int jump_if_false_offset =
+        DaiCompiler_emit2(compiler, DaiOpJumpIfFalse, JUMP_PLACEHOLDER, stmt->start_line);
+    err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
+    if (err != NULL) {
+        return err;
+    }
+    {
+        int jump_back =
+            DaiCompiler_emit2(compiler, DaiOpJumpBack, JUMP_PLACEHOLDER, stmt->start_line);
+        DaiCompiler_patchJumpBack(compiler, jump_back, while_start);
+        DaiCompiler_patchJump(compiler, jump_if_false_offset);
+    }
+    DaiCompiler_leaveLoop(compiler, while_start);
+    IntArray_pop(&compiler->scope_stack);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileContinueStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstContinueStatement* stmt = (DaiAstContinueStatement*)node;
+    if (!IntArray_contains(&compiler->scope_stack, ScopeType_while) &&
+        !IntArray_contains(&compiler->scope_stack, ScopeType_for)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->start_line,
+                                    stmt->start_column,
+                                    "cannot use 'continue' outside of a loop");
+    }
+    int jump = DaiCompiler_emit2(compiler, DaiOpJumpBack, JUMP_PLACEHOLDER, stmt->start_line);
+    IntArray_push(&compiler->continue_array, jump);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileBreakStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstBreakStatement* stmt = (DaiAstBreakStatement*)node;
+    if (!IntArray_contains(&compiler->scope_stack, ScopeType_while) &&
+        !IntArray_contains(&compiler->scope_stack, ScopeType_for)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    stmt->start_line,
+                                    stmt->start_column,
+                                    "cannot use 'break' outside of a loop");
+    }
+    int jump = DaiCompiler_emit2(compiler, DaiOpJump, JUMP_PLACEHOLDER, stmt->start_line);
+    IntArray_push(&compiler->break_array, jump);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileForInStatement(DaiCompiler* compiler, DaiAstBase* node) {
+    IntArray_push(&compiler->scope_stack, ScopeType_for);
+    DaiCompiler_enterLoop(compiler);
+    DaiAstForInStatement* stmt = (DaiAstForInStatement*)node;
+    DaiCompileError* err       = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->expression);
+    if (err != NULL) {
+        return err;
+    }
+    // 定义迭代器和迭代循环变量
+    DaiSymbolTable* outer            = compiler->symbolTable;
+    DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
+    compiler->symbolTable            = blockSymbolTable;
+    DaiSymbol itertor_symbol =
+        DaiSymbolTable_define(blockSymbolTable, "//iterator", true);   // 一个特殊的变量名表示迭代器
+    if (stmt->i == NULL) {
+        DaiSymbolTable_define(blockSymbolTable, "//i", true);   // 占个位置保持一致
+    } else {
+        DaiSymbolTable_define(blockSymbolTable, stmt->i->value, false);
+    }
+    DaiSymbolTable_define(blockSymbolTable, stmt->e->value, false);
+    compiler->max_local_count = MAX(compiler->max_local_count, itertor_symbol.index + 3);
+    // 编译 for-in 循环
+    DaiCompiler_emit1(compiler, DaiOpIterInit, itertor_symbol.index, stmt->start_line);
+    int for_start = compiler->chunk->count;
+    int jump_if_end_offset =
+        DaiCompiler_emitIterNext(compiler, itertor_symbol.index, stmt->start_line);
+    err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
+    if (err != NULL) {
+        return err;
+    }
+    {
+        // 跳转到循环开始
+        int jump_back =
+            DaiCompiler_emit2(compiler, DaiOpJumpBack, JUMP_PLACEHOLDER, stmt->start_line);
+        DaiCompiler_patchJumpBack(compiler, jump_back, for_start);
+        // 更新 jump 到循环末尾的偏移量
+        // DaiOpIterNext 比 jump 指令长度多 1 ，所以这里加 1 适配 jump 格式
+        DaiCompiler_patchJump(compiler, jump_if_end_offset + 1);
+    }
+    DaiCompiler_leaveLoop(compiler, for_start);
+    IntArray_pop(&compiler->scope_stack);
+    DaiSymbolTable_free(blockSymbolTable);
+    compiler->symbolTable = outer;
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileIntegerLiteral(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstIntegerLiteral* lit = (DaiAstIntegerLiteral*)node;
+    DaiValue integer          = INTEGER_VAL(lit->value);
+    DaiCompiler_emit2(
+        compiler, DaiOpConstant, DaiCompiler_addConstant(compiler, integer), lit->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileFloatLiteral(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstFloatLiteral* lit = (DaiAstFloatLiteral*)node;
+    DaiValue num            = FLOAT_VAL(lit->value);
+    DaiCompiler_emit2(
+        compiler, DaiOpConstant, DaiCompiler_addConstant(compiler, num), lit->start_line);
 
-            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->function);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileBoolean(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstBoolean* lit = (DaiAstBoolean*)node;
+    if (lit->value) {
+        DaiCompiler_emit(compiler, DaiOpTrue, lit->start_line);
+    } else {
+        DaiCompiler_emit(compiler, DaiOpFalse, lit->start_line);
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileNil(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstNil* lit = (DaiAstNil*)node;
+    DaiCompiler_emit(compiler, DaiOpNil, lit->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileIdentifier(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstIdentifier* id = (DaiAstIdentifier*)node;
+    DaiSymbol symbol;
+    bool found = DaiSymbolTable_resolve(compiler->symbolTable, id->value, &symbol);
+    // 全局变量可能是预定义状态
+    if (!found || (compiler->type == FunctionType_script && !symbol.defined)) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    id->start_line,
+                                    id->start_column,
+                                    "undefined variable: '%s'",
+                                    id->value);
+    }
+    DaiCompileError* err = DaiCompiler_loadSymbol(compiler, &symbol, id->start_line);
+    if (err != NULL) {
+        return err;
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compilePrefixExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstPrefixExpression* expr = (DaiAstPrefixExpression*)node;
+    DaiCompileError* err         = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+    if (err != NULL) {
+        return err;
+    }
+    if (strcmp(expr->operator, "-") == 0) {
+        DaiCompiler_emit(compiler, DaiOpMinus, expr->start_line);
+    } else if (strcmp(expr->operator, "!") == 0) {
+        DaiCompiler_emit(compiler, DaiOpBang, expr->start_line);
+    } else if (strcmp(expr->operator, "not") == 0) {
+        DaiCompiler_emit(compiler, DaiOpNot, expr->start_line);
+    } else if (strcmp(expr->operator, "~") == 0) {
+        DaiCompiler_emit(compiler, DaiOpBitwiseNot, expr->start_line);
+    } else {
+        return DaiCompileError_Newf(compiler->filename,
+                                    expr->start_line,
+                                    expr->start_column,
+                                    "unknown prefix operator: '%s'",
+                                    expr->operator);
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileInfixExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstInfixExpression* expr = (DaiAstInfixExpression*)node;
+    if (strcmp(expr->operator, "and") == 0 || strcmp(expr->operator, "or") == 0) {
+        return DaiCompiler_compileAndOrExpr(compiler, expr);
+    }
+
+    if (strcmp(expr->operator, "<") == 0) {
+        // 交换左右两边
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+        if (err != NULL) {
+            return err;
+        }
+        err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+        if (err != NULL) {
+            return err;
+        }
+        DaiCompiler_emit(compiler, DaiOpGreaterThan, expr->start_line);
+        return NULL;
+    }
+    if (strcmp(expr->operator, "<=") == 0) {
+        // 交换左右两边
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+        if (err != NULL) {
+            return err;
+        }
+        err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+        if (err != NULL) {
+            return err;
+        }
+        DaiCompiler_emit(compiler, DaiOpGreaterEqualThan, expr->start_line);
+        return NULL;
+    }
+
+    DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+    if (err != NULL) {
+        return err;
+    }
+    err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->right);
+    if (err != NULL) {
+        return err;
+    }
+    if (strcmp(expr->operator, "+") == 0) {
+        DaiCompiler_emit(compiler, DaiOpAdd, expr->start_line);
+    } else if (strcmp(expr->operator, "-") == 0) {
+        DaiCompiler_emit(compiler, DaiOpSub, expr->start_line);
+    } else if (strcmp(expr->operator, "*") == 0) {
+        DaiCompiler_emit(compiler, DaiOpMul, expr->start_line);
+    } else if (strcmp(expr->operator, "/") == 0) {
+        DaiCompiler_emit(compiler, DaiOpDiv, expr->start_line);
+    } else if (strcmp(expr->operator, ">") == 0) {
+        DaiCompiler_emit(compiler, DaiOpGreaterThan, expr->start_line);
+    } else if (strcmp(expr->operator, ">=") == 0) {
+        DaiCompiler_emit(compiler, DaiOpGreaterEqualThan, expr->start_line);
+    } else if (strcmp(expr->operator, "==") == 0) {
+        DaiCompiler_emit(compiler, DaiOpEqual, expr->start_line);
+    } else if (strcmp(expr->operator, "!=") == 0) {
+        DaiCompiler_emit(compiler, DaiOpNotEqual, expr->start_line);
+    } else if (strcmp(expr->operator, "%") == 0) {
+        DaiCompiler_emit(compiler, DaiOpMod, expr->start_line);
+    } else if (strcmp(expr->operator, "<<") == 0) {
+        DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpLeftShift, expr->start_line);
+    } else if (strcmp(expr->operator, ">>") == 0) {
+        DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpRightShift, expr->start_line);
+    } else if (strcmp(expr->operator, "&") == 0) {
+        DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseAnd, expr->start_line);
+    } else if (strcmp(expr->operator, "^") == 0) {
+        DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseXor, expr->start_line);
+    } else if (strcmp(expr->operator, "|") == 0) {
+        DaiCompiler_emit1(compiler, DaiOpBinary, BinaryOpBitwiseOr, expr->start_line);
+    } else {
+        return DaiCompileError_Newf(compiler->filename,
+                                    expr->left->end_line,
+                                    expr->left->end_column + 1,
+                                    "unknown infix operator: '%s'",
+                                    expr->operator);
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileFunctionLiteral(DaiCompiler* compiler, DaiAstBase* node) {
+    return DaiCompiler_compileFunction(compiler, node);
+}
+static DaiCompileError*
+DaiCompiler_compileStringLiteral(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstStringLiteral* lit = (DaiAstStringLiteral*)node;
+    // +1 -2 是为了去掉字符串前后的引号
+    DaiObjString* string =
+        dai_copy_string_intern(compiler->vm, lit->value + 1, strlen(lit->value) - 2);
+    DaiCompiler_emit2(compiler,
+                      DaiOpConstant,
+                      DaiCompiler_addConstant(compiler, OBJ_VAL(string)),
+                      lit->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileArrayLiteral(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstArrayLiteral* lit = (DaiAstArrayLiteral*)node;
+    for (int i = 0; i < lit->length; i++) {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)lit->elements[i]);
+        if (err != NULL) {
+            return err;
+        }
+    }
+    DaiCompiler_emit2(compiler, DaiOpArray, lit->length, lit->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileCallExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstCallExpression* expr = (DaiAstCallExpression*)node;
+    if (expr->arguments_count >= LOCAL_MAX) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    expr->start_line,
+                                    expr->start_column,
+                                    "too many arguments to call, got %d",
+                                    (int)expr->arguments_count);
+    }
+    switch (expr->function->type) {
+        case DaiAstType_DotExpression: {
+            DaiAstDotExpression* dot = (DaiAstDotExpression*)expr->function;
+            DaiCompileError* err     = DaiCompiler_compile(compiler, (DaiAstBase*)dot->left);
             if (err != NULL) {
                 return err;
             }
@@ -1440,188 +1395,269 @@ DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
                     return err;
                 }
             }
-            DaiCompiler_emit1(compiler, DaiOpCall, expr->arguments_count, expr->start_line);
-            break;
+            DaiObjString* name =
+                dai_copy_string_intern(compiler->vm, dot->name->value, strlen(dot->name->value));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+            DaiCompiler_emit3(
+                compiler, DaiOpCallMethod, index, expr->arguments_count, expr->start_line);
+            return NULL;
         }
-        case DaiAstType_Identifier: {
-            DaiAstIdentifier* id = (DaiAstIdentifier*)node;
-            DaiSymbol symbol;
-            bool found = DaiSymbolTable_resolve(compiler->symbolTable, id->value, &symbol);
-            // 全局变量可能是预定义状态
-            if (!found || (compiler->type == FunctionType_script && !symbol.defined)) {
+        case DaiAstType_ClassExpression: {
+            if (compiler->type != FunctionType_method &&
+                compiler->type != FunctionType_classMethod) {
                 return DaiCompileError_Newf(compiler->filename,
-                                            id->start_line,
-                                            id->start_column,
-                                            "undefined variable: '%s'",
-                                            id->value);
+                                            expr->start_line,
+                                            expr->start_column,
+                                            "cannot use 'class' outside of a method");
             }
-            DaiCompileError* err = DaiCompiler_loadSymbol(compiler, &symbol, id->start_line);
-            if (err != NULL) {
-                return err;
-            }
-            break;
-        }
-        case DaiAstType_FunctionLiteral: {
-            return DaiCompiler_compileFunction(compiler, node);
-        }
-        case DaiAstType_IntegerLiteral: {
-            DaiAstIntegerLiteral* lit = (DaiAstIntegerLiteral*)node;
-            DaiValue integer          = INTEGER_VAL(lit->value);
-            DaiCompiler_emit2(compiler,
-                              DaiOpConstant,
-                              DaiCompiler_addConstant(compiler, integer),
-                              lit->start_line);
-            break;
-        }
-        case DaiAstType_FloatLiteral: {
-            DaiAstFloatLiteral* lit = (DaiAstFloatLiteral*)node;
-            DaiValue num            = FLOAT_VAL(lit->value);
-            DaiCompiler_emit2(
-                compiler, DaiOpConstant, DaiCompiler_addConstant(compiler, num), lit->start_line);
-            break;
-        }
-        case DaiAstType_StringLiteral: {
-            DaiAstStringLiteral* lit = (DaiAstStringLiteral*)node;
-            // +1 -2 是为了去掉字符串前后的引号
-            DaiObjString* string =
-                dai_copy_string_intern(compiler->vm, lit->value + 1, strlen(lit->value) - 2);
-            DaiCompiler_emit2(compiler,
-                              DaiOpConstant,
-                              DaiCompiler_addConstant(compiler, OBJ_VAL(string)),
-                              lit->start_line);
-            break;
-        }
-        case DaiAstType_Boolean: {
-            DaiAstBoolean* lit = (DaiAstBoolean*)node;
-            if (lit->value) {
-                DaiCompiler_emit(compiler, DaiOpTrue, lit->start_line);
-            } else {
-                DaiCompiler_emit(compiler, DaiOpFalse, lit->start_line);
-            }
-            break;
-        }
-        case DaiAstType_Nil: {
-            DaiAstNil* lit = (DaiAstNil*)node;
-            DaiCompiler_emit(compiler, DaiOpNil, lit->start_line);
-            break;
-        }
-        case DaiAstType_ArrayLiteral: {
-            DaiAstArrayLiteral* lit = (DaiAstArrayLiteral*)node;
-            for (int i = 0; i < lit->length; i++) {
-                DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)lit->elements[i]);
-                if (err != NULL) {
-                    return err;
-                }
-            }
-            DaiCompiler_emit2(compiler, DaiOpArray, lit->length, lit->start_line);
-            break;
-        }
-        case DaiAstType_SubscriptExpression: {
-            DaiAstSubscriptExpression* sub = (DaiAstSubscriptExpression*)node;
-            DaiCompileError* err           = NULL;
-            err                            = DaiCompiler_compile(compiler, (DaiAstBase*)sub->left);
-            if (err != NULL) {
-                return err;
-            }
-            err = DaiCompiler_compile(compiler, (DaiAstBase*)sub->right);
-            if (err != NULL) {
-                return err;
-            }
-            DaiCompiler_emit(compiler, DaiOpSubscript, sub->start_line);
-            break;
-        }
-        case DaiAstType_MapLiteral: {
-            DaiAstMapLiteral* lit = (DaiAstMapLiteral*)node;
-            for (int i = 0; i < lit->length; i++) {
+            DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
+            for (int i = 0; i < expr->arguments_count; i++) {
                 DaiCompileError* err =
-                    DaiCompiler_compile(compiler, (DaiAstBase*)lit->pairs[i].key);
-                if (err != NULL) {
-                    return err;
-                }
-                err = DaiCompiler_compile(compiler, (DaiAstBase*)lit->pairs[i].value);
+                    DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
                 if (err != NULL) {
                     return err;
                 }
             }
-            DaiCompiler_emit2(compiler, DaiOpMap, lit->length, lit->start_line);
-            break;
-        }
-        case DaiAstType_ForInStatement: {
-            IntArray_push(&compiler->scope_stack, ScopeType_for);
-            IntArray_enter(&compiler->break_array);
-            IntArray_enter(&compiler->continue_array);
-            DaiAstForInStatement* stmt = (DaiAstForInStatement*)node;
-            DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->expression);
-            if (err != NULL) {
-                return err;
-            }
-            // 定义迭代器和迭代循环变量
-            DaiSymbolTable* outer            = compiler->symbolTable;
-            DaiSymbolTable* blockSymbolTable = DaiSymbolTable_NewEnclosed(outer);
-            compiler->symbolTable            = blockSymbolTable;
-            DaiSymbol itertor_symbol         = DaiSymbolTable_define(
-                blockSymbolTable, "//iterator", true);   // 一个特殊的变量名表示迭代器
-            if (stmt->i == NULL) {
-                DaiSymbolTable_define(blockSymbolTable, "//i", true);   // 占个位置保持一致
+            DaiAstClassExpression* classexpr = (DaiAstClassExpression*)expr->function;
+            if (compiler->type == FunctionType_classMethod) {
+                // 在类方法里面， class 类似于 self
+                DaiObjString* name = dai_copy_string_intern(
+                    compiler->vm, classexpr->name->value, strlen(classexpr->name->value));
+                int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                DaiCompiler_emit3(
+                    compiler, DaiOpCallSelfMethod, index, expr->arguments_count, expr->start_line);
             } else {
-                DaiSymbolTable_define(blockSymbolTable, stmt->i->value, false);
+                // 在实例方法里面，我们要从 self 里面获取类对象
+                DaiObjString* name_class =
+                    dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
+                int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
+                DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+                // 调用对象方法
+                DaiObjString* name = dai_copy_string_intern(
+                    compiler->vm, classexpr->name->value, strlen(classexpr->name->value));
+                index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+                DaiCompiler_emit3(
+                    compiler, DaiOpCallMethod, index, expr->arguments_count, expr->start_line);
+                return NULL;
             }
-            DaiSymbolTable_define(blockSymbolTable, stmt->e->value, false);
-            compiler->max_local_count = MAX(compiler->max_local_count, itertor_symbol.index + 3);
-            // 编译 for-in 循环
-            DaiCompiler_emit1(compiler, DaiOpIterInit, itertor_symbol.index, stmt->start_line);
-            int for_start = compiler->chunk->count;
-            int jump_if_end_offset =
-                DaiCompiler_emitIterNext(compiler, itertor_symbol.index, stmt->start_line);
-            err = DaiCompiler_compile(compiler, (DaiAstBase*)stmt->body);
-            if (err != NULL) {
-                return err;
+            return NULL;
+        }
+        case DaiAstType_SelfExpression: {
+            if (compiler->type != FunctionType_method) {
+                return DaiCompileError_Newf(compiler->filename,
+                                            expr->start_line,
+                                            expr->start_column,
+                                            "cannot use 'self' outside of a method");
             }
-            {
-                // 跳转到循环开始
-                int jump_back = DaiCompiler_emit2(compiler, DaiOpJumpBack, 9999, stmt->start_line);
-                DaiCompiler_patchJumpBack(compiler, jump_back, for_start);
-                // 更新 jump 到循环末尾的偏移量
-                // DaiOpIterNext 比 jump 指令长度多 1 ，所以这里加 1 适配 jump 格式
-                DaiCompiler_patchJump(compiler, jump_if_end_offset + 1);
-            }
-            // 更新 break 跳转指令的偏移量
-            {
-                int count = compiler->break_array.count;
-                for (int i = 0; i < count; i++) {
-                    int jump = IntArray_popCurrentLevel(&compiler->break_array);
-                    if (jump == -1) {
-                        break;
-                    }
-                    DaiCompiler_patchJump(compiler, jump);
+            // 塞一个 nil 到栈顶，代替原本的函数对象入栈操作
+            DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
+            for (int i = 0; i < expr->arguments_count; i++) {
+                DaiCompileError* err =
+                    DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
+                if (err != NULL) {
+                    return err;
                 }
             }
-            // 更新 continue 跳转指令的偏移量
-            {
-                int count = compiler->continue_array.count;
-                for (int i = 0; i < count; i++) {
-                    int jump = IntArray_popCurrentLevel(&compiler->continue_array);
-                    if (jump == -1) {
-                        break;
-                    }
-                    DaiCompiler_patchJumpBack(compiler, jump, for_start);
+            DaiAstSelfExpression* selfexpr = (DaiAstSelfExpression*)expr->function;
+            DaiObjString* name             = dai_copy_string_intern(
+                compiler->vm, selfexpr->name->value, strlen(selfexpr->name->value));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+            DaiCompiler_emit3(
+                compiler, DaiOpCallSelfMethod, index, expr->arguments_count, expr->start_line);
+            return NULL;
+        }
+        case DaiAstType_SuperExpression: {
+            DaiCompiler_emit(compiler, DaiOpNil, expr->start_line);
+            for (int i = 0; i < expr->arguments_count; i++) {
+                DaiCompileError* err =
+                    DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
+                if (err != NULL) {
+                    return err;
                 }
             }
-            DaiSymbolTable_free(blockSymbolTable);
-            compiler->symbolTable = outer;
-            IntArray_leave(&compiler->break_array);
-            IntArray_leave(&compiler->continue_array);
-            IntArray_pop(&compiler->scope_stack);
-            break;
+            DaiAstSelfExpression* superexpr = (DaiAstSelfExpression*)expr->function;
+            DaiObjString* name              = dai_copy_string_intern(
+                compiler->vm, superexpr->name->value, strlen(superexpr->name->value));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+            DaiCompiler_emit3(
+                compiler, DaiOpCallSuperMethod, index, expr->arguments_count, expr->start_line);
+            return NULL;
         }
         default: {
-            fprintf(stderr, "unknown node type: %s\n", DaiAstType_string(node->type));
-            abort();
+            break;
+        }
+    }
+
+    DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->function);
+    if (err != NULL) {
+        return err;
+    }
+    for (int i = 0; i < expr->arguments_count; i++) {
+        err = DaiCompiler_compile(compiler, (DaiAstBase*)expr->arguments[i]);
+        if (err != NULL) {
+            return err;
+        }
+    }
+    DaiCompiler_emit1(compiler, DaiOpCall, expr->arguments_count, expr->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileDotExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstDotExpression* expr = (DaiAstDotExpression*)node;
+    DaiCompileError* err      = DaiCompiler_compile(compiler, (DaiAstBase*)expr->left);
+    if (err != NULL) {
+        return err;
+    }
+    DaiObjString* name =
+        dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
+    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+    DaiCompiler_emit2(compiler, DaiOpGetProperty, index, expr->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileSelfExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstSelfExpression* expr = (DaiAstSelfExpression*)node;
+    if (compiler->type != FunctionType_method) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    expr->start_line,
+                                    expr->start_column,
+                                    "cannot use 'self' outside of a method");
+    }
+    if (expr->name) {
+        DaiObjString* name =
+            dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
+        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+        DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+    } else {
+        DaiCompiler_emit1(compiler, DaiOpGetLocal, 0, expr->start_line);
+    }
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileClassExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstClassExpression* expr = (DaiAstClassExpression*)node;
+    if (compiler->type != FunctionType_method && compiler->type != FunctionType_classMethod) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    expr->start_line,
+                                    expr->start_column,
+                                    "cannot use 'class' outside of a method");
+    }
+    if (compiler->type == FunctionType_classMethod) {
+        // 在类方法里面， class 类似于 self
+        if (expr->name) {
+            DaiObjString* name =
+                dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
+            int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+            DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+        } else {
+            DaiCompiler_emit1(compiler, DaiOpGetLocal, 0, expr->start_line);
+        }
+    } else {
+        // 在实例方法里面，我们要从 self 里面获取类对象
+        DaiObjString* name_class =
+            dai_copy_string_intern(compiler->vm, "__class__", strlen("__class__"));
+        int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name_class));
+        DaiCompiler_emit2(compiler, DaiOpGetSelfProperty, index, expr->start_line);
+        if (expr->name) {
+            DaiObjString* name =
+                dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
+            index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+            DaiCompiler_emit2(compiler, DaiOpGetProperty, index, expr->start_line);
         }
     }
     return NULL;
 }
+static DaiCompileError*
+DaiCompiler_compileSuperExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstSuperExpression* expr = (DaiAstSuperExpression*)node;
+    if (compiler->type != FunctionType_method && compiler->type != FunctionType_classMethod) {
+        return DaiCompileError_Newf(compiler->filename,
+                                    expr->start_line,
+                                    expr->start_column,
+                                    "cannot use 'super' outside of a method");
+    }
+    DaiObjString* name =
+        dai_copy_string_intern(compiler->vm, expr->name->value, strlen(expr->name->value));
+    int index = DaiChunk_addConstant(compiler->chunk, OBJ_VAL(name));
+    DaiCompiler_emit2(compiler, DaiOpGetSuperProperty, index, expr->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileSubscriptExpression(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstSubscriptExpression* sub = (DaiAstSubscriptExpression*)node;
+    DaiCompileError* err           = NULL;
+    err                            = DaiCompiler_compile(compiler, (DaiAstBase*)sub->left);
+    if (err != NULL) {
+        return err;
+    }
+    err = DaiCompiler_compile(compiler, (DaiAstBase*)sub->right);
+    if (err != NULL) {
+        return err;
+    }
+    DaiCompiler_emit(compiler, DaiOpSubscript, sub->start_line);
+    return NULL;
+}
+static DaiCompileError*
+DaiCompiler_compileMapLiteral(DaiCompiler* compiler, DaiAstBase* node) {
+    DaiAstMapLiteral* lit = (DaiAstMapLiteral*)node;
+    for (int i = 0; i < lit->length; i++) {
+        DaiCompileError* err = DaiCompiler_compile(compiler, (DaiAstBase*)lit->pairs[i].key);
+        if (err != NULL) {
+            return err;
+        }
+        err = DaiCompiler_compile(compiler, (DaiAstBase*)lit->pairs[i].value);
+        if (err != NULL) {
+            return err;
+        }
+    }
+    DaiCompiler_emit2(compiler, DaiOpMap, lit->length, lit->start_line);
+    return NULL;
+}
 
+typedef DaiCompileError* (*compile_ast_func)(DaiCompiler* compiler, DaiAstBase* node);
+static compile_ast_func compile_ast_func_table[] = {
+    [DaiAstType_program]              = DaiCompiler_compileProgram,
+    [DaiAstType_VarStatement]         = DaiCompiler_compileVarStatement,
+    [DaiAstType_ReturnStatement]      = DaiCompiler_compileReturnStatement,
+    [DaiAstType_ExpressionStatement]  = DaiCompiler_compileExpressionStatement,
+    [DaiAstType_IfStatement]          = DaiCompiler_compileIfStatement,
+    [DaiAstType_BlockStatement]       = DaiCompiler_compileBlockStatement,
+    [DaiAstType_AssignStatement]      = DaiCompiler_compileAssignStatement,
+    [DaiAstType_FunctionStatement]    = DaiCompiler_compileFunctionStatement,
+    [DaiAstType_ClassStatement]       = DaiCompiler_compileClassStatement,
+    [DaiAstType_InsVarStatement]      = DaiCompiler_compileInsVarStatement,
+    [DaiAstType_MethodStatement]      = DaiCompiler_compileMethodStatement,
+    [DaiAstType_ClassVarStatement]    = DaiCompiler_compileClassVarStatement,
+    [DaiAstType_ClassMethodStatement] = DaiCompiler_compileClassMethodStatement,
+    [DaiAstType_WhileStatement]       = DaiCompiler_compileWhileStatement,
+    [DaiAstType_ContinueStatement]    = DaiCompiler_compileContinueStatement,
+    [DaiAstType_BreakStatement]       = DaiCompiler_compileBreakStatement,
+    [DaiAstType_ForInStatement]       = DaiCompiler_compileForInStatement,
+    [DaiAstType_IntegerLiteral]       = DaiCompiler_compileIntegerLiteral,
+    [DaiAstType_FloatLiteral]         = DaiCompiler_compileFloatLiteral,
+    [DaiAstType_Boolean]              = DaiCompiler_compileBoolean,
+    [DaiAstType_Nil]                  = DaiCompiler_compileNil,
+    [DaiAstType_Identifier]           = DaiCompiler_compileIdentifier,
+    [DaiAstType_PrefixExpression]     = DaiCompiler_compilePrefixExpression,
+    [DaiAstType_InfixExpression]      = DaiCompiler_compileInfixExpression,
+    [DaiAstType_FunctionLiteral]      = DaiCompiler_compileFunctionLiteral,
+    [DaiAstType_StringLiteral]        = DaiCompiler_compileStringLiteral,
+    [DaiAstType_ArrayLiteral]         = DaiCompiler_compileArrayLiteral,
+    [DaiAstType_CallExpression]       = DaiCompiler_compileCallExpression,
+    [DaiAstType_DotExpression]        = DaiCompiler_compileDotExpression,
+    [DaiAstType_SelfExpression]       = DaiCompiler_compileSelfExpression,
+    [DaiAstType_ClassExpression]      = DaiCompiler_compileClassExpression,
+    [DaiAstType_SuperExpression]      = DaiCompiler_compileSuperExpression,
+    [DaiAstType_SubscriptExpression]  = DaiCompiler_compileSubscriptExpression,
+    [DaiAstType_MapLiteral]           = DaiCompiler_compileMapLiteral,
+};
+
+static DaiCompileError*
+DaiCompiler_compile(DaiCompiler* compiler, DaiAstBase* node) {
+    return compile_ast_func_table[node->type](compiler, node);
+}
+
+// #endregion
 
 static int
 DaiCompiler_addConstant(const DaiCompiler* compiler, DaiValue value) {
