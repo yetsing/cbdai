@@ -305,10 +305,12 @@ DaiObjError*
 DaiObjMap_New(DaiVM* vm, const DaiValue* values, int length, DaiObjMap** map_ret) {
     DaiObjMap* map     = ALLOCATE_OBJ(vm, DaiObjMap, DaiObjType_map);
     map->obj.operation = &map_operation;
-    map->map           = hashmap_new(sizeof(DaiObjMapEntry),
+    uint64_t seed0, seed1;
+    DaiVM_getSeed2(vm, &seed0, &seed1);
+    map->map = hashmap_new(sizeof(DaiObjMapEntry),
                            length,
-                           0,
-                           0,
+                           seed0,
+                           seed1,
                            DaiObjMapEntry_hash,
                            DaiObjMapEntry_compare,
                            NULL,

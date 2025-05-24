@@ -159,7 +159,7 @@ typedef struct {
 
     IntArray
         scope_stack;   // 记录作用域，用来判断一些语句的合法性，比如 break continue 必须在循环中
-    IntArray break_array;   // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
+    IntArray break_array;      // 记录 break 跳转指令的位置，用于后续更新跳转偏移量
     IntArray continue_array;   // 记录 continue 跳转指令的位置，用于后续更新跳转偏移量
 
     int max_local_count;   // 记录最大的局部变量数量，用于分配栈空间

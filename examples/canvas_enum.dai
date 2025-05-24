@@ -259,9 +259,9 @@ class Keycode {
 
 
 class MouseButton {
-    class con left = 0;
-    class con middle = 1;
-    class con right = 2;
+    class con left = 1;
+    class con middle = 2;
+    class con right = 3;
 }
 
 

@@ -9,12 +9,10 @@
 
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
+#include <plutovg.h>
 
+#include "dai_canvas_keycode.h"
 #include "dai_object.h"
-#include "dai_objects/dai_object_base.h"
-#include "dai_objects/dai_object_error.h"
-#include "dai_objects/dai_object_string.h"
-#include "dai_objects/dai_object_struct.h"
 #include "dai_value.h"
 #include "dai_vm.h"
 #include "dai_windows.h"   // IWYU pragma: keep
@@ -29,6 +27,9 @@ static const char* rect_struct_name           = "canvas.Rect";
 static const char* point_struct_name          = "canvas.Point";
 static const char* keyboard_event_struct_name = "canvas.KeyboardEvent";
 static const char* mouse_event_struct_name    = "canvas.MouseEvent";
+static const char* keycode_struct_name        = "canvas.Keycode";
+static const char* mousebutton_struct_name    = "canvas.MouseButton";
+static const char* flipmode_struct_name       = "canvas.FlipMode";
 static bool init_done                         = false;
 
 #define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
@@ -983,6 +984,84 @@ builtin_canvas_fillCircle(DaiVM* vm, __attribute__((unused)) DaiValue receiver, 
     return NIL_VAL;
 }
 
+static void
+write_cb(void* closure, void* data, int size) {
+    SDL_Texture** texture_p = (SDL_Texture**)closure;
+    SDL_IOStream* stream    = SDL_IOFromConstMem(data, size);
+    *texture_p              = IMG_LoadTextureTyped_IO(renderer, stream, true, "PNG");
+}
+
+//
+static DaiValue
+builtin_canvas_smile(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                     DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.smile() expected 0 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    CHECK_INIT();
+    const int width  = 150;
+    const int height = 150;
+
+    const float center_x     = width / 2.f;
+    const float center_y     = height / 2.f;
+    const float face_radius  = 70;
+    const float mouth_radius = 50;
+    const float eye_radius   = 10;
+    const float eye_offset_x = 25;
+    const float eye_offset_y = 20;
+    const float eye_x        = center_x - eye_offset_x;
+    const float eye_y        = center_y - eye_offset_y;
+
+    plutovg_surface_t* surface = plutovg_surface_create(width, height);
+    plutovg_canvas_t* canvas   = plutovg_canvas_create(surface);
+
+    plutovg_canvas_save(canvas);
+    plutovg_canvas_arc(canvas, center_x, center_y, face_radius, 0, PLUTOVG_TWO_PI, 0);
+    plutovg_canvas_set_rgb(canvas, 1, 1, 0);
+    plutovg_canvas_fill_preserve(canvas);
+    plutovg_canvas_set_rgb(canvas, 0, 0, 0);
+    plutovg_canvas_set_line_width(canvas, 5);
+    plutovg_canvas_stroke(canvas);
+    plutovg_canvas_restore(canvas);
+
+    plutovg_canvas_save(canvas);
+    plutovg_canvas_arc(canvas, eye_x, eye_y, eye_radius, 0, PLUTOVG_TWO_PI, 0);
+    plutovg_canvas_arc(canvas, center_x + eye_offset_x, eye_y, eye_radius, 0, PLUTOVG_TWO_PI, 0);
+    plutovg_canvas_set_rgb(canvas, 0, 0, 0);
+    plutovg_canvas_fill(canvas);
+    plutovg_canvas_restore(canvas);
+
+    plutovg_canvas_save(canvas);
+    plutovg_canvas_arc(canvas, center_x, center_y, mouth_radius, 0, PLUTOVG_PI, 0);
+    plutovg_canvas_set_rgb(canvas, 0, 0, 0);
+    plutovg_canvas_set_line_width(canvas, 5);
+    plutovg_canvas_stroke(canvas);
+    plutovg_canvas_restore(canvas);
+
+    SDL_Texture* texture = NULL;
+    plutovg_surface_write_to_png_stream(surface, write_cb, &texture);
+    if (texture == NULL) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not create texture! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    // Draw the texture to the screen
+    SDL_FRect srcrect = {.x = 0, .y = 0, .w = width, .h = height};
+    SDL_FRect dstrect = {.x = 0, .y = 0, .w = width, .h = height};
+    if (!SDL_RenderTexture(renderer, texture, &srcrect, &dstrect)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not draw image! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    SDL_DestroyTexture(texture);
+    plutovg_canvas_destroy(canvas);
+    plutovg_surface_destroy(surface);
+    return NIL_VAL;
+}
+
+
 
 static DaiObjBuiltinFunction canvas_funcs[] = {
     {
@@ -1052,11 +1131,72 @@ static DaiObjBuiltinFunction canvas_funcs[] = {
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "smile",
+        .function = builtin_canvas_smile,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name = NULL,
     },
 };
 
 // #endregion
+
+static DaiSimpleObjectStruct*
+keycode_new(DaiVM* vm) {
+    DaiSimpleObjectStruct* keycode = DaiSimpleObjectStruct_New(vm, keycode_struct_name, true);
+    if (keycode == NULL) {
+        fprintf(stderr, "Failed to create keycode struct\n");
+        abort();
+    }
+
+    for (size_t i = 0; i < sizeof(keycodes) / sizeof(keycodes[0]); i++) {
+        DaiObjError* err = DaiSimpleObjectStruct_add(
+            vm, keycode, keycodes[i].name, INTEGER_VAL(keycodes[i].value));
+        if (err != NULL) {
+            fprintf(stderr, "Failed to add keycode %s: %s\n", keycodes[i].name, err->message);
+            abort();
+        }
+    }
+    return keycode;
+}
+
+static DaiSimpleObjectStruct*
+mousebutton_new(DaiVM* vm) {
+    DaiSimpleObjectStruct* mousebutton =
+        DaiSimpleObjectStruct_New(vm, mousebutton_struct_name, true);
+    if (mousebutton == NULL) {
+        fprintf(stderr, "Failed to create mousebutton struct\n");
+        abort();
+    }
+    const char* names[] = {"left", "middle", "right"};
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        DaiObjError* err = DaiSimpleObjectStruct_add(vm, mousebutton, names[i], INTEGER_VAL(i + 1));
+        if (err != NULL) {
+            fprintf(stderr, "Failed to add mousebutton %s: %s\n", names[i], err->message);
+            abort();
+        }
+    }
+    return mousebutton;
+}
+
+static DaiSimpleObjectStruct*
+flipmode_new(DaiVM* vm) {
+    DaiSimpleObjectStruct* flipmode = DaiSimpleObjectStruct_New(vm, flipmode_struct_name, true);
+    if (flipmode == NULL) {
+        fprintf(stderr, "Failed to create flipmode struct\n");
+        abort();
+    }
+    const char* names[] = {"none", "horizontal", "vertical"};
+    for (size_t i = 0; i < sizeof(names) / sizeof(names[0]); i++) {
+        DaiObjError* err = DaiSimpleObjectStruct_add(vm, flipmode, names[i], INTEGER_VAL(i));
+        if (err != NULL) {
+            fprintf(stderr, "Failed to add flipmode %s: %s\n", names[i], err->message);
+            abort();
+        }
+    }
+    return flipmode;
+}
 
 static DaiObjModule*
 create_canvas_module(DaiVM* vm) {
@@ -1089,6 +1229,13 @@ create_canvas_module(DaiVM* vm) {
     DaiObjModule_add_global(module, "_MousedownCallbacks", OBJ_VAL(mousedown_callbacks));
     DaiObjModule_add_global(module, "_MouseupCallbacks", OBJ_VAL(mouseup_callbacks));
     DaiObjModule_add_global(module, "_MousemotionCallbacks", OBJ_VAL(mousemotion_callbacks));
+
+    DaiSimpleObjectStruct* keycode = keycode_new(vm);
+    DaiObjModule_add_global(module, "Keycode", OBJ_VAL(keycode));
+    DaiSimpleObjectStruct* mousebutton = mousebutton_new(vm);
+    DaiObjModule_add_global(module, "MouseButton", OBJ_VAL(mousebutton));
+    DaiSimpleObjectStruct* flipmode = flipmode_new(vm);
+    DaiObjModule_add_global(module, "FlipMode", OBJ_VAL(flipmode));
     return module;
 }
 

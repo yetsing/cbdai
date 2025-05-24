@@ -52,6 +52,7 @@ target_link_options(santest PRIVATE -fsanitize=address)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/SDL EXCLUDE_FROM_ALL)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/SDL_image EXCLUDE_FROM_ALL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/lib/plutovg EXCLUDE_FROM_ALL)
 
 # set the output directory for built objects.
 # This makes sure that the dynamic library goes into the build directory automatically.
@@ -67,7 +68,7 @@ else()
 endif()
 
 set(SDL_STATIC ON)
-target_link_libraries(dai PRIVATE m cwalk SDL3_image::SDL3_image SDL3::SDL3)
+target_link_libraries(dai PRIVATE m cwalk SDL3_image::SDL3_image SDL3::SDL3 plutovg)
 
 if(WIN32)
     if(MSVC)

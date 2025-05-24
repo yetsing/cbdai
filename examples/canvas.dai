@@ -28,14 +28,13 @@ fn draw() {
     elif (b <= 0) {
         step = 1;
     }
+    canvas.smile();
 }
 
 
 fn main() {
     print("Canvas example");
-    // canvas_enum.dai 包含 canvas 的枚举值，包括键盘 code 和鼠标 button
-    con canvas_enum = import("canvas_enum.dai");
-    canvas.init(1024, 1024);
+    canvas.init(600, 600);
 
     // canvas.addEventListener(event_type, callback) 添加事件监听器
     // event_type 事件类型
@@ -65,10 +64,11 @@ fn main() {
                 "Meta:",
                 event.metaKey,
             );
-            if (event.code == canvas_enum.Keycode.key_a) {
+            // Keycode 枚举值可以看 canvas_enum.dai
+            if (event.code == canvas.Keycode.key_a) {
                 print("    A pressed");
             }
-            elif (event.code == canvas_enum.Keycode.key_escape) {
+            elif (event.code == canvas.Keycode.key_escape) {
                 print("    Escape pressed");
                 // 调用 canvas.quit() 退出 canvas
                 canvas.quit();
@@ -78,8 +78,16 @@ fn main() {
             // 鼠标事件 MouseEvent 包括下列字段
             //   x float 鼠标在 canvas 上的 x 坐标
             //   y float 鼠标在 canvas 上的 y 坐标
-            //   button int 鼠标按键 0:左键 1:中键 2:右键
-            print(event, "Mouse pressed:", event.x, event.y, event.button);
+            //   button canvas.MouseButton 鼠标按键
+            if (event.button == canvas.MouseButton.left) {
+                print(event, "Left mouse pressed:", event.x, event.y);
+            }
+            elif (event.button == canvas.MouseButton.middle) {
+                print(event, "Middle mouse pressed:", event.x, event.y);
+            }
+            elif (event.button == canvas.MouseButton.right) {
+                print(event, "Right mouse pressed:", event.x, event.y);
+            }
         });
     // canvas.addEventListener(canvas.EventMouseMotion, fn(event){
     //     print(event, "Mouse move:", event.x, event.y, event.button);

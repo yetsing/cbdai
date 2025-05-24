@@ -11,11 +11,12 @@ def generate_c():
             continue
         parts = line.strip().split()
         name = parts[1]
-        value = parts[2]
-        s = f"{{.name = \"{name[len('SDLK_'):].lower()}\", .value = {value}}},"
+        keyname = "key_" + underscore_to_lower_camelcase(name[len("SDLK_") :])
+        s = f"{{.name = \"{keyname}\", .value = {name}}},"
         items.append(s)
     c_template = f"""
     #include <stdint.h>
+    #include <SDL3/SDL_keycode.h>
     typedef struct {{
         const char *name;
         uint32_t value;
@@ -25,7 +26,7 @@ def generate_c():
         {"\n".join(items)}
     }};
     """
-    c_file = script_dir.parent / "dai" / "dai_keycode.h"
+    c_file = script_dir.parent / "dai" / "dai_canvas_keycode.h"
     c_file.write_text(c_template)
 
 
@@ -70,8 +71,8 @@ class EventType {{
 
 
 def main():
-    # generate_c()
-    generate_dai()
+    generate_c()
+    # generate_dai()
 
 
 if __name__ == "__main__":
