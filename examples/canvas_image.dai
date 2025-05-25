@@ -2,7 +2,7 @@ var loop = 0;
 var index = 0;
 
 
-fn draw() {
+fn draw(canvas) {
     loop += 1;
     if (loop % 30 == 0) {
         index = (index + 1) % 4;
@@ -40,39 +40,37 @@ fn draw() {
         );
     }
     elif (index == 3) {
-        // drawImageEx(image, srcrect, dstrect, angle, center, flip)
+        // canvas.drawImageEx(image, srcrect, dstrect, angle, center, flip)
         //   image 图片
         //   srcrect 源矩形区域
         //   dstrect 目标矩形区域
         //   angle 旋转角度
         //   center 旋转中心
         //   flip 翻转方式， canvas.FlipMode: none-无, horizontal-水平, vertical-垂直
-        var srcrect = canvas.Rect(0, 0, img.width, img.height);
-        var dstrect = canvas.Rect(0, 0, img.width, img.height);
+        var srcrect = Canvas.Rect(0, 0, img.width, img.height);
+        var dstrect = Canvas.Rect(0, 0, img.width, img.height);
         var angle = 45;
-        var center = canvas.Point(img.width / 2, img.height / 2);
-        var flip = canvas.FlipMode.none;
+        var center = Canvas.Point(img.width / 2, img.height / 2);
+        var flip = Canvas.FlipMode.none;
         canvas.drawImageEx(img, srcrect, dstrect, angle, center, flip);
     }
-
-    // example.jpeg 来源
-    // <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
+// example.jpeg 来源
+// <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
 }
-
 
 fn main() {
     print("Canvas example");
-    canvas.init(600, 800);  // Reduced canvas size
+    con canvas = Canvas.new(1024, 600);  // Reduced canvas size
 
     // canvas.addEventListener(event_type, callback) 添加事件监听器
     // event_type 事件类型
-    //      canvas.EventKeyDown 键盘按下事件
-    //      canvas.EventKeyUp 键盘抬起事件
-    //      canvas.EventMouseDown 鼠标按下事件
-    //      canvas.EventMouseUp 鼠标抬起事件
-    //      canvas.EventMouseMotion 鼠标移动事件
+    //      EventKeyDown 键盘按下事件
+    //      EventKeyUp 键盘抬起事件
+    //      EventMouseDown 鼠标按下事件
+    //      EventMouseUp 鼠标抬起事件
+    //      EventMouseMotion 鼠标移动事件
     // callback 回调函数接受一个参数 event
-    canvas.addEventListener(canvas.EventKeyDown, fn(event) {
+    canvas.addEventListener(Canvas.EventKeyDown, fn(event) {
             // 键盘事件 KeyBoardEvent 包括下列字段
             //   code int 键码
             //   key str 字符串键值
@@ -92,10 +90,10 @@ fn main() {
                 "Meta:",
                 event.metaKey,
             );
-            if (event.code == canvas.Keycode.key_a) {
+            if (event.code == Canvas.Keycode.key_a) {
                 print("    A pressed");
             }
-            elif (event.code == canvas.Keycode.key_escape) {
+            elif (event.code == Canvas.Keycode.key_escape) {
                 print("    Escape pressed");
                 // 调用 canvas.quit() 退出 canvas
                 canvas.quit();
