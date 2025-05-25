@@ -7,6 +7,7 @@
 #include "dai_builtin.h"
 #include "dai_chunk.h"
 #include "dai_object.h"
+#include "dai_objects/dai_object_base.h"
 #include "dai_symboltable.h"
 #include "dai_table.h"
 #include "dai_utils.h"
@@ -74,6 +75,8 @@ typedef struct _DaiVM {
     DaiObjMap* modules;
 
     uint8_t seed[16];   // 随机数种子
+
+    size_t object_stats[DaiObjType_count];
 } DaiVM;
 
 void

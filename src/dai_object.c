@@ -1,4 +1,5 @@
 #include "dai_object.h"
+#include "dai_common.h"
 
 
 const char*
@@ -29,6 +30,7 @@ dai_object_ts(DaiValue value) {
         case DaiObjType_module: return "module";
         case DaiObjType_tuple: return "tuple";
         case DaiObjType_struct: return "struct";
+        case DaiObjType_count: unreachable();
     }
     return "unknown";
 }

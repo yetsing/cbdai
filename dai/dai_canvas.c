@@ -13,30 +13,35 @@
 
 #include "dai_canvas_keycode.h"
 #include "dai_object.h"
+#include "dai_objects/dai_object_struct.h"
+#include "dai_objects/dai_object_tuple.h"
 #include "dai_value.h"
 #include "dai_vm.h"
 #include "dai_windows.h"   // IWYU pragma: keep
 
+#define CANVAS_MODULE_NAME "Canvas"
+
 static SDL_Window* window                     = NULL;
 static SDL_Renderer* renderer                 = NULL;
-static const char* module_name                = "canvas";
-static bool is_running                        = false;
+static const char* module_name                = CANVAS_MODULE_NAME;
 static DaiObjModule* canvas_module            = NULL;
-static const char* texture_name               = "canvas.Texture";
-static const char* rect_struct_name           = "canvas.Rect";
-static const char* point_struct_name          = "canvas.Point";
-static const char* keyboard_event_struct_name = "canvas.KeyboardEvent";
-static const char* mouse_event_struct_name    = "canvas.MouseEvent";
-static const char* keycode_struct_name        = "canvas.Keycode";
-static const char* mousebutton_struct_name    = "canvas.MouseButton";
-static const char* flipmode_struct_name       = "canvas.FlipMode";
+static const char* canvas_name                = CANVAS_MODULE_NAME "Canvas";
+static const char* texture_name               = CANVAS_MODULE_NAME "Texture";
+static const char* rect_struct_name           = CANVAS_MODULE_NAME "Rect";
+static const char* point_struct_name          = CANVAS_MODULE_NAME "Point";
+static const char* keyboard_event_struct_name = CANVAS_MODULE_NAME "KeyboardEvent";
+static const char* mouse_event_struct_name    = CANVAS_MODULE_NAME "MouseEvent";
+static const char* keycode_struct_name        = CANVAS_MODULE_NAME "Keycode";
+static const char* mousebutton_struct_name    = CANVAS_MODULE_NAME "MouseButton";
+static const char* flipmode_struct_name       = CANVAS_MODULE_NAME "FlipMode";
 static bool init_done                         = false;
 
+
 #define STRING_NAME(name) dai_copy_string_intern(vm, name, strlen(name))
-#define CHECK_INIT()                                                       \
-    if (window == NULL) {                                                  \
-        DaiObjError* err = DaiObjError_Newf(vm, "canvas not initialized"); \
-        return OBJ_VAL(err);                                               \
+#define CHECK_INIT()                                                                    \
+    if (window == NULL) {                                                               \
+        DaiObjError* err = DaiObjError_Newf(vm, CANVAS_MODULE_NAME " not initialized"); \
+        return OBJ_VAL(err);                                                            \
     }
 
 
@@ -142,6 +147,46 @@ static struct DaiObjOperation mouse_event_operation = {
     .get_method_func    = NULL,
 };
 
+// #endregion
+
+// #region canvas struct
+
+typedef struct {
+    SDL_Color color;
+} Style;
+
+typedef struct {
+    DAI_OBJ_STRUCT_BASE
+    int width;
+    int height;
+    Style fill_style;
+
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+
+    bool running;
+
+    DaiObjTuple* keydown_callbacks;
+    DaiObjTuple* keyup_callbacks;
+    DaiObjTuple* mousedown_callbacks;
+    DaiObjTuple* mouseup_callbacks;
+    DaiObjTuple* mousemotion_callbacks;
+} CanvasStruct;
+
+// #region canvas event handle
+
+static DaiObjTuple*
+Canvas_get_event_callbacks(CanvasStruct* canvas, int64_t event_type) {
+    switch (event_type) {
+        case SDL_EVENT_KEY_DOWN: return canvas->keydown_callbacks;
+        case SDL_EVENT_KEY_UP: return canvas->keyup_callbacks;
+        case SDL_EVENT_MOUSE_BUTTON_DOWN: return canvas->mousedown_callbacks;
+        case SDL_EVENT_MOUSE_BUTTON_UP: return canvas->mouseup_callbacks;
+        case SDL_EVENT_MOUSE_MOTION: return canvas->mousemotion_callbacks;
+        default: return NULL;
+    }
+}
+
 static DaiValue
 convert_sdl_event(DaiVM* vm, SDL_Event event) {
     switch (event.type) {
@@ -194,26 +239,14 @@ convert_sdl_event(DaiVM* vm, SDL_Event event) {
     return NIL_VAL;
 }
 
-static DaiObjTuple*
-get_event_callbacks(int64_t event_type) {
-    switch (event_type) {
-        case SDL_EVENT_KEY_DOWN: return keydown_callbacks;
-        case SDL_EVENT_KEY_UP: return keyup_callbacks;
-        case SDL_EVENT_MOUSE_BUTTON_DOWN: return mousedown_callbacks;
-        case SDL_EVENT_MOUSE_BUTTON_UP: return mouseup_callbacks;
-        case SDL_EVENT_MOUSE_MOTION: return mousemotion_callbacks;
-        default: return NULL;
-    }
-}
-
 static DaiValue
-handle_event(DaiVM* vm) {
+Canvas_handle_event(DaiVM* vm, CanvasStruct* canvas) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         DaiValue dai_event = convert_sdl_event(vm, event);
         switch (event.type) {
             case SDL_EVENT_QUIT: {
-                is_running = false;
+                canvas->running = false;
                 break;
             }
             case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -221,7 +254,7 @@ handle_event(DaiVM* vm) {
             case SDL_EVENT_MOUSE_MOTION:
             case SDL_EVENT_KEY_UP:
             case SDL_EVENT_KEY_DOWN: {
-                DaiObjTuple* callbacks = get_event_callbacks(event.type);
+                DaiObjTuple* callbacks = Canvas_get_event_callbacks(canvas, event.type);
                 assert(callbacks != NULL);
                 int count = DaiObjTuple_length(callbacks);
                 for (int i = 0; i < count; i++) {
@@ -241,174 +274,92 @@ handle_event(DaiVM* vm) {
 // #endregion
 
 
-// #region canvas module functions
-// canvas module functions:
-//      init(width, height)
-//      fillRect(x, y, width, height, r, g, b, a)
-//      clear()
-//      present()
-//      run(ms, callback)
-//      quit()
-//      addEventListener(event, callback)
-//      loadImage(path)
-//      drawImage(...)
-//      Rect(x, y, width, height)
-//      Point(x, y)
-//      drawImageEx(image, srcrect, dstrect, angle, center, flip)
-//      fillCircle(center, radius, r, g, b, a)
+// #region canvas struct methods
 
+// setFillColor(r, g, b)
+// setFillColor(r, g, b, a)
 static DaiValue
-builtin_canvas_init(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
-                    DaiValue* argv) {
-    if (argc != 2) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.init() expected 2 arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    if (!IS_INTEGER(argv[0]) || !IS_INTEGER(argv[1])) {
+Canvas_setFillColor(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 3 && argc != 4) {
         DaiObjError* err = DaiObjError_Newf(
-            vm, "canvas.init() expected integer arguments, but got %s", dai_value_ts(argv[0]));
+            vm, "canvas.setFillColor() expected 3 or 4 arguments, but got %d", argc);
         return OBJ_VAL(err);
     }
-    if (init_done || window != NULL) {
-        DaiObjError* err = DaiObjError_Newf(vm, "canvas.init() already called");
-        return OBJ_VAL(err);
-    }
-    if (!SDL_SetAppMetadata("Dai Canvas", "0.0.1", "com.dai.canvas")) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not set app metadata! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not be initialized! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-    init_done = true;
-
-    int width  = AS_INTEGER(argv[0]);
-    int height = AS_INTEGER(argv[1]);
-
-    window = SDL_CreateWindow("Dai Canvas", width, height, SDL_WINDOW_RESIZABLE);
-    if (window == NULL) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not create window! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-
-    renderer = SDL_CreateRenderer(window, NULL);
-    if (renderer == NULL) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not create renderer! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-
-    if (!SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not set blend mode! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-
-    DaiObjModule_set_global(canvas_module, "width", INTEGER_VAL(width));
-    DaiObjModule_set_global(canvas_module, "height", INTEGER_VAL(height));
-    return NIL_VAL;
-}
-
-static DaiValue
-builtin_canvas_fillRect(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
-                        DaiValue* argv) {
-    if (argc != 8) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.fillRect() expected 8 arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    for (int i = 0; i < 8; i++) {
-        if (!IS_INTEGER(argv[i])) {
+    float nums[4] = {0, 0, 0, 255};
+    for (int i = 0; i < argc; i++) {
+        if (!IS_NUMBER(argv[i])) {
             DaiObjError* err =
                 DaiObjError_Newf(vm,
-                                 "canvas.fillRect() expected integer arguments, but got %s",
+                                 "canvas.setFillColor() expected number arguments, but got %s",
+                                 dai_value_ts(argv[i]));
+            return OBJ_VAL(err);
+        }
+        nums[i] = AS_NUMBER(argv[i]);
+        if (nums[i] < 0 || nums[i] > 255) {
+            DaiObjError* err = DaiObjError_Newf(
+                vm, "canvas.setFillColor() expected number between 0 and 255, but got %f", nums[i]);
+            return OBJ_VAL(err);
+        }
+    }
+    CanvasStruct* canvas     = (CanvasStruct*)AS_STRUCT(receiver);
+    SDL_Color color          = (SDL_Color){.r = nums[0], .g = nums[1], .b = nums[2], .a = nums[3]};
+    canvas->fill_style.color = color;
+    if (!SDL_SetRenderDrawColor(canvas->renderer, color.r, color.g, color.b, color.a)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not set draw color! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    return receiver;
+}
+
+// fillRect(x, y, width, height)
+static DaiValue
+Canvas_fillRect(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 4) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.fillRect() expected 4 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    for (int i = 0; i < argc; i++) {
+        if (!IS_NUMBER(argv[i])) {
+            DaiObjError* err =
+                DaiObjError_Newf(vm,
+                                 "canvas.fillRect() expected number arguments, but got %s",
                                  dai_value_ts(argv[i]));
             return OBJ_VAL(err);
         }
     }
-    CHECK_INIT();
-    int x      = AS_INTEGER(argv[0]);
-    int y      = AS_INTEGER(argv[1]);
-    int width  = AS_INTEGER(argv[2]);
-    int height = AS_INTEGER(argv[3]);
-    int r      = AS_INTEGER(argv[4]);
-    int g      = AS_INTEGER(argv[5]);
-    int b      = AS_INTEGER(argv[6]);
-    int a      = AS_INTEGER(argv[7]);
+    float x      = AS_NUMBER(argv[0]);
+    float y      = AS_NUMBER(argv[1]);
+    float width  = AS_NUMBER(argv[2]);
+    float height = AS_NUMBER(argv[3]);
 
-    if (!SDL_SetRenderDrawColor(renderer, r, g, b, a)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not set draw color! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-    SDL_FRect rect;
-    rect.x = x;
-    rect.y = y;
-    rect.w = width;
-    rect.h = height;
-    if (!SDL_RenderFillRect(renderer, &rect)) {
+    CanvasStruct* canvas = (CanvasStruct*)AS_STRUCT(receiver);
+    SDL_FRect rect       = (SDL_FRect){
+              .x = x,
+              .y = y,
+              .w = width,
+              .h = height,
+    };
+    if (!SDL_RenderFillRect(canvas->renderer, &rect)) {
         DaiObjError* err =
             DaiObjError_Newf(vm, "SDL could not fill rect! SDL_Error: %s", SDL_GetError());
         return OBJ_VAL(err);
     }
-
-    return NIL_VAL;
+    return receiver;
 }
 
+// run(ms, callback)
 static DaiValue
-builtin_canvas_clear(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
-                     DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.clear() expected 0 arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    CHECK_INIT();
-    if (!SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not set draw color! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-    if (!SDL_RenderClear(renderer)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not clear window! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-    return NIL_VAL;
-}
-
-static DaiValue
-builtin_canvas_present(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
-                       DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.present() expected 0 arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    CHECK_INIT();
-    if (!SDL_RenderPresent(renderer)) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "SDL could not present window! SDL_Error: %s", SDL_GetError());
-        return OBJ_VAL(err);
-    }
-    return NIL_VAL;
-}
-
-static DaiValue
-builtin_canvas_run(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
+Canvas_run(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 2) {
         DaiObjError* err =
             DaiObjError_Newf(vm, "canvas.run() expected 2 argument, but got %d", argc);
         return OBJ_VAL(err);
     }
-    if (!IS_INTEGER(argv[0]) && !IS_FLOAT(argv[0])) {
+    if (!IS_NUMBER(argv[0])) {
         DaiObjError* err = DaiObjError_Newf(
-            vm, "canvas.run() expected integer/float argument, but got %s", dai_value_ts(argv[0]));
+            vm, "canvas.run() expected number argument, but got %s", dai_value_ts(argv[0]));
         return OBJ_VAL(err);
     }
     if (!IS_FUNCTION_LIKE(argv[1])) {
@@ -416,29 +367,23 @@ builtin_canvas_run(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int arg
             vm, "canvas.run() expected function argument, but got %s", dai_value_ts(argv[0]));
         return OBJ_VAL(err);
     }
-    DaiValue callback = argv[1];
-    CHECK_INIT();
-    is_running = true;
+    CanvasStruct* canvas = (CanvasStruct*)AS_STRUCT(receiver);
+    DaiValue callback    = argv[1];
+    canvas->running      = true;
     DaiValue ret;
-    uint64_t interval = 0;
+    uint64_t interval = AS_NUMBER(argv[0]);
 
-    // Get the interval value from argv[0]
-    if (IS_INTEGER(argv[0])) {
-        interval = AS_INTEGER(argv[0]);
-    } else if (IS_FLOAT(argv[0])) {
-        interval = AS_FLOAT(argv[0]);
-    }
-
-    while (is_running) {
+    SDL_Renderer* renderer = canvas->renderer;
+    while (canvas->running) {
         uint64_t start_time = SDL_GetTicks();
 
         DaiVM_pauseGC(vm);
-        ret = handle_event(vm);
+        ret = Canvas_handle_event(vm, canvas);
         DaiVM_resumeGC(vm);
         if (DAI_IS_ERROR(ret)) {
             return ret;
         }
-        ret = DaiVM_runCall(vm, callback, 0);
+        ret = DaiVM_runCall(vm, callback, 1, receiver);
         if (DAI_IS_ERROR(ret)) {
             return ret;
         }
@@ -454,25 +399,36 @@ builtin_canvas_run(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int arg
             SDL_Delay(interval - elapsed);
         }
     }
-    return NIL_VAL;
+    return receiver;
 }
 
+// clear()
 static DaiValue
-builtin_canvas_quit(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
-                    DaiValue* argv) {
+Canvas_clear(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 0) {
         DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.quit() expected 0 arguments, but got %d", argc);
+            DaiObjError_Newf(vm, "canvas.clear() expected 0 arguments, but got %d", argc);
         return OBJ_VAL(err);
     }
-    CHECK_INIT();
-    is_running = false;
-    return NIL_VAL;
+    CanvasStruct* canvas   = (CanvasStruct*)AS_STRUCT(receiver);
+    SDL_Renderer* renderer = canvas->renderer;
+    if (!SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not set draw color! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    if (!SDL_RenderClear(renderer)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not clear window! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    return receiver;
 }
 
+// addEventListener(event, callback)
+//      callback(event)
 static DaiValue
-builtin_canvas_addEventListener(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
-                                DaiValue* argv) {
+Canvas_addEventListener(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     if (argc != 2) {
         DaiObjError* err = DaiObjError_Newf(
             vm, "canvas.addEventListener() expected 2 arguments, but got %d", argc);
@@ -492,15 +448,16 @@ builtin_canvas_addEventListener(DaiVM* vm, __attribute__((unused)) DaiValue rece
                              dai_value_ts(argv[1]));
         return OBJ_VAL(err);
     }
-    int64_t event_type = AS_INTEGER(argv[0]);
-    int64_t index      = 0;
+    CanvasStruct* canvas = (CanvasStruct*)AS_STRUCT(receiver);
+    int64_t event_type   = AS_INTEGER(argv[0]);
+    int64_t index        = 0;
     switch (event_type) {
         case SDL_EVENT_KEY_DOWN:
         case SDL_EVENT_KEY_UP:
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
         case SDL_EVENT_MOUSE_BUTTON_UP:
         case SDL_EVENT_MOUSE_MOTION: {
-            DaiObjTuple* callbacks = get_event_callbacks(event_type);
+            DaiObjTuple* callbacks = Canvas_get_event_callbacks(canvas, event_type);
             assert(callbacks != NULL);
             DaiObjTuple_append(callbacks, argv[1]);
             index = DaiObjTuple_length(callbacks) - 1;
@@ -514,6 +471,225 @@ builtin_canvas_addEventListener(DaiVM* vm, __attribute__((unused)) DaiValue rece
     }
 
     return INTEGER_VAL(index);
+}
+
+// quit()
+static DaiValue
+Canvas_quit(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.quit() expected 0 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    CanvasStruct* canvas = (CanvasStruct*)AS_STRUCT(receiver);
+    canvas->running      = false;
+    return receiver;
+}
+
+static DaiObjBuiltinFunction canvas_methods[] = {
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "setFillColor",
+        .function = Canvas_setFillColor,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "fillRect",
+        .function = Canvas_fillRect,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "run",
+        .function = Canvas_run,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "clear",
+        .function = Canvas_clear,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "addEventListener",
+        .function = Canvas_addEventListener,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name     = "quit",
+        .function = Canvas_quit,
+    },
+    {
+        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
+        .name = NULL,
+    },
+};
+// #endregion
+
+static DaiValue
+CanvasStruct_get_property(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    char* cname       = name->chars;
+    CanvasStruct* obj = (CanvasStruct*)AS_STRUCT(receiver);
+    if (strcmp(cname, "width") == 0) {
+        return INTEGER_VAL(obj->width);
+    } else if (strcmp(cname, "height") == 0) {
+        return INTEGER_VAL(obj->height);
+    } else {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "'%s' object has not property '%s'", obj->name, name->chars);
+        return OBJ_VAL(err);
+    }
+}
+
+static char*
+CanvasStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited) {
+    char buf[128];
+    CanvasStruct* obj = (CanvasStruct*)AS_STRUCT(value);
+    int length        = snprintf(buf, sizeof(buf), "<struct %s(%p)>", obj->name, obj);
+    return strndup(buf, length);
+}
+
+static DaiValue
+CanvasStruct_get_method(DaiVM* vm, DaiValue receiver, DaiObjString* name) {
+    const char* cname = name->chars;
+    for (size_t i = 0; i < sizeof(canvas_methods) / sizeof(canvas_methods[0]); i++) {
+        if (canvas_methods[i].name == NULL) {
+            break;
+        }
+        if (strcmp(cname, canvas_methods[i].name) == 0) {
+            return OBJ_VAL(&canvas_methods[i]);
+        }
+    }
+    DaiObjError* err =
+        DaiObjError_Newf(vm, "'%s' object has not method '%s'", canvas_name, name->chars);
+    return OBJ_VAL(err);
+}
+
+static struct DaiObjOperation canvas_struct_operation = {
+    .get_property_func  = CanvasStruct_get_property,
+    .set_property_func  = NULL,
+    .subscript_get_func = NULL,
+    .subscript_set_func = NULL,
+    .string_func        = CanvasStruct_String,
+    .equal_func         = dai_default_equal,
+    .hash_func          = dai_default_hash,
+    .iter_init_func     = NULL,
+    .iter_next_func     = NULL,
+    .get_method_func    = CanvasStruct_get_method,
+};
+
+static void
+CanvasStruct_destructor(DaiVM* vm, DaiObjStruct* st) {
+    CanvasStruct* canvas = (CanvasStruct*)st;
+    if (canvas->renderer != NULL) {
+        SDL_DestroyRenderer(canvas->renderer);
+    }
+    if (canvas->window != NULL) {
+        SDL_DestroyWindow(canvas->window);
+    }
+    canvas->running = false;
+}
+
+// #endregion
+
+// #region canvas module functions
+// canvas module functions:
+//      new(width, height)
+//      init(width, height)
+//      fillRect(x, y, width, height, r, g, b, a)
+//      clear()
+//      present()
+//      run(ms, callback)
+//      quit()
+//      addEventListener(event, callback)
+//      loadImage(path)
+//      drawImage(...)
+//      Rect(x, y, width, height)
+//      Point(x, y)
+//      drawImageEx(image, srcrect, dstrect, angle, center, flip)
+//      fillCircle(center, radius, r, g, b, a)
+
+static DaiValue
+builtin_canvas_new(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc, DaiValue* argv) {
+    if (argc != 2) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.new() expected 2 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    if (!IS_INTEGER(argv[0]) || !IS_INTEGER(argv[1])) {
+        DaiObjError* err = DaiObjError_Newf(
+            vm, "canvas.new() expected integer arguments, but got %s", dai_value_ts(argv[0]));
+        return OBJ_VAL(err);
+    }
+    int width  = AS_INTEGER(argv[0]);
+    int height = AS_INTEGER(argv[1]);
+
+    CanvasStruct* canvas = (CanvasStruct*)DaiObjStruct_New(
+        vm, canvas_name, &canvas_struct_operation, sizeof(CanvasStruct), CanvasStruct_destructor);
+    canvas->width   = width;
+    canvas->height  = height;
+    canvas->running = false;
+
+    canvas->keydown_callbacks     = DaiObjTuple_New(vm);
+    canvas->keyup_callbacks       = DaiObjTuple_New(vm);
+    canvas->mousedown_callbacks   = DaiObjTuple_New(vm);
+    canvas->mouseup_callbacks     = DaiObjTuple_New(vm);
+    canvas->mousemotion_callbacks = DaiObjTuple_New(vm);
+
+    DaiObjStruct_add_ref(vm, (DaiObjStruct*)canvas, OBJ_VAL(canvas->keydown_callbacks));
+    DaiObjStruct_add_ref(vm, (DaiObjStruct*)canvas, OBJ_VAL(canvas->keyup_callbacks));
+    DaiObjStruct_add_ref(vm, (DaiObjStruct*)canvas, OBJ_VAL(canvas->mousedown_callbacks));
+    DaiObjStruct_add_ref(vm, (DaiObjStruct*)canvas, OBJ_VAL(canvas->mouseup_callbacks));
+    DaiObjStruct_add_ref(vm, (DaiObjStruct*)canvas, OBJ_VAL(canvas->mousemotion_callbacks));
+
+    if (!SDL_SetAppMetadata("Dai Canvas", "0.0.1", "com.dai.canvas")) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not set app metadata! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not be initialized! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    init_done = true;
+
+    canvas->window = SDL_CreateWindow("Dai Canvas", width, height, SDL_WINDOW_RESIZABLE);
+    if (canvas->window == NULL) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not create window! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+
+    canvas->renderer = SDL_CreateRenderer(canvas->window, NULL);
+    if (canvas->renderer == NULL) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not create renderer! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+
+    if (!SDL_SetRenderDrawBlendMode(canvas->renderer, SDL_BLENDMODE_BLEND)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not set blend mode! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+
+    return OBJ_VAL(canvas);
+}
+
+static DaiValue
+builtin_canvas_present(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
+                       DaiValue* argv) {
+    if (argc != 0) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "canvas.present() expected 0 arguments, but got %d", argc);
+        return OBJ_VAL(err);
+    }
+    CHECK_INIT();
+    if (!SDL_RenderPresent(renderer)) {
+        DaiObjError* err =
+            DaiObjError_Newf(vm, "SDL could not present window! SDL_Error: %s", SDL_GetError());
+        return OBJ_VAL(err);
+    }
+    return NIL_VAL;
 }
 
 typedef struct {
@@ -556,7 +732,7 @@ static struct DaiObjOperation texture_struct_operation = {
     .get_method_func    = NULL,
 };
 static void
-texture_destructor(DaiObjStruct* st) {
+texture_destructor(DaiVM* vm, DaiObjStruct* st) {
     TextureStruct* tex_obj = (TextureStruct*)st;
     SDL_DestroyTexture(tex_obj->texture);
 }
@@ -1066,38 +1242,13 @@ builtin_canvas_smile(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int a
 static DaiObjBuiltinFunction canvas_funcs[] = {
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "init",
-        .function = builtin_canvas_init,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "fillRect",
-        .function = builtin_canvas_fillRect,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "clear",
-        .function = builtin_canvas_clear,
+        .name     = "new",
+        .function = builtin_canvas_new,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "present",
         .function = builtin_canvas_present,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "run",
-        .function = builtin_canvas_run,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "quit",
-        .function = builtin_canvas_quit,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "addEventListener",
-        .function = builtin_canvas_addEventListener,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -1239,7 +1390,6 @@ create_canvas_module(DaiVM* vm) {
     return module;
 }
 
-
 int
 dai_canvas_init(DaiVM* vm) {
     DaiObjModule* module = create_canvas_module(vm);
@@ -1251,14 +1401,6 @@ void
 dai_canvas_quit(DaiVM* vm) {
     if (!init_done) {
         return;
-    }
-    if (renderer != NULL) {
-        SDL_DestroyRenderer(renderer);
-        renderer = NULL;
-    }
-    if (window != NULL) {
-        SDL_DestroyWindow(window);
-        window = NULL;
     }
     SDL_Quit();
 }

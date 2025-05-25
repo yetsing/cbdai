@@ -35,7 +35,7 @@ typedef struct {
 } PathStruct;
 
 static void
-PathStruct_free(DaiObjStruct* st) {
+PathStruct_destructor(DaiVM* vm, DaiObjStruct* st) {
     PathStruct* path = (PathStruct*)st;
     if (path->path != NULL) {
         free(path->path);
@@ -55,7 +55,7 @@ PathStruct_New(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc, D
         return OBJ_VAL(err);
     }
     PathStruct* path = (PathStruct*)DaiObjStruct_New(
-        vm, path_name, &path_struct_operation, sizeof(PathStruct), PathStruct_free);
+        vm, path_name, &path_struct_operation, sizeof(PathStruct), PathStruct_destructor);
     path->path = strdup(AS_STRING(argv[0])->chars);
     return OBJ_VAL(path);
 }

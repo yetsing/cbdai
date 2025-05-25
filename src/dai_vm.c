@@ -104,6 +104,8 @@ DaiVM_init(DaiVM* vm) {
             DaiVM_addBuiltin(vm, bobj.name, bobj.value);
         }
     }
+
+    memset(vm->object_stats, 0, sizeof(vm->object_stats));
 }
 
 void

@@ -122,6 +122,8 @@ typedef enum {
     DaiObjType_module,
     DaiObjType_tuple,
     DaiObjType_struct,   // c struct
+
+    DaiObjType_count,
 } DaiObjType;
 
 typedef void (*CFunction)(void* dai);

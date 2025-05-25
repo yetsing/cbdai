@@ -2,23 +2,16 @@ var b = 0;
 var step = 1;
 
 
-fn draw() {
+fn draw(canvas) {
     // canvas.clear() 清空 canvas 的内容
     canvas.clear();
     for (var r in range(256)) {
         for (var g in range(256)) {
-            var a = 255;
-            // canvas.fillRect(x, y, w, h, r, g, b, a) 填充矩形
-            canvas.fillRect(
-                r * 4,
-                g * 4,
-                4,
-                4,
-                r,
-                g,
-                b,
-                a,
-            );
+            // canvas.setFillColor(r, g, b) 设置填充颜色
+            // canvas.setFillColor(r, g, b, a) 设置填充颜色
+            canvas.setFillColor(r, g, b);
+            // canvas.fillRect(x, y, w, h) 填充矩形
+            canvas.fillRect(r * 4, g * 4, 4, 4);
         }
     }
     b += step;
@@ -28,23 +21,23 @@ fn draw() {
     elif (b <= 0) {
         step = 1;
     }
-    canvas.smile();
+    var m = [];
 }
 
 
 fn main() {
     print("Canvas example");
-    canvas.init(600, 600);
+    con canvas = Canvas.new(600, 600);
 
     // canvas.addEventListener(event_type, callback) 添加事件监听器
     // event_type 事件类型
-    //      canvas.EventKeyDown 键盘按下事件
-    //      canvas.EventKeyUp 键盘抬起事件
-    //      canvas.EventMouseDown 鼠标按下事件
-    //      canvas.EventMouseUp 鼠标抬起事件
-    //      canvas.EventMouseMotion 鼠标移动事件
+    //      EventKeyDown 键盘按下事件
+    //      EventKeyUp 键盘抬起事件
+    //      EventMouseDown 鼠标按下事件
+    //      EventMouseUp 鼠标抬起事件
+    //      EventMouseMotion 鼠标移动事件
     // callback 回调函数接受一个参数 event
-    canvas.addEventListener(canvas.EventKeyDown, fn(event) {
+    canvas.addEventListener(Canvas.EventKeyDown, fn(event) {
             // 键盘事件 KeyBoardEvent 包括下列字段
             //   code int 键码
             //   key str 字符串键值
@@ -65,31 +58,31 @@ fn main() {
                 event.metaKey,
             );
             // Keycode 枚举值可以看 canvas_enum.dai
-            if (event.code == canvas.Keycode.key_a) {
+            if (event.code == Canvas.Keycode.key_a) {
                 print("    A pressed");
             }
-            elif (event.code == canvas.Keycode.key_escape) {
+            elif (event.code == Canvas.Keycode.key_escape) {
                 print("    Escape pressed");
                 // 调用 canvas.quit() 退出 canvas
                 canvas.quit();
             }
         });
-    canvas.addEventListener(canvas.EventMouseDown, fn(event) {
+    canvas.addEventListener(Canvas.EventMouseDown, fn(event) {
             // 鼠标事件 MouseEvent 包括下列字段
             //   x float 鼠标在 canvas 上的 x 坐标
             //   y float 鼠标在 canvas 上的 y 坐标
             //   button canvas.MouseButton 鼠标按键
-            if (event.button == canvas.MouseButton.left) {
+            if (event.button == Canvas.MouseButton.left) {
                 print(event, "Left mouse pressed:", event.x, event.y);
             }
-            elif (event.button == canvas.MouseButton.middle) {
+            elif (event.button == Canvas.MouseButton.middle) {
                 print(event, "Middle mouse pressed:", event.x, event.y);
             }
-            elif (event.button == canvas.MouseButton.right) {
+            elif (event.button == Canvas.MouseButton.right) {
                 print(event, "Right mouse pressed:", event.x, event.y);
             }
         });
-    // canvas.addEventListener(canvas.EventMouseMotion, fn(event){
+    // canvas.addEventListener(Canvas.EventMouseMotion, fn(event){
     //     print(event, "Mouse move:", event.x, event.y, event.button);
     // });
 

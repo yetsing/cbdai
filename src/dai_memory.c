@@ -3,11 +3,14 @@
 */
 
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "dai_chunk.h"
+#include "dai_common.h"
 #include "dai_memory.h"
 #include "dai_object.h"
+#include "dai_objects/dai_object_base.h"
 #include "dai_value.h"
 
 #ifdef DEBUG_LOG_GC
@@ -153,6 +156,10 @@ vm_free_object(DaiVM* vm, DaiObj* object) {
             DaiObjTuple_Free(vm, (DaiObjTuple*)object);
             break;
         }
+        case DaiObjType_count: {
+            unreachable();
+            break;
+        }
     }
 }
 
@@ -168,8 +175,9 @@ dai_free_objects(DaiVM* vm) {
     vm->grayStack = NULL;
 }
 
-// https://readonly.link/books/https://raw.githubusercontent.com/GuoYaxiang/craftinginterpreters_zh/main/book.json/-/26.%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6.md
 // #region 垃圾回收
+
+// https://readonly.link/books/https://raw.githubusercontent.com/GuoYaxiang/craftinginterpreters_zh/main/book.json/-/26.%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6.md
 void
 markObject(DaiVM* vm, DaiObj* object) {
     if (object == NULL) {
@@ -222,6 +230,10 @@ blackenObject(DaiVM* vm, DaiObj* object) {
 #endif
     switch (object->type) {
         case DaiObjType_struct: {
+            DaiObjStruct* obj = (DaiObjStruct*)object;
+            for (size_t i = 0; i < obj->ref_count; i++) {
+                markValue(vm, obj->refs[i]);
+            }
             break;
         }
         case DaiObjType_tuple: {
@@ -341,7 +353,8 @@ blackenObject(DaiVM* vm, DaiObj* object) {
         case DaiObjType_rangeIterator:
         case DaiObjType_error:
         case DaiObjType_builtinFn:
-        case DaiObjType_string: {
+        case DaiObjType_string:
+        case DaiObjType_count: {
             break;
         }
     }

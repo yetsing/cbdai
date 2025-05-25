@@ -18,23 +18,30 @@ DaiObjStruct_String(DaiValue value, __attribute__((unused)) DaiPtrArray* visited
 
 DaiObjStruct*
 DaiObjStruct_New(DaiVM* vm, const char* name, struct DaiObjOperation* operation, size_t size,
-                 void (*free)(DaiObjStruct* udata)) {
+                 void (*free)(DaiVM* vm, DaiObjStruct* udata)) {
     DaiObjStruct* obj  = ALLOCATE_OBJ1(vm, DaiObjStruct, DaiObjType_struct, size);
     obj->obj.operation = operation;
     if (operation->string_func == NULL) {
         operation->string_func = DaiObjStruct_String;
     }
-    obj->name = name;
-    obj->size = size;
-    obj->free = free;
+    obj->name      = name;
+    obj->size      = size;
+    obj->free      = free;
+    obj->ref_count = 0;
     return obj;
 }
 void
 DaiObjStruct_Free(DaiVM* vm, DaiObjStruct* obj) {
     if (obj->free != NULL) {
-        obj->free(obj);
+        obj->free(vm, obj);
     }
     VM_FREE1(vm, obj->size, obj);
+}
+
+void
+DaiObjStruct_add_ref(DaiVM* vm, DaiObjStruct* obj, DaiValue value) {
+    assert(obj->ref_count < sizeof(obj->refs) / sizeof(obj->refs[0]));
+    obj->refs[obj->ref_count++] = value;
 }
 
 // #region SimpleObjectStruct
@@ -118,7 +125,7 @@ static struct DaiObjOperation simple_object_struct_operation = {
 };
 
 static void
-SimpleObjectStruct_destructor(DaiObjStruct* st) {
+SimpleObjectStruct_destructor(DaiVM* vm, DaiObjStruct* st) {
     DaiSimpleObjectStruct* obj = (DaiSimpleObjectStruct*)st;
     hashmap_free(obj->map);
 }
