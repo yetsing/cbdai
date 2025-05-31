@@ -224,9 +224,10 @@ DaiObjString_replace(__attribute__((unused)) DaiVM* vm, DaiValue receiver, int a
 static DaiValue
 DaiObjString_splitn(DaiVM* vm, DaiObjString* s, DaiObjString* sep, int max_splits) {
     DaiObjArray* array = DaiObjArray_New(vm, NULL, 0);
-    const char* p      = s->chars;
-    const char* end    = s->chars + s->length;
-    int sep_len        = sep->length;
+    DaiVM_addGCRef(vm, OBJ_VAL(array));
+    const char* p   = s->chars;
+    const char* end = s->chars + s->length;
+    int sep_len     = sep->length;
     while (p < end) {
         if (max_splits <= 0) {
             DaiObjArray_append1(vm, array, 1, &OBJ_VAL(dai_copy_string(vm, p, end - p)));
@@ -248,8 +249,9 @@ DaiObjString_splitn(DaiVM* vm, DaiObjString* s, DaiObjString* sep, int max_split
 static DaiValue
 DaiObjString_split_whitespace(DaiVM* vm, DaiObjString* s) {
     DaiObjArray* array = DaiObjArray_New(vm, NULL, 0);
-    const char* p      = s->chars;
-    const char* end    = s->chars + s->length;
+    DaiVM_addGCRef(vm, OBJ_VAL(array));
+    const char* p   = s->chars;
+    const char* end = s->chars + s->length;
     while (p < end) {
         while (p < end && isspace(*p)) {
             p++;

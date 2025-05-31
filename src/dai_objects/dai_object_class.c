@@ -217,7 +217,8 @@ static DaiObjBuiltinFunction builtin_init = {
 
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
-    DaiObjClass* klass   = ALLOCATE_OBJ(vm, DaiObjClass, DaiObjType_class);
+    DaiObjClass* klass = ALLOCATE_OBJ(vm, DaiObjClass, DaiObjType_class);
+    DaiVM_addGCRef(vm, OBJ_VAL(klass));
     klass->obj.operation = &class_operation;
     klass->name          = name;
 
@@ -240,7 +241,10 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
     }
     klass->parent             = NULL;
     klass->init_fn            = UNDEFINED_VAL;
+    klass->define_field_names = NULL;
+
     klass->define_field_names = DaiObjTuple_New(vm);
+    DaiVM_addGCRef(vm, OBJ_VAL(klass->define_field_names));
 
     // 定义内置类属性
     DaiObjClass_define_class_field(klass, STRING_NAME("__name__"), OBJ_VAL(klass->name), true);
@@ -276,10 +280,9 @@ DaiObjClass_new_instance_within_vm(DaiObjClass* klass, DaiVM* vm, int argc, DaiV
         return OBJ_VAL(err);
     }
     if (IS_BUILTINFN(instance->klass->init_fn)) {
-        DaiVM_pauseGC(vm);
         const BuiltinFn func  = AS_BUILTINFN(instance->klass->init_fn)->function;
         const DaiValue result = func(vm, OBJ_VAL(instance), argc, argv);
-        DaiVM_resumeGC(vm);
+        DaiVM_resetGCRef(vm);
         if (DAI_IS_ERROR(result)) {
             return result;
         }

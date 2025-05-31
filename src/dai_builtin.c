@@ -216,6 +216,7 @@ builtin_path_joinpath(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
         strcpy(path_res, path_buf);
     }
     DaiValue joined_path = OBJ_VAL(dai_copy_string(vm, path_res, strlen(path_res)));
+    DaiVM_addGCRef(vm, joined_path);
     return PathStruct_New(vm, receiver, 1, &joined_path);
 }
 
@@ -231,6 +232,7 @@ builtin_path_parent(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     cwk_path_get_dirname(path->path, &length);
     DaiValue parent_path =
         OBJ_VAL(dai_copy_string(vm, path->path, length));   // 这里的 path 是一个 string 对象
+    DaiVM_addGCRef(vm, parent_path);
     return PathStruct_New(vm, receiver, 1, &parent_path);
 }
 
@@ -493,6 +495,7 @@ builtin_import(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
         DaiObjError* err = DaiObjError_Newf(vm, "import() failed to read file: %s", abs_path);
         return OBJ_VAL(err);
     }
+    DaiVM_pauseGC(vm);   // loadModule 需要暂停 GC
     const char* basename;
     cwk_path_get_basename(abs_path, &basename, &length);
     module = DaiObjModule_New(vm, strndup(basename, length - SUFFIX_LEN), strdup(abs_path));

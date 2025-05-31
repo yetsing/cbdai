@@ -24,7 +24,7 @@
 #    include "dai_debug.h"
 #endif
 
-#define CURRENT_FRAME &(vm->frames[vm->frameCount - 1])
+#define CURRENT_FRAME &(vm->frames[vm->frame_count - 1])
 
 static void
 DaiVM_push(DaiVM* vm, DaiValue value);
@@ -40,15 +40,15 @@ DaiValue dai_false = {.type = DaiValueType_bool, .as.boolean = false};
 
 void
 DaiVM_resetStack(DaiVM* vm) {
-    vm->stack_top  = vm->stack;
-    vm->frameCount = 0;
-    vm->stack_max  = vm->stack + STACK_MAX;
+    vm->stack_top   = vm->stack;
+    vm->frame_count = 0;
+    vm->stack_max   = vm->stack + STACK_MAX;
 
     // dummy frame
     // 确保始终有一个 frame
     // 原因是为了兼容 cbdai/dai.c:dai_execute 执行函数时，
     // 让他有一个父 frame ，在 return 的时候可以返回到父 frame
-    CallFrame* frame       = &vm->frames[vm->frameCount++];
+    CallFrame* frame       = &vm->frames[vm->frame_count++];
     frame->function        = NULL;
     frame->closure         = NULL;
     frame->chunk           = NULL;
@@ -70,7 +70,7 @@ DaiVM_init(DaiVM* vm) {
     vm->objects        = NULL;
     vm->bytesAllocated = 0;
     vm->nextGC         = 1024 * 1024;
-    vm->temp_ref       = NIL_VAL;
+    vm->gc_ref_count   = 0;
 
     vm->grayCount    = 0;
     vm->grayCapacity = 0;
@@ -167,7 +167,7 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
                                 function->arity,
                                 argCount);
     }
-    if (vm->frameCount == FRAMES_MAX) {
+    if (vm->frame_count == FRAMES_MAX) {
         return DaiObjError_Newf(vm, "maximum call depth exceeded");
     }
     if (vm->stack_top + function->max_stack_size > vm->stack_max) {
@@ -180,7 +180,7 @@ DaiVM_call(DaiVM* vm, DaiObjFunction* function, int argCount) {
         }
     }
     // new frame
-    CallFrame* frame = &vm->frames[vm->frameCount++];
+    CallFrame* frame = &vm->frames[vm->frame_count++];
     frame->function  = function;
     frame->closure   = NULL;
     frame->chunk     = &function->chunk;
@@ -230,10 +230,9 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
             }
             case DaiObjType_builtinFn: {
                 const BuiltinFn func = AS_BUILTINFN(callee)->function;
-                DaiVM_pauseGC(vm);
                 const DaiValue result =
                     func(vm, DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
-                DaiVM_resumeGC(vm);
+                DaiVM_resetGCRef(vm);
                 vm->stack_top = vm->stack_top - argCount - 1;
                 if (DAI_IS_ERROR(result)) {
                     return AS_ERROR(result);
@@ -244,7 +243,7 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
             case DaiObjType_closure: {
                 DaiObjClosure* closure = (DaiObjClosure*)AS_OBJ(callee);
                 DaiObjError* err       = DaiVM_call(vm, closure->function, argCount);
-                vm->frames[vm->frameCount - 1].closure = closure;
+                vm->frames[vm->frame_count - 1].closure = closure;
                 return err;
             }
             case DaiObjType_cFunction: {
@@ -294,8 +293,8 @@ DaiVM_executeIntBinary(DaiVM* vm, const DaiBinaryOpType opType, const DaiValue a
 // 运行当前帧，直至当前帧退出
 static DaiObjError*
 DaiVM_runCurrentFrame(DaiVM* vm) {
-    int current_frame_index = vm->frameCount - 1;
-    CallFrame* frame        = &vm->frames[vm->frameCount - 1];
+    int current_frame_index = vm->frame_count - 1;
+    CallFrame* frame        = &vm->frames[vm->frame_count - 1];
     DaiChunk* chunk         = frame->chunk;
     DaiValue* globals       = frame->globals;
 
@@ -749,26 +748,26 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             }
             case DaiOpReturnValue: {
                 DaiValue result = DaiVM_pop(vm);
-                vm->frameCount--;
+                vm->frame_count--;
                 vm->stack_top = frame->slots;
                 DaiVM_push(vm, result);
                 frame   = CURRENT_FRAME;
                 chunk   = frame->chunk;
                 globals = frame->globals;
-                if (vm->frameCount == current_frame_index) {
+                if (vm->frame_count == current_frame_index) {
                     return NULL;
                 }
                 break;
             }
             case DaiOpReturn: {
                 DaiValue result = NIL_VAL;
-                vm->frameCount--;
+                vm->frame_count--;
                 vm->stack_top = frame->slots;
                 DaiVM_push(vm, result);
                 frame   = CURRENT_FRAME;
                 chunk   = frame->chunk;
                 globals = frame->globals;
-                if (vm->frameCount == current_frame_index) {
+                if (vm->frame_count == current_frame_index) {
                     return NULL;
                 }
                 break;
@@ -837,10 +836,9 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
             case DaiOpClass: {
                 uint16_t name_index = READ_UINT16();
                 DaiValue name       = chunk->constants.values[name_index];
-                DaiVM_pauseGC(vm);
-                DaiObjClass* cls = DaiObjClass_New(vm, AS_STRING(name));
+                DaiObjClass* cls    = DaiObjClass_New(vm, AS_STRING(name));
+                DaiVM_resetGCRef(vm);
                 DaiVM_push(vm, OBJ_VAL(cls));
-                DaiVM_resumeGC(vm);
                 break;
             }
             case DaiOpDefineField: {
@@ -1043,7 +1041,7 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 // 退出 module 调用帧
                 // 假装设置模块的返回值（方便测试）
                 DaiValue result = *(vm->stack_top);
-                vm->frameCount--;
+                vm->frame_count--;
                 vm->stack_top    = frame->slots;
                 *(vm->stack_top) = result;
                 return NULL;
@@ -1069,10 +1067,10 @@ DaiObjError*
 DaiVM_runModule(DaiVM* vm, DaiObjModule* module) {
     vm->state = VMState_running;
     DaiObjMap_cset(vm->modules, OBJ_VAL(module->filename), OBJ_VAL(module));
-    if (vm->frameCount == FRAMES_MAX) {
+    if (vm->frame_count == FRAMES_MAX) {
         return DaiObjError_Newf(vm, "maximum recursion depth exceeded");
     }
-    CallFrame* frame       = &vm->frames[vm->frameCount++];
+    CallFrame* frame       = &vm->frames[vm->frame_count++];
     frame->function        = NULL;
     frame->closure         = NULL;
     frame->ip              = module->chunk.code;
@@ -1159,7 +1157,7 @@ void
 DaiVM_printError(DaiVM* vm, DaiObjError* err) {
     dai_log("Traceback:\n");
     // i=0 是个假帧，所以从 1 开始
-    for (int i = 1; i < vm->frameCount; ++i) {
+    for (int i = 1; i < vm->frame_count; ++i) {
         CallFrame* frame = &vm->frames[i];
         DaiChunk* chunk  = frame->chunk;
         int lineno       = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code - 1));
@@ -1203,7 +1201,7 @@ void
 DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input) {
     dai_log("Traceback:\n");
     // i=0 是个假帧，所以从 1 开始
-    for (int i = 1; i < vm->frameCount; ++i) {
+    for (int i = 1; i < vm->frame_count; ++i) {
         CallFrame* frame = &vm->frames[i];
         DaiChunk* chunk  = frame->chunk;
         int lineno       = DaiChunk_getLine(chunk, (int)(frame->ip - chunk->code));
@@ -1280,6 +1278,17 @@ DaiVM_pauseGC(DaiVM* vm) {
 void
 DaiVM_resumeGC(DaiVM* vm) {
     vm->state = VMState_running;
+}
+
+void
+DaiVM_addGCRef(DaiVM* vm, DaiValue value) {
+    assert(vm->gc_ref_count < DAI_GC_REF_MAX);
+    vm->gc_refs[vm->gc_ref_count++] = value;
+}
+
+void
+DaiVM_resetGCRef(DaiVM* vm) {
+    vm->gc_ref_count = 0;
 }
 
 void

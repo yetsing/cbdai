@@ -372,13 +372,15 @@ markRoots(DaiVM* vm) {
     }
     // 标记调用栈
     {
-        for (int i = 0; i < vm->frameCount; i++) {
+        for (int i = 0; i < vm->frame_count; i++) {
             markObject(vm, (DaiObj*)vm->frames[i].closure);
             markObject(vm, (DaiObj*)vm->frames[i].function);
         }
     }
     // 标记临时引用
-    markValue(vm, vm->temp_ref);
+    for (int i = 0; i < vm->gc_ref_count; i++) {
+        markValue(vm, vm->gc_refs[i]);
+    }
     // 标记模块表
     markObject(vm, (DaiObj*)vm->modules);
 }

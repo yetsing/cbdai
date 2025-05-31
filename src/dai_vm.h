@@ -16,6 +16,7 @@
 #define FRAMES_MAX 65
 // 保证大于 65536 即可，对应 DaiOpArray 操作数
 #define STACK_MAX ((LOCAL_MAX + 32) * FRAMES_MAX)
+#define DAI_GC_REF_MAX 10
 
 typedef enum {
     VMState_pending,
@@ -41,7 +42,7 @@ extern DaiValue dai_false;
 
 typedef struct _DaiVM {
     CallFrame frames[FRAMES_MAX];
-    int frameCount;
+    int frame_count;
 
     DaiChunk* chunk;
     uint8_t* ip;   // 指向下一条指令
@@ -69,7 +70,8 @@ typedef struct _DaiVM {
     // 临时引用，防止被 GC 回收
     // 一些内置函数会创建一些对象，他既不在栈上，也没有被其他对象引用
     // 为了防止被 GC 回收，这里引用一下
-    DaiValue temp_ref;
+    int gc_ref_count;
+    DaiValue gc_refs[DAI_GC_REF_MAX];
 
     // 记录导入的模块
     DaiObjMap* modules;
@@ -106,12 +108,19 @@ DaiVM_printError(DaiVM* vm, DaiObjError* err);
 // input 用来传入源代码（不在文件中的，比如 repl 中输入的代码）
 void
 DaiVM_printError2(DaiVM* vm, DaiObjError* err, const char* input);
+// 获取当前执行位置（文件名、行号、列号）
 DaiFilePos
 DaiVM_getCurrentFilePos(const DaiVM* vm);
+// 停止 GC
 void
 DaiVM_pauseGC(DaiVM* vm);
+// 恢复 GC
 void
 DaiVM_resumeGC(DaiVM* vm);
+void
+DaiVM_addGCRef(DaiVM* vm, DaiValue value);
+void
+DaiVM_resetGCRef(DaiVM* vm);
 void
 DaiVM_push1(DaiVM* vm, DaiValue value);
 void
