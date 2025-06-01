@@ -6,6 +6,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 
 
 @dataclasses.dataclass
@@ -22,20 +23,22 @@ g = Global()
 def find_cmake():
     g.cmake_command = os.getenv("CUSTOM_CMAKE_COMMAND", "")
     if not g.cmake_command:
-        g.cmake_command = shutil.which("cmake")
-        if not g.cmake_command:
+        cmake_command = shutil.which("cmake")
+        if not cmake_command:
             print("Not found cmake")
             sys.exit(1)
+        g.cmake_command = cmake_command
     print(f"cmake_command: {g.cmake_command}")
 
 
 def find_ninja():
     g.ninja_command = os.getenv("CUSTOM_NINJA_COMMAND", "")
     if not g.ninja_command:
-        g.ninja_command = shutil.which("ninja")
-        if not g.ninja_command:
+        ninja_command = shutil.which("ninja")
+        if not ninja_command:
             print("Not found ninja")
             sys.exit(1)
+        g.ninja_command = ninja_command
     print(f"ninja_command: {g.ninja_command}")
 
 
@@ -257,6 +260,74 @@ def runfile(*args):
         sys.exit(exitcode)
 
 
+def run_and_monitor(cmd, interval=1) -> int:
+    import matplotlib.pyplot as plt
+    import psutil
+
+    # Start the process.
+    print(f"Running command: {cmd}")
+    proc = subprocess.Popen(cmd)
+    p = psutil.Process(proc.pid)
+
+    times = []
+    mem_usage = []
+    start_time = time.time()
+
+    try:
+        next_time = start_time + interval
+        while proc.poll() is None:
+            if time.time() > next_time:
+                next_time = time.time() + interval
+                try:
+                    # Get RSS memory in MB.
+                    mem = p.memory_info().rss / (1024 * 1024)
+                except psutil.NoSuchProcess:
+                    break
+                current_time = time.time() - start_time
+                times.append(current_time // interval)
+                mem_usage.append(mem)
+                print("Time: {:.2f}s  Memory: {:.2f} MB".format(current_time, mem))
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Ctrl+C")
+        proc.terminate()
+        proc.wait()
+
+    # Final reading after process ends.
+    if proc.poll() is not None:
+        current_time = time.time() - start_time
+        try:
+            mem = p.memory_info().rss / (1024 * 1024)
+        except psutil.NoSuchProcess:
+            mem = 0
+        times.append(current_time)
+        mem_usage.append(mem)
+        print("Time: {:.2f}s  Memory: {:.2f} MB".format(current_time, mem))
+
+    # Draw memory usage chart.
+    plt.figure(figsize=(10, 5))
+    plt.plot(times, mem_usage, marker="o")
+    plt.xlabel("Time (s)")
+    plt.ylabel("Memory Usage (MB)")
+    plt.title("Memory Usage Over Time")
+    plt.grid(True)
+    plt.savefig("memory_usage.png")
+
+    return proc.returncode
+
+
+def runfilem(*args):
+    compile("dai")
+    cp_compile_commands_json()
+    exitcode = run_and_monitor(
+        ["./cmake-build-debug/Debug/dai", *args],
+        interval=60,
+    )
+    if exitcode != 0:
+        print(f"Exit code: {exitcode}")
+        sys.exit(exitcode)
+
+
 def dis(*args):
     compile("dai")
     subprocess.check_call(["./cmake-build-debug/Debug/dai", "dis", *args])
@@ -295,6 +366,7 @@ def main():
         "memrepl": memrepl,
         "coverage": coverage,
         "runfile": runfile,
+        "runfilem": runfilem,
         "dis": dis,
         "fmt": fmt,
         "fmt_check": fmt_check,

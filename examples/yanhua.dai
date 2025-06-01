@@ -58,6 +58,7 @@ fn hslToRgb(h, s, l) {
 
 
 class Firework {
+    con canvas;
     // 初始位置
     var x;
     var y;
@@ -72,7 +73,8 @@ class Firework {
     var traveled;  // 已经移动的距离
     var dead = false;
 
-    fn __init__(x, y, targetX, targetY) {
+    fn __init__(canvas, x, y, targetX, targetY) {
+        self.canvas = canvas;
         self.x = x;
         self.y = y;
         self.tx = targetX;
@@ -92,19 +94,23 @@ class Firework {
         if (self.traveled >= self.distanceToTarget) {
             // 到达目标
             self.dead = true;
-            createParticles(self.x, self.y);
+            createParticles(self.canvas, self.x, self.y);
         }
     }
 
     fn draw() {
         con rgb = hslToRgb(int(math.random() * 360), 1, math.random());
-        con center = canvas.Point(self.x, self.y);
-        canvas.fillCircle(center, 2, rgb[0], rgb[1], rgb[2], 255);
+        con canvas = self.canvas;
+        canvas.beginPath();
+        canvas.arc(self.x, self.y, 2, 0, math.pi * 2);
+        canvas.setFillColor(rgb[0], rgb[1], rgb[2]);
+        canvas.fill();
     }
 }
 
 
 class Particle {
+    con canvas;
     var x;
     var y;
     var speed;
@@ -117,7 +123,8 @@ class Particle {
     var rgb;
     var dead = false;
 
-    fn __init__(x, y) {
+    fn __init__(canvas, x, y) {
+        self.canvas = canvas;
         self.x = x;
         self.y = y;
         self.speed = math.random() * 5 + 1;
@@ -141,32 +148,29 @@ class Particle {
     }
 
     fn draw() {
-        con center = canvas.Point(self.x, self.y);
-        canvas.fillCircle(center, 2, self.rgb[0], self.rgb[1], self.rgb[2], int(self.alpha * 255));
+        con canvas = self.canvas;
+        canvas.setGlobalAlpha(self.alpha);
+        canvas.beginPath();
+        canvas.arc(self.x, self.y, 2, 0, math.pi * 2);
+        canvas.setFillColor(self.rgb[0], self.rgb[1], self.rgb[2]);
+        canvas.fill();
+        canvas.setGlobalAlpha(1);  // 重置全局透明度
     }
 }
 
 
-fn createParticles(x, y) {
+fn createParticles(canvas, x, y) {
     for (var i in range(60)) {
-        con particle = Particle(x, y);
+        con particle = Particle(canvas, x, y);
         particles.append(particle);
     }
 }
 
 
-fn draw() {
+fn draw(canvas) {
     // 覆盖一层半透明黑色，实现移动残影效果
-    canvas.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-        0,
-        0,
-        0,
-        100,
-    );
+    canvas.setFillColor(0, 0, 0, 100);
+    canvas.fillRect(0, 0, canvas.width, canvas.height);
 
     var daedFireworks = [];
     for (var firework in fireworks) {
@@ -202,10 +206,10 @@ fn draw() {
 
 
 fn main() {
-    canvas.init(800, 600);
+    con canvas = Canvas.new(800, 600);
 
-    canvas.addEventListener(canvas.EventMouseDown, fn(event) {
-            con firework = Firework(canvas.width / 2, canvas.height, event.x, event.y);
+    canvas.addEventListener(Canvas.EventMouseDown, fn(event) {
+            con firework = Firework(canvas, canvas.width / 2, canvas.height, event.x, event.y);
             fireworks.append(firework);
         });
 

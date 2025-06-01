@@ -54,9 +54,10 @@ fn draw(canvas) {
         var flip = Canvas.FlipMode.none;
         canvas.drawImageEx(img, srcrect, dstrect, angle, center, flip);
     }
-// example.jpeg 来源
-// <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
+    // example.jpeg 来源
+    // <a href="https://pixnio.com/zh/media/zh-3263527">照片</a> 者 <a href="https://pixnio.com/zh/author/m_yabandeh">Maysam Yabandeh</a> 从 <a href="https://pixnio.com/zh/">Pixnio</a>
 }
+
 
 fn main() {
     print("Canvas example");

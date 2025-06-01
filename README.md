@@ -16,6 +16,10 @@ dai: 脚本解释器入口
 
 cbdai: 与 C 语言进行集成交互入口
 
+#### Build
+
+CMake
+
 #### References
 
 [gualang](https://gitee.com/kuaibiancheng/gualang)

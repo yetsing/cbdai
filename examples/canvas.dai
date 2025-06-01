@@ -5,15 +5,19 @@ var step = 1;
 fn draw(canvas) {
     // canvas.clear() 清空 canvas 的内容
     canvas.clear();
-    for (var r in range(256)) {
-        for (var g in range(256)) {
+    con rlen = 4;
+    con rmax = canvas.width / rlen;
+    con gmax = canvas.height / rlen;
+    for (var r in range(rmax)) {
+        for (var g in range(gmax)) {
             // canvas.setFillColor(r, g, b) 设置填充颜色
             // canvas.setFillColor(r, g, b, a) 设置填充颜色
             canvas.setFillColor(r, g, b);
             // canvas.fillRect(x, y, w, h) 填充矩形
-            canvas.fillRect(r * 4, g * 4, 4, 4);
+            canvas.fillRect(r * rlen, g * rlen, rlen, rlen);
         }
     }
+
     b += step;
     if (b >= 255) {
         step = -1;
