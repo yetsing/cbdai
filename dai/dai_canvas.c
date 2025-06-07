@@ -502,6 +502,8 @@ Canvas_clear(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
             DaiObjError_Newf(vm, "SDL could not clear window! SDL_Error: %s", SDL_GetError());
         return OBJ_VAL(err);
     }
+    plutovg_color_t color = {0, 0, 0, 0};
+    plutovg_surface_clear(canvas->plutovg_surface, &color);
     return receiver;
 }
 
