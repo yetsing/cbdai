@@ -14,6 +14,9 @@
 #include "dai_windows.h"   // IWYU pragma: keep
 
 // #region DaiToken 辅助变量和函数
+
+#define TOKEN_LITERAL(ty, val) {ty, val, .length = strlen(val)}
+
 // Token 类型字符串数组
 static const char* DaiTokenTypeStrings[] = {
     "DaiTokenType_illegal",     "DaiTokenType_eof",         "DaiTokenType_ident",
@@ -47,29 +50,27 @@ DaiTokenType_string(const DaiTokenType type) {
 
 // DaiToken_auto 类型映射
 static DaiToken autos[] = {
-    {DaiTokenType_assign, "="},       {DaiTokenType_plus, "+"},
-    {DaiTokenType_minus, "-"},        {DaiTokenType_bang, "!"},
-    {DaiTokenType_asterisk, "*"},     {DaiTokenType_slash, "/"},
-    {DaiTokenType_percent, "%"},      {DaiTokenType_left_shift, "<<"},
-    {DaiTokenType_right_shift, ">>"}, {DaiTokenType_bitwise_and, "&"},
-    {DaiTokenType_bitwise_or, "|"},   {DaiTokenType_bitwise_not, "~"},
-    {DaiTokenType_bitwise_xor, "^"},
+    TOKEN_LITERAL(DaiTokenType_assign, "="),       TOKEN_LITERAL(DaiTokenType_plus, "+"),
+    TOKEN_LITERAL(DaiTokenType_minus, "-"),        TOKEN_LITERAL(DaiTokenType_bang, "!"),
+    TOKEN_LITERAL(DaiTokenType_asterisk, "*"),     TOKEN_LITERAL(DaiTokenType_slash, "/"),
+    TOKEN_LITERAL(DaiTokenType_percent, "%"),      TOKEN_LITERAL(DaiTokenType_left_shift, "<<"),
+    TOKEN_LITERAL(DaiTokenType_right_shift, ">>"), TOKEN_LITERAL(DaiTokenType_bitwise_and, "&"),
+    TOKEN_LITERAL(DaiTokenType_bitwise_or, "|"),   TOKEN_LITERAL(DaiTokenType_bitwise_not, "~"),
+    TOKEN_LITERAL(DaiTokenType_bitwise_xor, "^"),
 
-    {DaiTokenType_lt, "<"},           {DaiTokenType_gt, ">"},
-    {DaiTokenType_lte, "<="},         {DaiTokenType_gte, ">="},
-    {DaiTokenType_not_eq, "!="},      {DaiTokenType_eq, "=="},
+    TOKEN_LITERAL(DaiTokenType_lt, "<"),           TOKEN_LITERAL(DaiTokenType_gt, ">"),
+    TOKEN_LITERAL(DaiTokenType_lte, "<="),         TOKEN_LITERAL(DaiTokenType_gte, ">="),
+    TOKEN_LITERAL(DaiTokenType_not_eq, "!="),      TOKEN_LITERAL(DaiTokenType_eq, "=="),
 
-    {DaiTokenType_dot, "."},
+    TOKEN_LITERAL(DaiTokenType_dot, "."),          TOKEN_LITERAL(DaiTokenType_comma, ","),
+    TOKEN_LITERAL(DaiTokenType_semicolon, ";"),    TOKEN_LITERAL(DaiTokenType_colon, ":"),
 
-    {DaiTokenType_comma, ","},        {DaiTokenType_semicolon, ";"},
-    {DaiTokenType_colon, ":"},
+    TOKEN_LITERAL(DaiTokenType_lparen, "("),       TOKEN_LITERAL(DaiTokenType_rparen, ")"),
+    TOKEN_LITERAL(DaiTokenType_lbrace, "{"),       TOKEN_LITERAL(DaiTokenType_rbrace, "}"),
+    TOKEN_LITERAL(DaiTokenType_lbracket, "["),     TOKEN_LITERAL(DaiTokenType_rbracket, "]"),
 
-    {DaiTokenType_lparen, "("},       {DaiTokenType_rparen, ")"},
-    {DaiTokenType_lbrace, "{"},       {DaiTokenType_rbrace, "}"},
-    {DaiTokenType_lbracket, "["},     {DaiTokenType_rbracket, "]"},
-
-    {DaiTokenType_add_assign, "+="},  {DaiTokenType_sub_assign, "-="},
-    {DaiTokenType_mul_assign, "*="},  {DaiTokenType_div_assign, "/="},
+    TOKEN_LITERAL(DaiTokenType_add_assign, "+="),  TOKEN_LITERAL(DaiTokenType_sub_assign, "-="),
+    TOKEN_LITERAL(DaiTokenType_mul_assign, "*="),  TOKEN_LITERAL(DaiTokenType_div_assign, "/="),
 };
 
 // DaiTokenType_auto 类型转换
@@ -77,7 +78,7 @@ void
 Token_autoConvert(DaiToken* t) {
     assert(t->type == DaiTokenType_auto);
     for (size_t i = 0; i < sizeof(autos) / sizeof(autos[0]); i++) {
-        if (t->length == strlen(autos[i].s) && strncmp(t->s, autos[i].s, t->length) == 0) {
+        if (t->length == autos[i].length && strncmp(t->s, autos[i].s, t->length) == 0) {
             t->type = autos[i].type;
             break;
         }
@@ -86,24 +87,24 @@ Token_autoConvert(DaiToken* t) {
 
 // 关键字 Token
 static DaiToken keywords[] = {
-    {DaiTokenType_function, "fn"}, {DaiTokenType_var, "var"},
-    {DaiTokenType_con, "con"},     {DaiTokenType_true, "true"},
-    {DaiTokenType_false, "false"}, {DaiTokenType_nil, "nil"},
-    {DaiTokenType_if, "if"},       {DaiTokenType_elif, "elif"},
-    {DaiTokenType_else, "else"},   {DaiTokenType_return, "return"},
-    {DaiTokenType_class, "class"}, {DaiTokenType_self, "self"},
-    {DaiTokenType_super, "super"}, {DaiTokenType_for, "for"},
-    {DaiTokenType_in, "in"},       {DaiTokenType_while, "while"},
-    {DaiTokenType_break, "break"}, {DaiTokenType_continue, "continue"},
-    {DaiTokenType_and, "and"},     {DaiTokenType_or, "or"},
-    {DaiTokenType_not, "not"},
+    TOKEN_LITERAL(DaiTokenType_function, "fn"), TOKEN_LITERAL(DaiTokenType_var, "var"),
+    TOKEN_LITERAL(DaiTokenType_con, "con"),     TOKEN_LITERAL(DaiTokenType_true, "true"),
+    TOKEN_LITERAL(DaiTokenType_false, "false"), TOKEN_LITERAL(DaiTokenType_nil, "nil"),
+    TOKEN_LITERAL(DaiTokenType_if, "if"),       TOKEN_LITERAL(DaiTokenType_elif, "elif"),
+    TOKEN_LITERAL(DaiTokenType_else, "else"),   TOKEN_LITERAL(DaiTokenType_return, "return"),
+    TOKEN_LITERAL(DaiTokenType_class, "class"), TOKEN_LITERAL(DaiTokenType_self, "self"),
+    TOKEN_LITERAL(DaiTokenType_super, "super"), TOKEN_LITERAL(DaiTokenType_for, "for"),
+    TOKEN_LITERAL(DaiTokenType_in, "in"),       TOKEN_LITERAL(DaiTokenType_while, "while"),
+    TOKEN_LITERAL(DaiTokenType_break, "break"), TOKEN_LITERAL(DaiTokenType_continue, "continue"),
+    TOKEN_LITERAL(DaiTokenType_and, "and"),     TOKEN_LITERAL(DaiTokenType_or, "or"),
+    TOKEN_LITERAL(DaiTokenType_not, "not"),
 };
 
 // 查询关键字类型
 static DaiTokenType
 lookup_ident(const char* ident, size_t length) {
-    for (int i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {
-        if (length == strlen(keywords[i].s) && strncmp(ident, keywords[i].s, length) == 0) {
+    for (size_t i = 0; i < sizeof(keywords) / sizeof(keywords[0]); ++i) {
+        if (length == keywords[i].length && strncmp(ident, keywords[i].s, length) == 0) {
             return keywords[i].type;
         }
     }
@@ -622,7 +623,7 @@ Tokenizer_readString(Tokenizer* tker, const dai_rune_t quote) {
                     case '\'': Tokenizer_read_char(tker); break;
                     case 'x': {
                         // \xXX 十六进制转义
-                        for (int i = 0; i < 2; i++) {
+                        for (size_t i = 0; i < 2; i++) {
                             Tokenizer_read_char(tker);
                             if (!is_hexdigit(tker->ch)) {
                                 tker->has_error_msg = true;
@@ -719,6 +720,9 @@ Tokenizer_next_token(Tokenizer* tker) {
         }
         case '/': {
             if (ch == '/' && Tokenizer_peek_char(tker) == '/') {
+                // consume both slashes, then read to end-of-line
+                Tokenizer_read_char(tker);   // first slash
+                Tokenizer_read_char(tker);   // second slash
                 return Tokenizer_read_comment(tker);
             } else if (Tokenizer_peek_char(tker) == '=') {
                 Tokenizer_read_char(tker);

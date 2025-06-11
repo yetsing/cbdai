@@ -568,6 +568,9 @@ test_illegal_token(__attribute__((unused)) const MunitParameter params[],
         {"0.1E-", "SyntaxError: invalid number in <stdin>:1:1"},
         {"，", "SyntaxError: illegal character '，' in <stdin>:1:1"},
         {"？", "SyntaxError: illegal character '？' in <stdin>:1:1"},
+        {"123_.45", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"123._45", "SyntaxError: invalid number in <stdin>:1:1"},
+        {"123_._45", "SyntaxError: invalid number in <stdin>:1:1"},
     };
     for (int i = 0; i < sizeof(tests) / sizeof(tests[0]); ++i) {
         const char* input = tests[i].input;
