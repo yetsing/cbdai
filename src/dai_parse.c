@@ -12,6 +12,7 @@
 #include "dai_malloc.h"
 #include "dai_parse.h"
 #include "dai_tokenize.h"
+#include "dai_windows.h"   // IWYU pragma: keep
 
 // #region 表达式优先级
 typedef enum {
