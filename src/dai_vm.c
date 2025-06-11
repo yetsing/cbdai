@@ -232,7 +232,6 @@ DaiVM_callValue(DaiVM* vm, const DaiValue callee, const int argCount, const DaiV
                 const BuiltinFn func = AS_BUILTINFN(callee)->function;
                 const DaiValue result =
                     func(vm, DaiVM_peek(vm, argCount), argCount, vm->stack_top - argCount);
-                DaiVM_resetGCRef(vm);
                 vm->stack_top = vm->stack_top - argCount - 1;
                 if (DAI_IS_ERROR(result)) {
                     return AS_ERROR(result);
@@ -837,7 +836,6 @@ DaiVM_runCurrentFrame(DaiVM* vm) {
                 uint16_t name_index = READ_UINT16();
                 DaiValue name       = chunk->constants.values[name_index];
                 DaiObjClass* cls    = DaiObjClass_New(vm, AS_STRING(name));
-                DaiVM_resetGCRef(vm);
                 DaiVM_push(vm, OBJ_VAL(cls));
                 break;
             }

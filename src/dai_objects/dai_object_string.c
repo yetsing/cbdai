@@ -243,6 +243,7 @@ DaiObjString_splitn(DaiVM* vm, DaiObjString* s, DaiObjString* sep, int max_split
         p = q + sep_len;
         max_splits--;
     }
+    DaiVM_resetGCRef(vm);
     return OBJ_VAL(array);
 }
 
@@ -266,6 +267,7 @@ DaiObjString_split_whitespace(DaiVM* vm, DaiObjString* s) {
         }
         p = q;
     }
+    DaiVM_resetGCRef(vm);
     return OBJ_VAL(array);
 }
 

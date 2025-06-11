@@ -1,7 +1,7 @@
 #ifndef CBDAI_DAI_ASTCOMMON_H
 #define CBDAI_DAI_ASTCOMMON_H
 
-#include "dai_windows.h"  // IWYU pragma: keep
+#include "dai_windows.h"   // IWYU pragma: keep
 
 // 定义颜色宏
 #define RED "\033[0;31m"

@@ -217,7 +217,9 @@ builtin_path_joinpath(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     }
     DaiValue joined_path = OBJ_VAL(dai_copy_string(vm, path_res, strlen(path_res)));
     DaiVM_addGCRef(vm, joined_path);
-    return PathStruct_New(vm, receiver, 1, &joined_path);
+    DaiValue ret = PathStruct_New(vm, receiver, 1, &joined_path);
+    DaiVM_resetGCRef(vm);
+    return ret;
 }
 
 static DaiValue
@@ -233,7 +235,9 @@ builtin_path_parent(DaiVM* vm, DaiValue receiver, int argc, DaiValue* argv) {
     DaiValue parent_path =
         OBJ_VAL(dai_copy_string(vm, path->path, length));   // 这里的 path 是一个 string 对象
     DaiVM_addGCRef(vm, parent_path);
-    return PathStruct_New(vm, receiver, 1, &parent_path);
+    DaiValue ret = PathStruct_New(vm, receiver, 1, &parent_path);
+    DaiVM_resetGCRef(vm);
+    return ret;
 }
 
 

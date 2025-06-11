@@ -217,6 +217,9 @@ static DaiObjBuiltinFunction builtin_init = {
 
 DaiObjClass*
 DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
+    DaiObjTuple* define_field_names = DaiObjTuple_New(vm);
+    DaiVM_addGCRef(vm, OBJ_VAL(define_field_names));
+
     DaiObjClass* klass = ALLOCATE_OBJ(vm, DaiObjClass, DaiObjType_class);
     DaiVM_addGCRef(vm, OBJ_VAL(klass));
     klass->obj.operation = &class_operation;
@@ -241,10 +244,7 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
     }
     klass->parent             = NULL;
     klass->init_fn            = UNDEFINED_VAL;
-    klass->define_field_names = NULL;
-
-    klass->define_field_names = DaiObjTuple_New(vm);
-    DaiVM_addGCRef(vm, OBJ_VAL(klass->define_field_names));
+    klass->define_field_names = define_field_names;
 
     // 定义内置类属性
     DaiObjClass_define_class_field(klass, STRING_NAME("__name__"), OBJ_VAL(klass->name), true);
@@ -258,6 +258,8 @@ DaiObjClass_New(DaiVM* vm, DaiObjString* name) {
 #endif
     // 定义内置实例属性
     DaiObjClass_define_field(klass, STRING_NAME("__class__"), OBJ_VAL(klass), true);
+
+    DaiVM_resetGCRef(vm);
     return klass;
 }
 
