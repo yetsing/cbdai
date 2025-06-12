@@ -3,7 +3,7 @@
 
 #include "dai_object.h"
 
-int
+bool
 dai_canvas_init(DaiVM* vm);
 void
 dai_canvas_quit(DaiVM* vm);

@@ -26,7 +26,7 @@ def generate_c():
         {"\n".join(items)}
     }};
     """
-    c_file = script_dir.parent / "dai" / "dai_canvas_keycode.h"
+    c_file = script_dir.parent / "dai" / "std" / "dai_canvas_keycode.h"
     c_file.write_text(c_template)
 
 

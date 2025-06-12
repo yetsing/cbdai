@@ -224,6 +224,10 @@ def cfmt():
         "src/dai_*.h",
         "src/dai_ast/*.c",
         "src/dai_ast/*.h",
+        "dai/*.c",
+        "dai/*.h",
+        "dai/std/*.c",
+        "dai/std/*.h",
     ]
     paths = []
     # glob with patterns

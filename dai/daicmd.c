@@ -8,7 +8,6 @@
 #include <SDL3/SDL.h>
 
 #include "atstr/atstr.h"
-#include "dai_canvas.h"
 #include "dai_compile.h"
 #include "dai_debug.h"
 #include "dai_error.h"
@@ -20,6 +19,7 @@
 #include "dai_vm.h"
 #include "dai_windows.h"   // IWYU pragma: keep
 #include "dairun.h"
+#include "daistd.h"
 
 
 __attribute__((unused)) static void
@@ -188,8 +188,8 @@ daicmd_dis(int argc, char* argv[]) {
         DaiAstProgram_init(&program);
         DaiVM vm;
         DaiVM_init(&vm);
-        if (dai_canvas_init(&vm) != 0) {
-            fprintf(stderr, "Error: cannot initialize canvas\n");
+        if (!daistd_init(&vm)) {
+            fprintf(stderr, "Error: cannot initialize std\n");
             has_error = true;
             goto end;
         }
@@ -324,8 +324,8 @@ daicmd_runfile(int argc, char* argv[]) {
     DaiObjError* err = NULL;
     DaiVM vm;
     DaiVM_init(&vm);
-    if (dai_canvas_init(&vm) != 0) {
-        fprintf(stderr, "Error: cannot initialize canvas\n");
+    if (!daistd_init(&vm)) {
+        fprintf(stderr, "Error: cannot initialize std\n");
         goto END;
     }
     err = Dairun_File(&vm, filepath);
@@ -334,7 +334,7 @@ daicmd_runfile(int argc, char* argv[]) {
     }
 END:
     free(filepath);
-    dai_canvas_quit(&vm);
+    daistd_quit(&vm);
     DaiVM_reset(&vm);
     return err == NULL ? 0 : 1;
 }

@@ -1222,23 +1222,6 @@ builtin_canvas_new(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int arg
 }
 
 static DaiValue
-builtin_canvas_present(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
-                       DaiValue* argv) {
-    if (argc != 0) {
-        DaiObjError* err =
-            DaiObjError_Newf(vm, "canvas.present() expected 0 arguments, but got %d", argc);
-        return OBJ_VAL(err);
-    }
-    // CHECK_INIT();
-    // if (!SDL_RenderPresent(renderer)) {
-    //     DaiObjError* err =
-    //         DaiObjError_Newf(vm, "SDL could not present window! SDL_Error: %s", SDL_GetError());
-    //     return OBJ_VAL(err);
-    // }
-    return NIL_VAL;
-}
-
-static DaiValue
 builtin_canvas_Rect(DaiVM* vm, __attribute__((unused)) DaiValue receiver, int argc,
                     DaiValue* argv) {
     if (argc != 4) {
@@ -1337,11 +1320,6 @@ static DaiObjBuiltinFunction canvas_funcs[] = {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
         .name     = "new",
         .function = builtin_canvas_new,
-    },
-    {
-        {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
-        .name     = "present",
-        .function = builtin_canvas_present,
     },
     {
         {.type = DaiObjType_builtinFn, .operation = &builtin_function_operation},
@@ -1461,11 +1439,11 @@ create_canvas_module(DaiVM* vm) {
     return module;
 }
 
-int
+bool
 dai_canvas_init(DaiVM* vm) {
     DaiObjModule* module = create_canvas_module(vm);
     DaiVM_addBuiltin(vm, module_name, OBJ_VAL(module));
-    return 0;
+    return true;
 }
 
 void

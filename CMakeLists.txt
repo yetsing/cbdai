@@ -7,6 +7,7 @@ include_directories(.)
 include_directories(src)
 include_directories(src/utf8.h)
 include_directories(src/hashmap.c)
+include_directories(dai/std)
 
 add_compile_options(-Wno-unused-function -Werror -Wall)
 
